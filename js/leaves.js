@@ -31,6 +31,12 @@ var Leaves = (function () {
       }
       html += '</div>';
 
+      // شريط التصدير
+      if (role !== 'موظف') {
+        var expShift = role === 'مشرف' ? Auth.getShift() : '';
+        html += Export.inlineBar('leaves', expShift);
+      }
+
       if (!res.data.length) {
         html += '<div class="empty-state">لا توجد طلبات إجازات</div>';
       } else {
