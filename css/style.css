@@ -65,11 +65,17 @@ body {
   text-align: center;
 }
 
-.login-logo { margin-bottom: 12px; }
-.login-logo-icon { font-size: 3rem; }
+/* ---- شعار السعودية للطاقة ---- */
+.se-logo-svg    { width: 110px; height: auto; display: block; margin: 0 auto 6px; }
+.se-logo-sidebar{ width: 44px;  height: auto; flex-shrink: 0; }
+.se-logo-header { width: 36px;  height: auto; flex-shrink: 0; }
+
+.login-logo { margin-bottom: 10px; }
 .login-logo-text {
-  font-size: 1.4rem; font-weight: 700;
-  color: var(--primary); letter-spacing: 0.5px;
+  font-size: 1.35rem; font-weight: 800;
+  background: linear-gradient(135deg, #1565C0, #00843D);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  letter-spacing: 0.3px; margin-top: 2px;
 }
 .login-subtitle {
   color: var(--text-muted); font-size: 0.95rem;
@@ -78,34 +84,81 @@ body {
 
 .login-field { text-align: right; margin-bottom: 16px; }
 .login-field label { font-size: 0.9rem; font-weight: 600; display: block; margin-bottom: 6px; color: var(--text); }
+
+/* حقول الإدخال — شكل بيضاوي مع ظل خفيف */
 .login-input {
-  width: 100%; padding: 12px 14px;
-  border: 2px solid var(--border); border-radius: var(--radius-sm);
+  width: 100%; padding: 12px 46px 12px 16px;
+  border: 2px solid #DBEAFE;
+  border-radius: 50px;
   font-size: 1rem; font-family: var(--font);
-  transition: border-color var(--transition);
+  background: #F0F7FF;
+  box-shadow: 0 2px 8px rgba(0,102,179,0.10), inset 0 1px 3px rgba(0,0,0,0.04);
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
   direction: ltr; text-align: left;
 }
-.login-input:focus { outline: none; border-color: var(--primary); }
+.login-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(0,102,179,0.12), 0 2px 8px rgba(0,102,179,0.12);
+}
 
+/* زر إظهار/إخفاء كلمة المرور */
 .pw-wrap { position: relative; display: flex; align-items: center; }
 .pw-wrap .login-input, .pw-wrap .form-input { flex: 1; }
 .pw-eye {
-  position: absolute; left: 10px; background: none; border: none;
-  cursor: pointer; font-size: 1rem; padding: 4px; color: var(--text-muted);
+  position: absolute;
+  left: 14px;
+  top: 50%; transform: translateY(-50%);
+  background: none; border: none;
+  cursor: pointer; font-size: 1rem;
+  color: var(--text-muted); line-height: 1;
+  z-index: 2; display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 50%;
+  transition: background var(--transition), color var(--transition);
 }
+.pw-eye:hover { background: rgba(0,102,179,0.1); color: var(--primary); }
 
 .btn-login {
-  width: 100%; padding: 13px; margin-top: 8px;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
-  color: #fff; border: none; border-radius: var(--radius-sm);
+  width: 100%; padding: 13px; margin-top: 10px;
+  background: linear-gradient(135deg, #1565C0 0%, #00AEEF 60%, #00843D 100%);
+  color: #fff; border: none; border-radius: 50px;
   font-size: 1.05rem; font-weight: 700; cursor: pointer;
   transition: transform var(--transition), box-shadow var(--transition);
+  box-shadow: 0 4px 18px rgba(0,102,179,0.35);
+  position: relative; overflow: hidden;
 }
-.btn-login:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,102,179,0.4); }
+.btn-login:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,102,179,0.45); }
+.btn-login:active { transform: scale(0.98); }
 .btn-login:disabled { opacity: 0.7; transform: none; }
 
-.login-error { color: #EF4444; font-size: 0.88rem; margin-top: 8px; padding: 8px 12px; background: #FEF2F2; border-radius: 6px; }
-.change-pass-notice { background: #FEF3C7; color: #92400E; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 0.9rem; }
+.login-error { color: #EF4444; font-size: 0.88rem; margin-top: 8px; padding: 8px 12px; background: #FEF2F2; border-radius: 10px; }
+.change-pass-notice { background: #FEF3C7; color: #92400E; padding: 10px 14px; border-radius: 10px; margin-bottom: 16px; font-size: 0.9rem; }
+/* شاشة تغيير كلمة المرور الإلزامي */
+.force-change-header { text-align: center; margin-bottom: 20px; }
+.fch-icon { font-size: 2.5rem; margin-bottom: 8px; }
+.force-change-header h2 { font-size: 1.15rem; color: var(--primary); font-weight: 800; margin-bottom: 4px; }
+.force-change-header p  { font-size: 0.85rem; color: var(--text-muted); }
+
+.pass-rules {
+  display: flex; flex-direction: column; gap: 5px;
+  margin: 10px 0 14px; padding: 10px 14px;
+  background: #F8FAFF; border-radius: 12px; border: 1.5px solid #DBEAFE;
+}
+.pass-rule { font-size: 0.83rem; color: var(--text-muted); transition: color 0.2s; }
+.pass-ok   { color: #16A34A; font-weight: 600; }
+.pass-fail { color: #DC2626; }
+
+.setup-warning {
+  background: linear-gradient(135deg, #EFF6FF, #DBEAFE);
+  border: 1.5px solid #BFDBFE; border-radius: 12px;
+  padding: 12px 14px; margin-bottom: 16px;
+  font-size: 0.85rem; color: #1E40AF; text-align: right; line-height: 1.6;
+}
+.setup-warning code {
+  background: #DBEAFE; padding: 1px 6px; border-radius: 4px;
+  font-family: monospace; font-size: 0.82rem;
+}
 
 /* ============================================================
    هيكل التطبيق
@@ -126,12 +179,15 @@ body {
 }
 
 .sidebar-logo {
-  padding: 20px 16px;
+  padding: 16px 14px;
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
+.sidebar-logo-inner {
+  display: flex; align-items: center; gap: 10px;
+}
 .sidebar-logo-text {
-  color: #fff; font-size: 1.05rem; font-weight: 700;
-  letter-spacing: 0.3px;
+  color: #fff; font-size: 0.95rem; font-weight: 700;
+  letter-spacing: 0.3px; line-height: 1.3;
 }
 
 #sidebar-nav {
@@ -188,7 +244,10 @@ body {
   padding: 0 24px; position: sticky; top: 0; z-index: 50;
   box-shadow: var(--shadow);
 }
-.header-brand { font-weight: 700; font-size: 1.05rem; color: var(--primary); }
+.header-brand {
+  font-weight: 700; font-size: 1rem; color: var(--primary);
+  display: flex; align-items: center; gap: 10px;
+}
 .header-user-info { display: flex; align-items: center; gap: 10px; }
 .header-name { font-weight: 600; font-size: 0.95rem; }
 .header-role {
@@ -364,17 +423,29 @@ body {
   margin-bottom: 20px; flex-wrap: wrap;
 }
 .search-input {
-  flex: 1; min-width: 200px; padding: 10px 14px;
-  border: 2px solid var(--border); border-radius: var(--radius-sm);
+  flex: 1; min-width: 200px;
+  padding: 11px 18px;
+  border: 2px solid #DBEAFE;
+  border-radius: 50px;
   font-size: 0.93rem; font-family: var(--font);
+  background: #F0F7FF;
+  box-shadow: 0 2px 6px rgba(0,102,179,0.08);
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+}
+.search-input:focus {
+  outline: none; border-color: var(--primary); background: #fff;
+  box-shadow: 0 0 0 4px rgba(0,102,179,0.10);
+}
+.filter-select {
+  padding: 11px 18px;
+  border: 2px solid #DBEAFE;
+  border-radius: 50px;
+  font-size: 0.93rem; font-family: var(--font);
+  background: #F0F7FF; cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,102,179,0.08);
   transition: border-color var(--transition);
 }
-.search-input:focus { outline: none; border-color: var(--primary); }
-.filter-select {
-  padding: 10px 14px; border: 2px solid var(--border); border-radius: var(--radius-sm);
-  font-size: 0.93rem; font-family: var(--font); background: var(--bg-card);
-  cursor: pointer;
-}
+.filter-select:focus { outline: none; border-color: var(--primary); }
 
 /* بطاقة الموظف */
 .emp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
@@ -441,14 +512,42 @@ body {
 .form-field label { font-size: 0.9rem; font-weight: 600; }
 .req { color: #EF4444; }
 
-.form-input, .form-select, .form-textarea {
-  padding: 10px 12px; border: 2px solid var(--border); border-radius: var(--radius-sm);
-  font-size: 0.93rem; font-family: var(--font); transition: border-color var(--transition);
-  background: var(--bg-card);
+.form-input, .form-select {
+  padding: 11px 16px;
+  border: 2px solid #DBEAFE;
+  border-radius: 50px;
+  font-size: 0.93rem; font-family: var(--font);
+  background: #F0F7FF;
+  box-shadow: 0 2px 6px rgba(0,102,179,0.08), inset 0 1px 2px rgba(0,0,0,0.03);
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
 }
-.form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--primary); }
-.form-static { padding: 10px 12px; background: var(--bg); border-radius: var(--radius-sm); font-size: 0.93rem; font-weight: 600; }
-.form-textarea { resize: vertical; }
+.form-input:focus, .form-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(0,102,179,0.10), 0 2px 6px rgba(0,102,179,0.10);
+}
+.form-textarea {
+  padding: 12px 16px;
+  border: 2px solid #DBEAFE;
+  border-radius: 16px;
+  font-size: 0.93rem; font-family: var(--font);
+  background: #F0F7FF;
+  box-shadow: 0 2px 6px rgba(0,102,179,0.08), inset 0 1px 2px rgba(0,0,0,0.03);
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+  resize: vertical;
+}
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(0,102,179,0.10);
+}
+.form-static {
+  padding: 11px 16px; background: #EFF6FF;
+  border-radius: 50px; font-size: 0.93rem; font-weight: 600;
+  border: 2px solid #DBEAFE; color: var(--primary-dark);
+}
 
 .form-section-title { grid-column: 1 / -1; font-weight: 700; color: var(--primary); padding-top: 8px; border-top: 1px solid var(--border); }
 
@@ -457,40 +556,103 @@ body {
 .form-warning { background: #FEF3C7; color: #92400E; padding: 10px 14px; border-radius: 8px; font-size: 0.88rem; }
 .field-hint { color: var(--text-muted); font-size: 0.8rem; }
 
-/* حقل الجوال */
-.phone-input-group { display: flex; align-items: center; }
-.phone-prefix {
-  background: var(--bg); border: 2px solid var(--border); border-left: none;
-  padding: 10px 12px; border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-  font-size: 0.93rem; color: var(--text-muted); font-weight: 600;
+/* حقل الجوال المدمج */
+.phone-input-merged {
+  display: flex; align-items: center;
+  border: 2px solid #DBEAFE; border-radius: 50px;
+  background: #F0F7FF;
+  box-shadow: 0 2px 6px rgba(0,102,179,0.08), inset 0 1px 2px rgba(0,0,0,0.03);
+  overflow: hidden;
+  transition: border-color var(--transition), box-shadow var(--transition);
 }
-.phone-input { border-radius: 0 var(--radius-sm) var(--radius-sm) 0 !important; direction: ltr; text-align: left; }
+.phone-input-merged:focus-within {
+  border-color: var(--primary);
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(0,102,179,0.10);
+}
+.phone-flag {
+  padding: 0 8px 0 14px; font-size: 1.2rem; line-height: 1;
+  flex-shrink: 0;
+}
+.phone-cc {
+  padding: 0 10px 0 0; font-size: 0.9rem; font-weight: 700;
+  color: var(--primary-dark); flex-shrink: 0; direction: ltr;
+}
+.phone-sep {
+  width: 1px; height: 22px; background: #BFDBFE; flex-shrink: 0;
+  margin-left: 6px;
+}
+.phone-merged-input {
+  flex: 1; border: none !important; background: transparent !important;
+  box-shadow: none !important; border-radius: 0 !important;
+  padding: 11px 14px 11px 10px;
+  direction: ltr; text-align: left;
+  font-size: 0.95rem; font-family: var(--font);
+}
+.phone-merged-input:focus { outline: none; box-shadow: none !important; }
 
 /* ============================================================
    أزرار
    ============================================================ */
 .btn-primary, .btn-outline, .btn-danger, .btn-add, .btn-export,
 .btn-sm, .btn-approve, .btn-reject, .btn-view, .btn-edit, .btn-transfer {
-  border: none; border-radius: var(--radius-sm);
+  border: none; border-radius: 50px;
   font-size: 0.9rem; font-family: var(--font);
-  cursor: pointer; padding: 9px 16px; font-weight: 600;
+  cursor: pointer; padding: 9px 20px; font-weight: 700;
   transition: transform var(--transition), box-shadow var(--transition), opacity var(--transition);
+  position: relative; overflow: hidden;
 }
-.btn-primary  { background: var(--primary); color: #fff; }
-.btn-primary:hover { box-shadow: 0 4px 14px rgba(0,102,179,0.4); transform: translateY(-1px); }
-.btn-outline  { background: none; border: 2px solid var(--border); color: var(--text); }
-.btn-outline:hover { border-color: var(--primary); color: var(--primary); }
-.btn-danger   { background: #EF4444; color: #fff; }
-.btn-danger:hover { background: #DC2626; }
-.btn-add      { background: var(--accent); color: #fff; white-space: nowrap; }
-.btn-add:hover{ background: #00A88A; }
-.btn-approve  { background: #22C55E; color: #fff; }
-.btn-reject   { background: #EF4444; color: #fff; }
-.btn-view     { background: var(--primary); color: #fff; font-size: 0.82rem; padding: 6px 12px; }
-.btn-edit     { background: var(--secondary); color: #fff; font-size: 0.82rem; padding: 6px 12px; }
-.btn-transfer { background: #F97316; color: #fff; font-size: 0.82rem; padding: 6px 12px; }
-.btn-disabled { background: #9CA3AF !important; color: #fff; cursor: default; }
+.btn-primary  {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  color: #fff;
+  box-shadow: 0 3px 12px rgba(0,102,179,0.3);
+}
+.btn-primary:hover { box-shadow: 0 6px 20px rgba(0,102,179,0.45); transform: translateY(-2px); }
+.btn-primary:active { transform: scale(0.97); }
+
+.btn-outline  { background: none; border: 2px solid #DBEAFE; color: var(--primary); background: #F0F7FF; }
+.btn-outline:hover { border-color: var(--primary); background: #DBEAFE; }
+
+.btn-danger   {
+  background: linear-gradient(135deg, #EF4444, #DC2626);
+  color: #fff; box-shadow: 0 3px 12px rgba(239,68,68,0.3);
+}
+.btn-danger:hover { box-shadow: 0 6px 20px rgba(239,68,68,0.45); transform: translateY(-1px); }
+
+.btn-add {
+  background: linear-gradient(135deg, var(--accent), #00843D);
+  color: #fff; white-space: nowrap;
+  box-shadow: 0 3px 12px rgba(0,197,163,0.35);
+}
+.btn-add:hover { box-shadow: 0 6px 20px rgba(0,132,61,0.4); transform: translateY(-1px); }
+
+.btn-approve  { background: linear-gradient(135deg,#22C55E,#16A34A); color: #fff; box-shadow: 0 2px 8px rgba(34,197,94,0.3); }
+.btn-reject   { background: linear-gradient(135deg,#EF4444,#DC2626); color: #fff; box-shadow: 0 2px 8px rgba(239,68,68,0.3); }
+
+.btn-view     { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: #fff; font-size: 0.82rem; padding: 6px 14px; }
+.btn-edit     { background: linear-gradient(135deg, #0284C7,#00AEEF); color: #fff; font-size: 0.82rem; padding: 6px 14px; }
+.btn-transfer { background: linear-gradient(135deg, #F97316,#EA580C); color: #fff; font-size: 0.82rem; padding: 6px 14px; }
+.btn-disabled { background: #9CA3AF !important; color: #fff !important; cursor: default; box-shadow: none !important; }
 :disabled { opacity: 0.65; cursor: not-allowed; transform: none !important; }
+
+/* ---- أنيميشن زر الحفظ (دائري عند الضغط) ---- */
+.btn-loading {
+  pointer-events: none;
+  color: transparent !important;
+  min-width: 44px;
+}
+.btn-loading::after {
+  content: '';
+  position: absolute;
+  width: 20px; height: 20px;
+  border: 2.5px solid rgba(255,255,255,0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: btn-spin 0.65s linear infinite;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+}
+@keyframes btn-spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
 
 /* تصدير */
 .export-buttons { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
