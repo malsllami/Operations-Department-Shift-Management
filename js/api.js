@@ -22,6 +22,14 @@ var API = (function () {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
       })
+      .then(function(data) {
+        if (data && data.error === 'session_expired') {
+          // انتهت الجلسة — تسجيل خروج تلقائي
+          if (typeof Auth !== 'undefined') Auth.logout();
+          if (typeof App   !== 'undefined') App.showSessionExpired();
+        }
+        return data;
+      })
       .catch(function(err) {
         console.warn('[API] خطأ في الاتصال:', err && err.message ? err.message : 'network_error');
         return { ok: false, error: 'network_error' };
@@ -196,16 +204,20 @@ var API = (function () {
     return _call({ action:'buildComprehensiveView' });
   }
 
-  // ---- التحقق من رمز الصلاحية ----
+  // ---- رمز الصلاحية الشخصي ----
   function verifyRoleCode(code) {
     return _call({ action:'verifyRoleCode', code: code });
+  }
+
+  function setRoleCode(code) {
+    return _call({ action:'setRoleCode', code: code });
   }
 
   return {
     login, changePassword,
     getSchedule,
     getSettings, updateSettings,
-    verifyRoleCode,
+    verifyRoleCode, setRoleCode,
     getEmployees, getEmployee, addEmployee, updateEmployee,
     getRegions, updateRegion,
     getEquipment, updateEquipment,
