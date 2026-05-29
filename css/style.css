@@ -32,7 +32,7 @@
 
 /* ---- ريست ---- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 16px; }
+html { font-size: 16px; -webkit-text-size-adjust: 100%; }
 body {
   font-family: var(--font);
   background: var(--bg);
@@ -40,7 +40,20 @@ body {
   direction: rtl;
   min-height: 100vh;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
 }
+
+/* RTL افتراضي لكل حقول الإدخال */
+input:not([type="tel"]):not([type="date"]):not([type="time"]):not([type="number"]):not([type="color"]):not([type="password"]),
+textarea, select {
+  direction: rtl;
+  text-align: right;
+}
+/* استثناء حقول رقمية / بريد / LTR */
+input[type="email"], input[type="url"] { direction: ltr; text-align: left; }
+
+/* منع التكبير التلقائي على iOS */
+input, select, textarea { font-size: 16px !important; }
 
 /* ============================================================
    شاشة الدخول
@@ -66,9 +79,9 @@ body {
 }
 
 /* ---- شعار السعودية للطاقة ---- */
-.se-logo-svg    { width: 110px; height: auto; display: block; margin: 0 auto 6px; }
-.se-logo-sidebar{ width: 44px;  height: auto; flex-shrink: 0; }
-.se-logo-header { width: 36px;  height: auto; flex-shrink: 0; }
+.se-logo-svg    { width: 130px; height: 78px; display: block; margin: 0 auto 4px; overflow: visible; }
+.se-logo-sidebar{ width: 48px;  height: 29px; flex-shrink: 0; overflow: visible; }
+.se-logo-header { width: 40px;  height: 24px; flex-shrink: 0; overflow: visible; }
 
 .login-logo { margin-bottom: 10px; }
 .login-logo-text {
@@ -1043,55 +1056,164 @@ body {
 @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
 /* ============================================================
-   استجابة الشاشة
+   استجابة الشاشة — نظام متكامل
    ============================================================ */
+
+/* ---- تابلت ---- */
 @media (max-width: 1024px) {
   :root { --sidebar-w: 200px; }
-  .shift-cards-row { grid-template-columns: repeat(2, 1fr); }
-  .api-week-cards  { flex-wrap: wrap; }
+  .shift-cards-row   { grid-template-columns: repeat(2, 1fr); }
+  .api-week-cards    { flex-wrap: wrap; }
+  .cal-summary-cards { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* ---- جوال ---- */
 @media (max-width: 768px) {
   :root { --sidebar-w: 0px; }
 
-  /* الشريط الجانبي — مخفي خارج الشاشة (يمين RTL) */
+  /* ==== الشريط الجانبي ==== */
   #sidebar {
     transform: translateX(110%);
-    width: 260px;
+    width: 270px;
     box-shadow: none;
     transition: transform 0.3s cubic-bezier(.4,0,.2,1), box-shadow 0.3s;
   }
-  #sidebar.open {
-    transform: translateX(0);
-    box-shadow: -8px 0 32px rgba(0,0,0,0.3);
-  }
+  #sidebar.open { transform: translateX(0); box-shadow: -8px 0 32px rgba(0,0,0,0.35); }
 
-  /* الـ overlay */
   .sidebar-overlay {
     display: none; position: fixed; inset: 0; z-index: 99;
-    background: rgba(0,0,0,0.45);
-    animation: fadeIn 0.2s ease;
+    background: rgba(0,0,0,0.5);
   }
   .sidebar-overlay.show { display: block; }
 
-  #main-area  { margin-right: 0; }
-  #app-header { padding: 0 12px; }
-  .header-brand span { display: none; }
-  #main-content { padding: 12px; }
-  .shift-cards-row    { grid-template-columns: repeat(2, 1fr); }
-  .form-grid          { grid-template-columns: 1fr; }
-  .profile-sections   { grid-template-columns: 1fr; }
-  .leave-grid         { grid-template-columns: repeat(2, 1fr); }
-  .dashboard-grid     { grid-template-columns: 1fr; }
-
-  /* زر الهامبرغر — مرئي فقط على الجوال */
+  /* ==== الهيكل العام ==== */
+  #main-area    { margin-right: 0; min-height: 100vh; }
+  #app-header   { padding: 0 12px; height: 52px; }
+  #main-content { padding: 10px; width: 100%; }
   .menu-toggle-btn { display: flex; }
+  .header-brand span { display: none; }
+  .se-logo-header { width: 28px; }
+
+  /* ==== تحديد عرض كل العناصر ==== */
+  .card, .dash-card, .req-card, .emp-card,
+  .profile-card, .form-card, .export-panel,
+  .tabs-container, .settings-container,
+  .cal-nav-bar, .cal-month-grid, .cal-summary-cards {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
+
+  /* ==== الشبكات ==== */
+  .dashboard-grid      { grid-template-columns: 1fr; gap: 10px; }
+  .shift-cards-row     { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .form-grid           { grid-template-columns: 1fr; gap: 10px; }
+  .profile-sections    { grid-template-columns: 1fr; }
+  .leave-grid          { grid-template-columns: repeat(3, 1fr); }
+  .rsc-grid            { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .rsc-grid-4          { grid-template-columns: repeat(2, 1fr); }
+  .emp-grid            { grid-template-columns: 1fr; }
+  .on-duty-grid        { gap: 8px; }
+  .cal-summary-cards   { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .api-week-cards      { gap: 4px; }
+
+  /* ==== حواف دائرية موحدة على الجوال ==== */
+  .card, .dash-card, .req-card, .emp-card, .profile-card,
+  .form-card, .export-panel, .tabs-container,
+  .cal-day-cell, .shift-status-card, .cal-sum-card {
+    border-radius: 14px !important;
+  }
+  .login-card { border-radius: 20px; }
+
+  /* ==== اتجاه النصوص ==== */
+  .form-input, .form-select, .form-textarea,
+  .search-input, .filter-select {
+    text-align: right; direction: rtl;
+  }
+  /* استثناء حقول LTR */
+  input[type="date"], input[type="number"],
+  .phone-merged-input, .login-input { direction: ltr; text-align: left; }
+
+  /* ==== التقويم على الجوال ==== */
+  .cal-nav-bar { padding: 10px 12px; border-radius: 14px; }
+  .cal-month-title { font-size: 0.95rem; }
+  .cal-nav-btn { padding: 6px 10px; font-size: 1rem; }
+
+  /* الشبكة الشهرية — مضغوطة */
+  .cal-month-grid { gap: 2px; }
+  .cal-weekday {
+    padding: 6px 2px; font-size: 0.7rem; border-radius: 6px;
+  }
+  .cal-day-cell {
+    min-height: 80px; padding: 4px 3px;
+    border-radius: 10px !important; border-width: 1px;
+  }
+  .cal-day-num  { width: 22px; height: 22px; font-size: 0.78rem; }
+  .cal-today-num { font-size: 0.78rem; }
+  .cal-day-hijri { font-size: 0.55rem; display: none; }
+  .cal-day-header { margin-bottom: 2px; }
+
+  /* شارات الورديات — مختصرة على الجوال */
+  .cal-shift-pill {
+    padding: 1px 3px; gap: 2px; border-radius: 5px; border-width: 1px;
+  }
+  .csp-letter { font-size: 0.58rem; padding: 0 2px; border-radius: 3px; }
+  .csp-icon   { font-size: 0.65rem; }
+  .csp-txt    { display: none; }
+
+  /* ==== التبويبات ==== */
+  .tabs-header { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tab-btn { padding: 10px 12px; font-size: 0.82rem; white-space: nowrap; }
+  .tabs-body { padding: 14px 12px; }
+
+  /* ==== البروفايل ==== */
+  .profile-header { padding: 18px 14px; }
+  .ph-avatar { width: 50px; height: 50px; font-size: 1.3rem; }
+  .profile-actions { padding: 12px 14px; }
+
+  /* ==== الطلبات ==== */
+  .req-card-header { padding: 10px 12px; }
+  .req-card-body   { padding: 10px 12px; }
+  .req-actions     { padding: 8px 12px; flex-wrap: wrap; }
+  .rr-label        { min-width: 90px; }
+
+  /* ==== نماذج الإجازة والأوفرتايم ==== */
+  .mini-cal-day { width: 44px; height: 54px; font-size: 0.72rem; }
+  .form-actions { flex-wrap: wrap; gap: 8px; }
+  .form-actions button { flex: 1; min-width: 120px; }
+
+  /* ==== لوحة التصدير ==== */
+  .export-buttons { flex-direction: column; }
+  .btn-export     { width: 100%; }
+
+  /* ==== أزرار عامة ==== */
+  .btn-sm { padding: 6px 10px; font-size: 0.8rem; }
+
+  /* ==== بطاقة الموظف في الرئيسية ==== */
+  .epc-header { padding: 14px; }
+  .epc-avatar { width: 44px; height: 44px; font-size: 1.2rem; }
+  .epc-body   { padding: 10px 14px; }
+  .epc-footer { padding: 10px 14px; }
+
+  /* ==== بطاقات الملخص (كاملة العرض) ==== */
+  .dash-card-wide { grid-column: 1; }
+
+  /* ==== جداول المناطق ==== */
+  .regions-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .regions-table { font-size: 0.78rem; min-width: 380px; }
+  .regions-table th, .regions-table td { padding: 6px 6px; }
 }
 
-@media (max-width: 480px) {
-  .emp-grid { grid-template-columns: 1fr; }
-  .on-duty-grid { flex-direction: column; }
-  .export-buttons { flex-direction: column; }
+/* ---- شاشات صغيرة جداً ---- */
+@media (max-width: 400px) {
+  #main-content { padding: 8px; }
+  .cal-day-cell { min-height: 68px; }
+  .cal-shift-pill { padding: 1px 2px; }
+  .csp-icon { display: none; }  /* فقط الحرف يظهر */
   .shift-cards-row { grid-template-columns: 1fr; }
-  .cal-grid { min-width: 500px; }
+  .rsc-grid { gap: 4px; }
+  .rsc-box-num { font-size: 1.3rem; }
+  .rsc-box-label { font-size: 0.65rem; }
+  .tabs-header { gap: 0; }
+  .tab-btn { padding: 8px 10px; font-size: 0.78rem; }
 }
