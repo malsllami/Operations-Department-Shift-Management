@@ -237,16 +237,34 @@ body {
   min-height: 100vh;
 }
 
+/* زر الهامبرغر */
+.menu-toggle-btn {
+  display: none;   /* مخفي على الكبير */
+  flex-direction: column; gap: 5px; justify-content: center; align-items: center;
+  width: 40px; height: 40px; background: #EFF6FF;
+  border: 1.5px solid #DBEAFE; border-radius: 10px; cursor: pointer;
+  padding: 8px; flex-shrink: 0;
+  transition: background var(--transition);
+}
+.menu-toggle-btn span {
+  display: block; width: 20px; height: 2px;
+  background: var(--primary); border-radius: 2px;
+  transition: all 0.3s;
+}
+.menu-toggle-btn.is-open span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
+.menu-toggle-btn.is-open span:nth-child(2) { opacity: 0; }
+.menu-toggle-btn.is-open span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
+
 #app-header {
   height: var(--header-h); background: var(--bg-card);
   border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 24px; position: sticky; top: 0; z-index: 50;
-  box-shadow: var(--shadow);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 0 20px; position: sticky; top: 0; z-index: 50;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
 .header-brand {
   font-weight: 700; font-size: 1rem; color: var(--primary);
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 10px; flex: 1;
 }
 .header-user-info { display: flex; align-items: center; gap: 10px; }
 .header-name { font-weight: 600; font-size: 0.95rem; }
@@ -264,20 +282,27 @@ body {
 .view-body {}
 
 /* ============================================================
-   بطاقات عامة
+   بطاقات عامة — حواف دائرية، ظل خفيف، إطار ناعم
    ============================================================ */
-.card, .dash-card, .req-card, .emp-card, .profile-card, .form-card, .export-panel {
+.card, .dash-card, .req-card, .emp-card, .profile-card,
+.form-card, .export-panel, .cal-sum-card, .settings-container > .form-card {
   background: var(--bg-card);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  border-radius: 18px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04);
+  border: 1px solid rgba(219,234,254,0.8);
   padding: 20px;
 }
 
+/* البطاقات التفاعلية */
 .hover-lift {
-  transition: transform var(--transition), box-shadow var(--transition);
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
   cursor: pointer;
 }
-.hover-lift:hover { transform: translateY(-4px); box-shadow: var(--shadow-hover); }
+.hover-lift:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+  border-color: rgba(0,102,179,0.2);
+}
 
 /* ============================================================
    لوحة التحكم
@@ -293,8 +318,13 @@ body {
 .dash-card-title { font-size: 1rem; font-weight: 700; color: var(--primary); margin-bottom: 16px; }
 
 /* بطاقات الورديات */
-.shift-cards-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-.shift-status-card { border: 2px solid; border-radius: var(--radius-sm); overflow: hidden; }
+.shift-cards-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.shift-status-card {
+  border: 2px solid; border-radius: 16px; overflow: hidden;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+.shift-status-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
 .ssc-header { padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; }
 .ssc-label { color: #fff; font-weight: 700; font-size: 0.9rem; }
 .ssc-status { color: rgba(255,255,255,0.85); font-size: 0.82rem; }
@@ -385,8 +415,9 @@ body {
 
 .cal-day-cell {
   background: var(--bg-card);
-  border-radius: 10px;
-  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  border: 1.5px solid rgba(219,234,254,0.9);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
   padding: 8px 6px;
   min-height: 110px;
   display: flex; flex-direction: column; gap: 4px;
@@ -525,7 +556,11 @@ body {
 
 /* بطاقة الموظف */
 .emp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-.emp-card { border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+.emp-card {
+  border-radius: 18px; overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04);
+  border: 1px solid rgba(219,234,254,0.8);
+}
 .emp-card-header { padding: 14px 16px; color: #fff; }
 .ech-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .ech-shift { font-size: 0.8rem; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 99px; }
@@ -545,7 +580,11 @@ body {
 /* ============================================================
    البروفايل
    ============================================================ */
-.profile-card { border-radius: var(--radius); overflow: hidden; }
+.profile-card {
+  border-radius: 18px; overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04);
+  border: 1px solid rgba(219,234,254,0.8);
+}
 .profile-header { padding: 24px 20px; color: #fff; display: flex; align-items: center; gap: 16px; }
 .ph-avatar {
   width: 64px; height: 64px; border-radius: 50%;
@@ -766,8 +805,10 @@ body {
    ============================================================ */
 .req-list { display: flex; flex-direction: column; gap: 14px; }
 .req-card {
-  border-radius: var(--radius); background: var(--bg-card);
-  box-shadow: var(--shadow); padding: 0; overflow: hidden;
+  border-radius: 18px; background: var(--bg-card);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04);
+  border: 1px solid rgba(219,234,254,0.8);
+  padding: 0; overflow: hidden;
 }
 .req-card-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -888,20 +929,72 @@ body {
 .status-leave { background: #FEF3C7; color: #92400E; }
 .status-off   { background: #F5F5F5; color: #616161; }
 
-/* بطاقة إحصاءات الطلبات */
-.req-stat-card { text-align: center; transition: transform var(--transition), box-shadow var(--transition); }
-.req-stat-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-hover); }
-.rsc-icon  { font-size: 2rem; margin-bottom: 4px; }
-.rsc-stats { display: flex; justify-content: space-around; margin: 14px 0; }
-.rsc-stat  { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-.rss-num   { font-size: 1.8rem; font-weight: 900; }
-.rss-label { font-size: 0.75rem; color: var(--text-muted); }
-.rsc-balance { display: flex; justify-content: space-between; padding: 8px 12px; background: var(--bg); border-radius: 8px; font-size: 0.88rem; margin-bottom: 10px; }
-.rsc-link  { font-size: 0.82rem; color: var(--primary); font-weight: 600; margin-top: 4px; }
+/* ---- بطاقات إحصاءات الطلبات (مع إطارات) ---- */
+.req-stat-card {
+  cursor: pointer;
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+}
+.req-stat-card:hover { transform: translateY(-5px); box-shadow: 0 12px 32px rgba(0,0,0,0.12); border-color: rgba(0,102,179,0.25); }
+
+/* رأس البطاقة */
+.rsc-header {
+  display: flex; align-items: center; gap: 10px;
+  padding-bottom: 12px; margin-bottom: 12px;
+  border-bottom: 2px solid #DBEAFE;
+}
+.rsc-icon-wrap { font-size: 1.6rem; line-height: 1; }
+.rsc-title     { font-size: 1rem; font-weight: 800; color: var(--primary); }
+
+/* شبكة الإطارات */
+.rsc-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 8px; margin-bottom: 12px;
+}
+.rsc-grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+.rsc-box {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 10px 6px; border-radius: 12px; border: 2px solid;
+  transition: transform var(--transition);
+}
+.rsc-box:hover { transform: scale(1.03); }
+
+.rsc-box-total   { border-color: #BFDBFE; background: #EFF6FF; }
+.rsc-box-pending { border-color: #FDE68A; background: #FFFBEB; }
+.rsc-box-done    { border-color: #BBF7D0; background: #F0FDF4; }
+.rsc-box-leave   { border-color: #FECACA; background: #FEF2F2; }
+
+.rsc-box-num {
+  font-size: 1.6rem; font-weight: 900; line-height: 1;
+}
+.rsc-box-total   .rsc-box-num { color: #1E40AF; }
+.rsc-box-pending .rsc-box-num { color: #92400E; }
+.rsc-box-done    .rsc-box-num { color: #166534; }
+.rsc-box-leave   .rsc-box-num { color: #991B1B; }
+
+.rsc-box-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-align: center; }
+
+/* بطاقة الرصيد المتبقي */
+.rsc-balance-box {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 14px; border: 2px solid #DBEAFE;
+  background: #EFF6FF; border-radius: 12px;
+  font-size: 0.88rem; margin-bottom: 10px;
+}
+.rsc-bal-label { color: var(--text-muted); font-weight: 600; }
+.rsc-bal-val   { font-weight: 900; color: var(--primary); font-size: 1rem; }
+
+/* زر الرابط */
+.rsc-link-btn {
+  display: block; text-align: center; font-size: 0.85rem;
+  color: var(--primary); font-weight: 700; padding: 8px;
+  border-top: 1px solid #DBEAFE; margin-top: 4px;
+  transition: color var(--transition);
+}
+.req-stat-card:hover .rsc-link-btn { color: var(--accent); }
 
 /* بطاقة المناطق والمراكز */
 .regions-card { }
-.regions-summary { display: flex; gap: 16px; margin-bottom: 8px; }
 .rs-item   { text-align: center; flex: 1; padding: 10px; background: var(--bg); border-radius: 8px; }
 .rs-num    { display: block; font-size: 1.5rem; font-weight: 900; color: var(--primary); }
 .rs-label  { font-size: 0.78rem; color: var(--text-muted); }
@@ -960,24 +1053,39 @@ body {
 
 @media (max-width: 768px) {
   :root { --sidebar-w: 0px; }
-  #sidebar { transform: translateX(100%); width: 240px; }
-  #sidebar.open { transform: translateX(0); }
-  #main-area { margin-right: 0; }
-  #app-header { padding: 0 14px; }
-  .header-brand { display: none; }
-  #main-content { padding: 14px; }
-  .shift-cards-row { grid-template-columns: repeat(2, 1fr); }
-  .form-grid { grid-template-columns: 1fr; }
-  .profile-sections { grid-template-columns: 1fr; }
-  .leave-grid { grid-template-columns: repeat(2, 1fr); }
-  .dashboard-grid { grid-template-columns: 1fr; }
 
-  /* زر القائمة على الجوال */
-  #app-header::before {
-    content: '☰'; font-size: 1.4rem; cursor: pointer; padding: 6px 10px;
-    display: flex; align-items: center;
-    border-radius: 8px; background: var(--bg);
+  /* الشريط الجانبي — مخفي خارج الشاشة (يمين RTL) */
+  #sidebar {
+    transform: translateX(110%);
+    width: 260px;
+    box-shadow: none;
+    transition: transform 0.3s cubic-bezier(.4,0,.2,1), box-shadow 0.3s;
   }
+  #sidebar.open {
+    transform: translateX(0);
+    box-shadow: -8px 0 32px rgba(0,0,0,0.3);
+  }
+
+  /* الـ overlay */
+  .sidebar-overlay {
+    display: none; position: fixed; inset: 0; z-index: 99;
+    background: rgba(0,0,0,0.45);
+    animation: fadeIn 0.2s ease;
+  }
+  .sidebar-overlay.show { display: block; }
+
+  #main-area  { margin-right: 0; }
+  #app-header { padding: 0 12px; }
+  .header-brand span { display: none; }
+  #main-content { padding: 12px; }
+  .shift-cards-row    { grid-template-columns: repeat(2, 1fr); }
+  .form-grid          { grid-template-columns: 1fr; }
+  .profile-sections   { grid-template-columns: 1fr; }
+  .leave-grid         { grid-template-columns: repeat(2, 1fr); }
+  .dashboard-grid     { grid-template-columns: 1fr; }
+
+  /* زر الهامبرغر — مرئي فقط على الجوال */
+  .menu-toggle-btn { display: flex; }
 }
 
 @media (max-width: 480px) {
