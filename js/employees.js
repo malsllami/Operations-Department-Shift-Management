@@ -278,73 +278,324 @@ var Employees = (function () {
   // ============================================================
 
   function editEmployee(empId) {
-    var emp = _cache[String(empId)];
-    if (emp) {
-      App.navigate('employee-form', { emp: emp });
-    } else {
-      API.getEmployee(empId).then(function(r) {
-        if (r.ok) App.navigate('employee-form', { emp: r.data });
-      });
-    }
+    App.navigate('employee-form', { empId: String(empId), emp: _cache[String(empId)] || null });
   }
 
-  function renderForm(containerId, emp, isEdit) {
+  // ============================================================
+  // نموذج الموظف الشامل — تبويبات
+  // ============================================================
+
+  function renderForm(containerId, params, isEdit) {
     var el = document.getElementById(containerId);
     if (!el) return;
 
-    var user = Auth.getUser();
-    var role = Auth.getEffectiveRole();
-    var isEmployee = role === 'موظف';
+    var empId  = params ? (params.empId || (params.emp && params.emp.empId) || '') : '';
+    var empInit= params ? params.emp : null;
+    var user   = Auth.getUser();
+    var role   = Auth.getEffectiveRole();
 
-    var html = '<form id="emp-form" class="form-card" novalidate>';
-    html += '<div class="form-grid">';
+    // للموظف: دائماً تعديل نفسه
+    if (role === 'موظف' && !empId) empId = user ? String(user.empId) : '';
 
-    // الرقم الوظيفي — للقراءة فقط في التعديل
-    if (isEdit) {
-      html += _staticField('الرقم الوظيفي', emp.empId);
-    } else {
-      html += _inputField('empId', 'الرقم الوظيفي', emp ? emp.empId : '', 'text', true);
-    }
+    el.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
 
-    html += _inputField('name',  'الاسم كامل',   emp ? emp.name  : '', 'text', true);
+    // جلب كامل بيانات الموظف من كل الجداول
+    var targetId = empId || (user ? user.empId : '');
+    Promise.all([
+      API.getEmployee(targetId),
+      API.getRegions(targetId),
+      API.getEquipment(targetId),
+      API.getLeaves(targetId)
+    ]).then(function(results) {
+      var emp = results[0].ok ? results[0].data : (empInit || {});
+      var rg  = results[1].ok && results[1].data.length ? results[1].data[0] : {};
+      var eq  = results[2].ok && results[2].data.length ? results[2].data[0] : {};
+      var lv  = results[3].ok && results[3].data.length ? results[3].data[0] : {};
 
-    // حقل الجوال مع مفتاح الدولة
-    html += _phoneField(emp ? emp.phone : '');
+      _cache[String(emp.empId || targetId)] = emp;
 
-    if (!isEmployee) {
-      // الوردية (مشرف: فقط ورديته، مدير: أي وردية)
-      html += _shiftField(emp ? emp.shift : '', role);
+      var tabs = [
+        { id:'tab-basic',    label:'البيانات الأساسية', icon:'👤' },
+        { id:'tab-region',   label:'المنطقة والمركز',   icon:'📍' },
+        { id:'tab-equip',    label:'العدد والمقاسات',   icon:'🦺' },
+        { id:'tab-leave',    label:'أرصدة الإجازات',    icon:'📅' }
+      ];
 
-      // الصلاحية مع رمز التحقق
-      html += _roleField(emp ? emp.role : 'موظف');
-    }
+      // للإضافة الجديدة (غير تعديل) عرّض تبويب واحد فقط
+      if (!isEdit) tabs = [tabs[0]];
 
-    // تواريخ انتهاء البطاقات
-    html += _dateField('workExpDate', 'تاريخ انتهاء بطاقة العمل', emp ? emp.workExpDate : '');
-    html += _dateField('srcExpDate',  'تاريخ انتهاء بطاقة مصدر/مستلم', emp ? emp.srcExpDate : '');
+      var html = '<div class="tabs-container">';
 
-    html += '</div>'; // form-grid
-    html += '<div id="form-error" class="form-error" style="display:none"></div>';
-    html += '<div class="form-actions">' +
-      '<button type="submit" class="btn-primary">' + (isEdit ? 'حفظ التعديلات' : 'إضافة الموظف') + '</button>' +
-      '<button type="button" class="btn-outline" onclick="App.goBack()">إلغاء</button>' +
-    '</div>';
-    html += '</form>';
+      // رأس التبويبات
+      html += '<div class="tabs-header">';
+      tabs.forEach(function(t, i) {
+        html += '<button class="tab-btn' + (i===0?' tab-active':'') + '" data-tab="' + t.id + '">' +
+          t.icon + ' ' + t.label + '</button>';
+      });
+      html += '</div>';
 
-    el.innerHTML = html;
-    _bindForm(isEdit, emp ? emp.empId : null);
+      // محتوى التبويبات
+      html += '<div class="tabs-body">';
+
+      // ---- تبويب 1: البيانات الأساسية ----
+      html += '<div class="tab-panel active" id="tab-basic">';
+      html += '<form id="form-basic" class="form-grid" novalidate>';
+
+      if (isEdit) {
+        html += _staticField('الرقم الوظيفي', emp.empId || targetId);
+      } else {
+        html += _inputField('empId', 'الرقم الوظيفي', '', 'text', true);
+      }
+
+      html += _inputField('name', 'الاسم كامل', emp.name||'', 'text', true);
+      html += _phoneField(emp.phone||'');
+
+      if (role !== 'موظف') {
+        html += _shiftField(emp.shift||'', role);
+        html += _roleField(emp.role||'موظف');
+      }
+
+      html += _dateField('workExpDate', 'تاريخ انتهاء بطاقة العمل',         emp.workExpDate||'');
+      html += _dateField('srcExpDate',  'تاريخ انتهاء بطاقة مصدر / مستلم', emp.srcExpDate||'');
+
+      html += '<div class="form-actions form-field-full">' +
+        '<button type="submit" class="btn-primary">💾 ' + (isEdit ? 'حفظ البيانات الأساسية' : 'إضافة الموظف') + '</button>' +
+        '<button type="button" class="btn-outline" onclick="App.goBack()">إلغاء</button>' +
+      '</div>';
+      html += '<div id="err-basic" class="form-error" style="display:none"></div>';
+      html += '</form></div>';
+
+      if (isEdit) {
+        // ---- تبويب 2: المنطقة والمركز ----
+        html += '<div class="tab-panel" id="tab-region">';
+        html += '<form id="form-region" class="form-grid" novalidate>';
+        var regions = [
+          { val:'شمال', label:'شمال' }, { val:'جنوب', label:'جنوب' },
+          { val:'شرق',  label:'شرق'  }, { val:'غرب',  label:'غرب'  },
+          { val:'وسط',  label:'وسط'  }
+        ];
+        html += '<div class="form-field"><label>المنطقة</label><select id="rg-region" class="form-select">' +
+          '<option value="">اختر المنطقة...</option>' +
+          regions.map(function(r) {
+            return '<option value="' + r.val + '"' + (rg.region===r.val?' selected':'') + '>' + r.label + '</option>';
+          }).join('') +
+        '</select></div>';
+        html += _inputField2('rg-center', 'اسم المركز',  rg.center||'', 'text');
+        html += _inputField2('rg-car',    'رقم السيارة', rg.car||'',    'text');
+        html += '<div class="form-actions form-field-full">' +
+          '<button type="submit" class="btn-primary">💾 حفظ المنطقة والمركز</button>' +
+        '</div>';
+        html += '<div id="err-region" class="form-error" style="display:none"></div>';
+        html += '</form></div>';
+
+        // ---- تبويب 3: العدد والمقاسات ----
+        html += '<div class="tab-panel" id="tab-equip">';
+        html += '<form id="form-equip" class="form-grid" novalidate>';
+        var eqFields = [
+          { id:'eq-cat2shirt', label:'CAT 2 قميص',    val: eq.cat2Shirt||'' },
+          { id:'eq-cat2pants', label:'CAT 2 بنطلون',  val: eq.cat2Pants||'' },
+          { id:'eq-shoes',     label:'سيفتي شوز',     val: eq.shoes||''     },
+          { id:'eq-cat4',      label:'CAT 4 بدلة',    val: eq.cat4||''      },
+          { id:'eq-bravo',     label:'برافو',          val: eq.bravo||''     },
+          { id:'eq-major',     label:'ميجر',           val: eq.major||''     },
+          { id:'eq-other',     label:'عدد أخرى',      val: eq.other||''     }
+        ];
+        eqFields.forEach(function(f) {
+          html += _inputField2(f.id, f.label, f.val, 'text');
+        });
+        html += '<div class="form-actions form-field-full">' +
+          '<button type="submit" class="btn-primary">💾 حفظ العدد والمقاسات</button>' +
+        '</div>';
+        html += '<div id="err-equip" class="form-error" style="display:none"></div>';
+        html += '</form></div>';
+
+        // ---- تبويب 4: أرصدة الإجازات ----
+        html += '<div class="tab-panel" id="tab-leave">';
+        html += '<form id="form-leave" class="form-grid" novalidate>';
+
+        var canEditLeave = role !== 'موظف' || !lv.annBal;
+        var lvHint = role === 'موظف' && lv.annBal
+          ? '<div class="form-warning" style="margin-bottom:12px">⚠️ يمكن إدخال الرصيد مرة واحدة فقط — للتعديل تواصل مع المشرف</div>'
+          : '';
+        html += '<div class="form-field-full">' + lvHint + '</div>';
+
+        var lvFields = [
+          { id:'lv-ann',    label:'رصيد في النظام (السنوي)',     val:lv.annBal||'',       disabled: role==='موظف' && !!lv.annBal },
+          { id:'lv-sched',  label:'رصيد الإجازات المجدولة',     val:lv.schedBal||'',     disabled: role==='موظف' },
+          { id:'lv-sick',   label:'مرضية',                       val:lv.sick||'',          disabled: false },
+          { id:'lv-birth',  label:'مولود',                       val:lv.birth||'',         disabled: false },
+          { id:'lv-death',  label:'وفاة',                        val:lv.death||'',         disabled: false },
+          { id:'lv-marr',   label:'زواج',                        val:lv.marriage||'',      disabled: false },
+          { id:'lv-exam',   label:'اختبارات',                    val:lv.exam||'',          disabled: false },
+          { id:'lv-course', label:'دورة عمل',                    val:lv.workCourse||'',    disabled: false },
+          { id:'lv-long',   label:'خدمة عمل طويلة',             val:lv.longService||'',   disabled: false }
+        ];
+        lvFields.forEach(function(f) {
+          html += '<div class="form-field">' +
+            '<label>' + f.label + '</label>' +
+            '<input type="number" id="' + f.id + '" class="form-input" value="' + f.val + '" min="0"' +
+            (f.disabled ? ' disabled' : '') + '>' +
+          '</div>';
+        });
+        var firstTime = !lv.annBal;
+        html += '<div class="form-actions form-field-full">' +
+          '<button type="submit" class="btn-primary"' + (role==='موظف' && !firstTime ? ' disabled' : '') + '>💾 ' +
+            (firstTime && role==='موظف' ? 'إدخال الرصيد الأولي' : 'حفظ الأرصدة') +
+          '</button>' +
+        '</div>';
+        html += '<div id="err-leave" class="form-error" style="display:none"></div>';
+        html += '</form></div>';
+      }
+
+      html += '</div></div>'; // tabs-body + tabs-container
+
+      el.innerHTML = html;
+
+      // ربط التبويبات
+      el.querySelectorAll('.tab-btn').forEach(function(btn) {
+        btn.onclick = function() {
+          el.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('tab-active'); });
+          el.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+          this.classList.add('tab-active');
+          var panel = document.getElementById(this.dataset.tab);
+          if (panel) panel.classList.add('active');
+        };
+      });
+
+      // ربط النماذج
+      _bindBasicForm(isEdit, emp.empId || targetId);
+      if (isEdit) {
+        _bindRegionForm(emp.empId || targetId);
+        _bindEquipForm(emp.empId || targetId);
+        _bindLeaveForm(emp.empId || targetId, role, !lv.annBal);
+      }
+    });
+  }
+
+  function _bindBasicForm(isEdit, empId) {
+    var form = document.getElementById('form-basic');
+    if (!form) return;
+    form.onsubmit = function(e) {
+      e.preventDefault();
+      var errEl = document.getElementById('err-basic');
+      var btn   = form.querySelector('[type=submit]');
+      errEl.style.display = 'none';
+
+      var phone = CONFIG.toLatinNums((document.getElementById('f-phone') ? document.getElementById('f-phone').value : '').trim());
+      if (!CONFIG.validatePhone(phone)) {
+        errEl.textContent = 'رقم الجوال يجب أن يبدأ بـ 5 ويتكون من 9 أرقام';
+        errEl.style.display = 'block'; return;
+      }
+
+      var data = { phone: phone };
+      var nameEl = document.getElementById('f-name'); if (nameEl) data.name = nameEl.value.trim();
+      var shEl   = document.getElementById('f-shift'); if (shEl) data.shift = shEl.value;
+      var roEl   = document.getElementById('f-role');  if (roEl) data.role  = roEl.value;
+      var rcEl   = document.getElementById('f-role-code'); if (rcEl) data.roleCode = rcEl.value;
+      var weEl   = document.getElementById('f-workExpDate'); if (weEl) data.workExpDate = weEl.value;
+      var seEl   = document.getElementById('f-srcExpDate');  if (seEl) data.srcExpDate  = seEl.value;
+
+      App.btnLoad(btn);
+      var prom;
+      if (isEdit) {
+        prom = API.updateEmployee(empId, data);
+      } else {
+        var idEl = document.getElementById('f-empId');
+        data.empId = idEl ? CONFIG.toLatinNums(idEl.value.trim()) : '';
+        prom = API.addEmployee(data);
+      }
+      prom.then(function(res) {
+        App.btnDone(btn);
+        if (res.ok) { App.toast(isEdit ? 'تم حفظ البيانات الأساسية ✓' : 'تمت إضافة الموظف ✓', 'success'); }
+        else {
+          var errs = { duplicate_id:'الرقم موجود مسبقاً', duplicate_phone:'الجوال موجود مسبقاً', invalid_role_code:'رمز الترقية غير صحيح' };
+          errEl.textContent = errs[res.error] || 'حدث خطأ: ' + res.error;
+          errEl.style.display = 'block';
+        }
+      });
+    };
+  }
+
+  function _bindRegionForm(empId) {
+    var form = document.getElementById('form-region');
+    if (!form) return;
+    form.onsubmit = function(e) {
+      e.preventDefault();
+      var btn = form.querySelector('[type=submit]');
+      var errEl = document.getElementById('err-region');
+      var updates = {
+        region: (document.getElementById('rg-region') ? document.getElementById('rg-region').value : ''),
+        center: (document.getElementById('rg-center') ? document.getElementById('rg-center').value.trim() : ''),
+        car:    (document.getElementById('rg-car')    ? document.getElementById('rg-car').value.trim()    : '')
+      };
+      App.btnLoad(btn);
+      API.updateRegion(empId, updates).then(function(res) {
+        App.btnDone(btn);
+        if (res.ok) App.toast('تم حفظ المنطقة والمركز ✓', 'success');
+        else { errEl.textContent = 'حدث خطأ: ' + res.error; errEl.style.display = 'block'; }
+      });
+    };
+  }
+
+  function _bindEquipForm(empId) {
+    var form = document.getElementById('form-equip');
+    if (!form) return;
+    form.onsubmit = function(e) {
+      e.preventDefault();
+      var btn = form.querySelector('[type=submit]');
+      var errEl = document.getElementById('err-equip');
+      var _v = function(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; };
+      var updates = {
+        cat2Shirt: _v('eq-cat2shirt'), cat2Pants: _v('eq-cat2pants'),
+        shoes:     _v('eq-shoes'),     cat4:      _v('eq-cat4'),
+        bravo:     _v('eq-bravo'),     major:     _v('eq-major'),
+        other:     _v('eq-other')
+      };
+      App.btnLoad(btn);
+      API.updateEquipment(empId, updates).then(function(res) {
+        App.btnDone(btn);
+        if (res.ok) App.toast('تم حفظ العدد والمقاسات ✓', 'success');
+        else { errEl.textContent = 'حدث خطأ: ' + res.error; errEl.style.display = 'block'; }
+      });
+    };
+  }
+
+  function _bindLeaveForm(empId, role, firstTime) {
+    var form = document.getElementById('form-leave');
+    if (!form) return;
+    form.onsubmit = function(e) {
+      e.preventDefault();
+      var btn = form.querySelector('[type=submit]');
+      var errEl = document.getElementById('err-leave');
+      var _n = function(id) { var el = document.getElementById(id); return el && !el.disabled ? el.value : undefined; };
+      var updates = {
+        annBal:      _n('lv-ann'),    schedBal:    _n('lv-sched'),
+        sick:        _n('lv-sick'),   birth:       _n('lv-birth'),
+        death:       _n('lv-death'),  marriage:    _n('lv-marr'),
+        exam:        _n('lv-exam'),   workCourse:  _n('lv-course'),
+        longService: _n('lv-long')
+      };
+      App.btnLoad(btn);
+      API.updateLeaveBalance(empId, updates, firstTime).then(function(res) {
+        App.btnDone(btn);
+        if (res.ok) App.toast('تم حفظ أرصدة الإجازات ✓', 'success');
+        else { errEl.textContent = 'حدث خطأ: ' + res.error; errEl.style.display = 'block'; }
+      });
+    };
   }
 
   function _phoneField(val) {
     var latin = val ? CONFIG.toLatinNums(String(val)).replace(/^0/, '') : '';
     return '<div class="form-field">' +
       '<label>رقم الجوال <span class="req">*</span></label>' +
-      '<div class="phone-input-group">' +
-        '<span class="phone-prefix">+966</span>' +
-        '<input type="tel" id="f-phone" class="form-input phone-input" value="' + latin + '" ' +
-          'placeholder="5XXXXXXXX" maxlength="9" required>' +
+      '<div class="phone-input-merged">' +
+        '<span class="phone-flag">🇸🇦</span>' +
+        '<span class="phone-cc">+966</span>' +
+        '<span class="phone-sep"></span>' +
+        '<input type="tel" id="f-phone" class="form-input phone-merged-input" value="' + latin + '" ' +
+          'placeholder="5XXXXXXXX" maxlength="9" required inputmode="numeric">' +
       '</div>' +
-      '<small class="field-hint">يبدأ بـ 5 — 9 أرقام</small>' +
+      '<small class="field-hint">يبدأ بـ 5 — 9 أرقام فقط</small>' +
     '</div>';
   }
 
@@ -414,7 +665,7 @@ var Employees = (function () {
       var seEl = document.getElementById('f-srcExpDate');
       if (seEl) data.srcExpDate = seEl.value;
 
-      btn.disabled = true; btn.textContent = 'جارٍ الحفظ...';
+      App.btnLoad(btn);
 
       var prom;
       if (isEdit) {
@@ -426,7 +677,7 @@ var Employees = (function () {
       }
 
       prom.then(function(res) {
-        btn.disabled = false; btn.textContent = isEdit ? 'حفظ التعديلات' : 'إضافة الموظف';
+        App.btnDone(btn);
         if (res.ok) {
           App.toast(isEdit ? 'تم تعديل بيانات الموظف' : 'تمت إضافة الموظف', 'success');
           App.navigate('employees');
@@ -504,6 +755,12 @@ var Employees = (function () {
   function _inputField(id, label, val, type, req) {
     return '<div class="form-field"><label>' + label + (req ? ' <span class="req">*</span>' : '') + '</label>' +
       '<input type="' + (type||'text') + '" id="f-' + id + '" class="form-input" value="' + (val||'') + '"' + (req ? ' required' : '') + '>' +
+    '</div>';
+  }
+
+  function _inputField2(id, label, val, type) {
+    return '<div class="form-field"><label>' + label + '</label>' +
+      '<input type="' + (type||'text') + '" id="' + id + '" class="form-input" value="' + (val||'') + '">' +
     '</div>';
   }
 
