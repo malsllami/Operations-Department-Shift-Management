@@ -83,6 +83,21 @@ var Dashboard = (function () {
       html += '<div class="epc-body">';
       html += _epcRow('الوردية',    'وردية ' + (user.shift||''));
       html += _epcRow('رقم الجوال', emp.phone ? '+966 ' + emp.phone : '—');
+
+      // تواريخ انتهاء البطاقات مع المدة المتبقية
+      var _expiryPill = function(date, days) {
+        if (!date) return '—';
+        var cls = CONFIG.expiryClass(days);
+        var bg  = cls ? cls.bg   : '#F5F5F5';
+        var tx  = cls ? cls.text : '#757575';
+        var rem = (days !== undefined && days !== '') ? ' — ' + days + ' يوم' : '';
+        return '<span style="background:' + bg + ';color:' + tx +
+               ';padding:2px 10px;border-radius:50px;font-size:0.82rem;font-weight:600">' +
+               CONFIG.fmtDate(date) + rem + '</span>';
+      };
+      html += _epcRow('بطاقة العمل',       _expiryPill(emp.workExpDate, emp.workDaysLeft));
+      html += _epcRow('بطاقة مصدر/مستلم', _expiryPill(emp.srcExpDate,  emp.srcDaysLeft));
+
       html += _epcRow('المنطقة',    myRg.region || '—');
       html += _epcRow('المركز',     myRg.center  || '—');
       html += _epcRow('السيارة',    myRg.car     || '—');
