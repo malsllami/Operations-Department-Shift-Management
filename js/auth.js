@@ -120,7 +120,7 @@ var Auth = (function () {
 
   function getUser()          { return _user; }
   function getToken()         { return _token; }
-  function getEffectiveRole() { return _adminMode ? _activeRole : (_user ? _user.role : ''); }
+  function getEffectiveRole() { return _adminMode ? _activeRole : 'موظف'; }
   function getBaseRole()      { return _user ? _user.role : ''; }
   function isAdminMode()      { return _adminMode; }
   function mustChangePass()   { return _forceChange; }
