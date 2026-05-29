@@ -83,6 +83,8 @@ var App = (function () {
         if (res.ok) {
           if (res.force_change) {
             _renderChangePassForm();
+          } else if (res.force_set_role_code) {
+            _renderSetRoleCodeForm();
           } else {
             _showApp(); navigate('dashboard');
           }
@@ -198,6 +200,103 @@ var App = (function () {
   }
 
   // ============================================================
+  // شاشة تعيين رمز الصلاحية الشخصي (مشرف/مدير/اداري — إلزامي)
+  // ============================================================
+
+  function _renderSetRoleCodeForm() {
+    var el = document.getElementById('login-form-container');
+    if (!el) return;
+
+    var user = Auth.getUser();
+    var roleLabels = { 'مدير':'المدير', 'مشرف':'المشرف', 'اداري':'الإداري' };
+    var label = roleLabels[user ? user.role : ''] || 'الصلاحية';
+
+    var logoEl = document.querySelector('.login-logo');
+    var subEl  = document.querySelector('.login-subtitle');
+    if (logoEl) logoEl.style.display = 'none';
+    if (subEl)  subEl.style.display  = 'none';
+
+    el.innerHTML =
+      '<div class="force-change-header">' +
+        '<div class="fch-icon">🛡️</div>' +
+        '<h2>تعيين رمز ' + label + '</h2>' +
+        '<p>لأمان حسابك، يجب تعيين رمز صلاحية شخصي خاص بك قبل الدخول</p>' +
+        '<p style="font-size:0.85rem;color:#9CA3AF">هذا الرمز مختلف عن كلمة مرور الدخول</p>' +
+      '</div>' +
+      '<form id="rc-form" novalidate>' +
+        '<div class="login-field"><label>رمز الصلاحية الجديد</label>' +
+          '<div class="pw-wrap">' +
+            '<input type="password" id="rc-new" class="login-input" placeholder="6 أرقام على الأقل" required autocomplete="new-password">' +
+            '<button type="button" class="pw-eye" onclick="App.togglePw(\'rc-new\',this)">👁</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="login-field"><label>تأكيد رمز الصلاحية</label>' +
+          '<div class="pw-wrap">' +
+            '<input type="password" id="rc-confirm" class="login-input" placeholder="أعد الكتابة" required autocomplete="new-password">' +
+            '<button type="button" class="pw-eye" onclick="App.togglePw(\'rc-confirm\',this)">👁</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="pass-rules">' +
+          '<span id="rc-r-len"  class="pass-rule">✗ 6 أرقام على الأقل</span>' +
+          '<span id="rc-r-diff" class="pass-rule">✗ مختلف عن 123456</span>' +
+          '<span id="rc-r-match"class="pass-rule">✗ متطابقان</span>' +
+        '</div>' +
+        '<div id="rc-err" class="login-error" style="display:none"></div>' +
+        '<button type="submit" class="btn-login" id="rc-btn" disabled>تعيين وحفظ</button>' +
+      '</form>';
+
+    var newEl  = document.getElementById('rc-new');
+    var conEl  = document.getElementById('rc-confirm');
+    var rLen   = document.getElementById('rc-r-len');
+    var rDiff  = document.getElementById('rc-r-diff');
+    var rMatch = document.getElementById('rc-r-match');
+    var btn    = document.getElementById('rc-btn');
+
+    function _validate() {
+      var np = newEl.value, cp = conEl.value;
+      var okLen  = np.length >= 6;
+      var okDiff = np !== '123456';
+      var okMatch= np.length > 0 && np === cp;
+      rLen.className   = 'pass-rule ' + (okLen   ? 'pass-ok' : 'pass-fail');
+      rLen.textContent = (okLen  ? '✓' : '✗') + ' 6 أرقام على الأقل';
+      rDiff.className  = 'pass-rule ' + (okDiff  ? 'pass-ok' : 'pass-fail');
+      rDiff.textContent= (okDiff ? '✓' : '✗') + ' مختلف عن 123456';
+      rMatch.className = 'pass-rule ' + (okMatch ? 'pass-ok' : 'pass-fail');
+      rMatch.textContent=(okMatch? '✓' : '✗') + ' متطابقان';
+      btn.disabled = !(okLen && okDiff && okMatch);
+    }
+    newEl.addEventListener('input', _validate);
+    conEl.addEventListener('input', _validate);
+
+    document.getElementById('rc-form').onsubmit = function(e) {
+      e.preventDefault();
+      var errEl = document.getElementById('rc-err');
+      var code  = newEl.value;
+      if (code.length < 6)   { errEl.textContent='الرمز يجب أن يكون 6 أرقام على الأقل'; errEl.style.display='block'; return; }
+      if (code === '123456') { errEl.textContent='لا يمكن استخدام الرمز الافتراضي';       errEl.style.display='block'; return; }
+      if (code !== conEl.value){ errEl.textContent='الرمزان غير متطابقان';                errEl.style.display='block'; return; }
+
+      App.btnLoad(btn);
+      errEl.style.display = 'none';
+
+      Auth.setRoleCode(code).then(function(res) {
+        App.btnDone(btn);
+        if (res.ok) {
+          _showApp(); navigate('dashboard');
+        } else {
+          var errs = {
+            code_too_short: 'الرمز قصير جداً',
+            code_too_common:'لا يمكن استخدام الرمز الافتراضي',
+            forbidden:      'غير مصرح لهذا الحساب'
+          };
+          errEl.textContent = errs[res.error] || 'حدث خطأ: ' + res.error;
+          errEl.style.display = 'block';
+        }
+      });
+    };
+  }
+
+  // ============================================================
   // هيكل التطبيق
   // ============================================================
 
@@ -280,38 +379,36 @@ var App = (function () {
   }
 
   function _toggleMode() {
-    if (Auth.isAdminMode()) {
-      Auth.deactivateElevatedRole();
-      _buildShell();
-      navigate('dashboard');
-      toast('تم التبديل لوضع الموظف', 'info');
-    } else {
-      _elevateModal();
-    }
+    // كلا الاتجاهين (موظف↔مشرف/مدير) يتطلبان إدخال الرمز
+    _elevateModal();
   }
 
   function _elevateModal() {
+    var isActive   = Auth.isAdminMode();
     var baseRole   = Auth.getBaseRole();
     var roleLabels = { 'مدير':'المدير', 'مشرف':'المشرف', 'اداري':'الإداري' };
-    var label = roleLabels[baseRole] || 'الإدارة';
+    var label    = roleLabels[baseRole] || 'الإدارة';
+    var title    = isActive ? ('تأكيد الانتقال — ' + label) : ('تفعيل لوحة ' + label);
+    var subtitle = 'أدخل رمز الصلاحية الخاص بـ' + label + ' للمتابعة';
 
     var modal = document.createElement('div');
     modal.className = 'modal-overlay';
-    modal.innerHTML = '<div class="modal-box">' +
-      '<h3>🛡️ تفعيل لوحة ' + label + '</h3>' +
-      '<p>أدخل رمز الصلاحية الخاص بـ' + label + '</p>' +
-      '<div class="pw-wrap"><input type="password" id="elev-code" class="form-input" placeholder="رمز الصلاحية" autocomplete="off">' +
-        '<button type="button" class="pw-eye" onclick="App.togglePw(\'elev-code\',this)">👁</button>' +
-      '</div>' +
-      '<div id="elev-err" class="form-error" style="display:none"></div>' +
-      '<div class="form-actions">' +
-        '<button class="btn-primary" id="elev-ok">تأكيد</button>' +
-        '<button class="btn-outline" onclick="this.closest(\'.modal-overlay\').remove()">إلغاء</button>' +
-      '</div>' +
-    '</div>';
+    modal.innerHTML =
+      '<div class="modal-box">' +
+        '<div class="modal-icon">' + (isActive ? '👤' : '🛡️') + '</div>' +
+        '<h3>' + title + '</h3>' +
+        '<p style="color:var(--text-muted);margin-bottom:16px">' + subtitle + '</p>' +
+        '<div class="pw-wrap"><input type="password" id="elev-code" class="form-input" placeholder="رمز الصلاحية" autocomplete="off">' +
+          '<button type="button" class="pw-eye" onclick="App.togglePw(\'elev-code\',this)">👁</button>' +
+        '</div>' +
+        '<div id="elev-err" class="form-error" style="display:none"></div>' +
+        '<div class="form-actions">' +
+          '<button class="btn-primary" id="elev-ok">تأكيد</button>' +
+          '<button class="btn-outline" onclick="this.closest(\'.modal-overlay\').remove()">إلغاء</button>' +
+        '</div>' +
+      '</div>';
     document.body.appendChild(modal);
 
-    // تفعيل إرسال بـ Enter
     modal.querySelector('#elev-code').addEventListener('keydown', function(e) {
       if (e.key === 'Enter') modal.querySelector('#elev-ok').click();
     });
@@ -325,15 +422,22 @@ var App = (function () {
       btn.disabled = true; btn.textContent = 'جارٍ التحقق...';
       errEl.style.display = 'none';
 
-      Auth.activateElevatedRole(code).then(function(res) {
+      Auth.toggleElevatedRole(code).then(function(res) {
         btn.disabled = false; btn.textContent = 'تأكيد';
         if (res.ok) {
           modal.remove();
           _buildShell();
           navigate('dashboard');
-          toast('تم تفعيل لوحة ' + label + ' ✓', 'success');
+          var msg = res.adminMode
+            ? ('تم تفعيل لوحة ' + label + ' ✓')
+            : 'تم التبديل لوضع الموظف ✓';
+          toast(msg, 'success');
         } else {
-          var errs = { invalid_code: 'الرمز غير صحيح', no_elevated_role: 'لا توجد صلاحيات مرفوعة' };
+          var errs = {
+            invalid_code:     'الرمز غير صحيح — حاول مرة أخرى',
+            no_elevated_role: 'لا توجد صلاحيات مرفوعة لهذا الحساب',
+            session_expired:  'انتهت الجلسة — يرجى تسجيل الدخول مجددًا'
+          };
           errEl.textContent = errs[res.error] || 'تعذّر التحقق';
           errEl.style.display = 'block';
           modal.querySelector('#elev-code').value = '';
@@ -341,6 +445,28 @@ var App = (function () {
         }
       });
     };
+  }
+
+  // عرض رسالة انتهاء الجلسة مع زر تسجيل الدخول
+  function showSessionExpired() {
+    var existing = document.getElementById('session-expired-overlay');
+    if (existing) return;
+    var overlay = document.createElement('div');
+    overlay.id = 'session-expired-overlay';
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-box" style="text-align:center">' +
+        '<div style="font-size:3rem;margin-bottom:12px">⏱️</div>' +
+        '<h3>انتهت الجلسة</h3>' +
+        '<p style="color:var(--text-muted);margin:10px 0 20px">انتهت صلاحية جلستك — يرجى تسجيل الدخول مجددًا</p>' +
+        '<button class="btn-primary" style="width:100%" onclick="document.getElementById(\'session-expired-overlay\').remove();App.reLogin()">تسجيل الدخول</button>' +
+      '</div>';
+    document.body.appendChild(overlay);
+  }
+
+  function reLogin() {
+    Auth.logout();
+    _showLogin();
   }
 
   // ============================================================
@@ -583,7 +709,7 @@ var App = (function () {
 
   return {
     init, navigate, goBack, toast, togglePw, loadNotifBadge,
-    btnLoad, btnDone
+    btnLoad, btnDone, showSessionExpired, reLogin
   };
 })();
 
