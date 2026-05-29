@@ -126,7 +126,8 @@ var API = (function () {
     var p = { action:'getOvertimeReqs' };
     if (opts) { if (opts.status) p.status = opts.status;
                 if (opts.from)   p.from   = opts.from;
-                if (opts.to)     p.to     = opts.to; }
+                if (opts.to)     p.to     = opts.to;
+                if (opts.empId)  p.empId  = opts.empId; }
     return _call(p);
   }
 
