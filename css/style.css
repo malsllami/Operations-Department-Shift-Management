@@ -1495,3 +1495,28 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 
 /* أيقونة المودال */
 .modal-icon { font-size:2.5rem; text-align:center; margin-bottom:8px; }
+
+/* شريط التصدير المدمج */
+.export-inline-bar {
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  padding:10px 14px; margin-bottom:14px;
+  background:linear-gradient(135deg,#F0F7FF,#EFF6FF);
+  border-radius:12px; border:1.5px solid #DBEAFE;
+}
+.eib-label { font-size:0.85rem; font-weight:700; color:#64748B; margin-left:4px; }
+.btn-exp-sm {
+  padding:6px 14px; border:none; border-radius:50px;
+  font-size:0.82rem; font-weight:700; cursor:pointer;
+  transition:transform 0.18s, box-shadow 0.18s;
+  font-family:var(--font);
+}
+.btn-exp-sm:hover { transform:translateY(-1px); }
+.btn-exp-sm:active { transform:scale(0.95); }
+.btn-exp-xl  { background:linear-gradient(135deg,#166534,#15803D); color:#fff; box-shadow:0 2px 8px rgba(21,128,61,0.3); }
+.btn-exp-pdf { background:linear-gradient(135deg,#B91C1C,#DC2626); color:#fff; box-shadow:0 2px 8px rgba(185,28,28,0.3); }
+.btn-exp-pr  { background:linear-gradient(135deg,#0066B3,#0284C7); color:#fff; box-shadow:0 2px 8px rgba(0,102,179,0.3); }
+
+@media (max-width:640px) {
+  .export-inline-bar { padding:8px 10px; gap:6px; }
+  .btn-exp-sm { padding:5px 10px; font-size:0.78rem; }
+}
