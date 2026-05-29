@@ -4,11 +4,12 @@
 
 var Auth = (function () {
 
-  var _user         = null;
-  var _token        = null;
-  var _activeRole   = null;
-  var _adminMode    = false;
-  var _forceChange  = false;   // يجب تغيير كلمة المرور قبل الدخول
+  var _user            = null;
+  var _token           = null;
+  var _activeRole      = null;
+  var _adminMode       = false;
+  var _forceChange     = false;   // يجب تغيير كلمة المرور قبل الدخول
+  var _forceRoleCode   = false;   // يجب تعيين رمز الصلاحية الشخصي قبل الدخول
 
   // ============================================================
   // تسجيل الدخول
@@ -23,9 +24,10 @@ var Auth = (function () {
         _adminMode   = false;
         _forceChange = !!res.force_change;
 
-        if (_forceChange) {
-          // لا نحفظ الجلسة حتى يغيّر الموظف الرقم السري
-          // إذا حدّث الصفحة سيعود لشاشة الدخول مجدداً وهذا صحيح
+          _forceRoleCode = !!res.force_set_role_code;
+
+        if (_forceChange || _forceRoleCode) {
+          // لا نحفظ الجلسة حتى يُكمل الإعداد الإلزامي
         } else {
           _save();
         }
@@ -36,7 +38,7 @@ var Auth = (function () {
 
   function logout() {
     _user = null; _token = null; _activeRole = null;
-    _adminMode = false; _forceChange = false;
+    _adminMode = false; _forceChange = false; _forceRoleCode = false;
     localStorage.removeItem('sm_session');
     sessionStorage.removeItem('sm_mode');
   }
@@ -70,13 +72,27 @@ var Auth = (function () {
   function changePassword(newPassword) {
     return API.changePassword(newPassword).then(function(res) {
       if (res.ok) {
-        // الآن نحفظ الجلسة بعد تغيير كلمة المرور بنجاح
         _forceChange = false;
+        if (!_forceRoleCode) _save();
+      }
+      return res;
+    });
+  }
+
+  // ============================================================
+  // تعيين رمز الصلاحية الشخصي (مشرف/مدير/اداري)
+  // ============================================================
+  function setRoleCode(code) {
+    return API.setRoleCode(code).then(function(res) {
+      if (res.ok) {
+        _forceRoleCode = false;
         _save();
       }
       return res;
     });
   }
+
+  function mustSetRoleCode() { return _forceRoleCode; }
 
   // ============================================================
   // نظام الرمز الثانوي لتفعيل الصلاحيات العليا
@@ -93,9 +109,29 @@ var Auth = (function () {
     });
   }
 
+  // التبديل بين الوضعين — يتطلب الرمز في كلا الاتجاهين
+  function toggleElevatedRole(code) {
+    return API.verifyRoleCode(code).then(function(res) {
+      if (!res.ok) return res;
+      if (_adminMode) {
+        // من مشرف/مدير → موظف
+        _adminMode  = false;
+        _activeRole = null;
+        sessionStorage.removeItem('sm_mode');
+      } else {
+        // من موظف → مشرف/مدير
+        _adminMode  = true;
+        _activeRole = res.role;
+        sessionStorage.setItem('sm_mode', 'admin');
+      }
+      _save();
+      return { ok: true, role: _adminMode ? _activeRole : 'موظف', adminMode: _adminMode };
+    });
+  }
+
   function deactivateElevatedRole() {
     _adminMode  = false;
-    _activeRole = 'موظف';
+    _activeRole = null;
     sessionStorage.removeItem('sm_mode');
     _save();
   }
@@ -131,8 +167,8 @@ var Auth = (function () {
 
   return {
     login, logout, restore,
-    changePassword,
-    activateElevatedRole, deactivateElevatedRole,
+    changePassword, setRoleCode, mustSetRoleCode,
+    activateElevatedRole, toggleElevatedRole, deactivateElevatedRole,
     getUser, getToken, getEffectiveRole, getBaseRole,
     isAdminMode, mustChangePass,
     isAdmin, isSupervisor, isViewer, isEmployee,
