@@ -49,6 +49,9 @@ input, select, textarea { font-size: 16px; }
 /* RTL عام للنصوص العربية في الحقول */
 textarea { direction: rtl; text-align: right; }
 select   { direction: rtl; text-align: right; }
+input[type="text"], input[type="search"], input[type="password"] { direction: rtl; text-align: right; }
+input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
+.phone-merged-input { direction: ltr !important; text-align: left !important; }
 
 /* ============================================================
    شاشة الدخول
@@ -434,7 +437,9 @@ select   { direction: rtl; text-align: right; }
   padding: 14px 20px; border-radius: var(--radius); box-shadow: var(--shadow);
 }
 .cal-nav-center { display: flex; align-items: center; gap: 12px; }
-.cal-month-title { font-size: 1.15rem; font-weight: 800; color: var(--text); }
+.cal-title-wrap { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.cal-month-title { font-size: 1.15rem; font-weight: 800; color: var(--text); line-height: 1.2; }
+.cal-title-hijri { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
 .cal-nav-btn {
   background: #EFF6FF; border: 1.5px solid #DBEAFE;
   border-radius: 10px; padding: 8px 16px; font-size: 1.3rem;
@@ -1015,7 +1020,7 @@ select   { direction: rtl; text-align: right; }
 .emp-dashboard { }
 
 /* بطاقة بيانات الموظف */
-.emp-profile-card { padding: 0; overflow: hidden; }
+.emp-profile-card { padding: 0; overflow: hidden; grid-column: 1 / -1; }
 .epc-header {
   display: flex; align-items: center; gap: 14px;
   padding: 18px 20px; color: #fff;
@@ -1075,16 +1080,15 @@ select   { direction: rtl; text-align: right; }
 .cal-day-empty:hover { transform: none; box-shadow: none; }
 .cal-today { border: 2px solid var(--primary) !important; background: linear-gradient(160deg,#EFF6FF,#DBEAFE) !important; box-shadow: 0 4px 16px rgba(0,102,179,0.18) !important; }
 .cal-weekend { background: #FAFAFA; }
-.cal-day-top { display: flex; align-items: flex-start; justify-content: space-between; padding: 6px 7px 4px; }
+.cal-day-top { display: flex; flex-direction: column; align-items: flex-end; padding: 5px 7px 3px; gap: 1px; }
 .cal-day-num { font-size: 1rem; font-weight: 800; color: var(--text); width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 .cal-today-num { background: var(--primary); color: #fff; box-shadow: 0 2px 8px rgba(0,102,179,0.4); }
-.cal-day-hijri { font-size: 0.6rem; color: var(--text-muted); text-align: left; line-height: 1.3; }
-.cal-day-hijri span { font-size: 0.55rem; }
+.cal-day-hijri { font-size: 0.58rem; color: var(--text-muted); text-align: right; line-height: 1.2; }
 .cal-day-body { flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 0 4px 5px; }
-.cal-shift-row { display: flex; align-items: center; gap: 3px; padding: 2px 4px; border-radius: 6px; font-size: 0.72rem; }
-.csr-letter { color: #fff; border-radius: 4px; padding: 0 3px; font-size: 0.65rem; font-weight: 900; flex-shrink: 0; }
+.cal-shift-row { display: flex; align-items: center; gap: 3px; padding: 2px 5px; border-radius: 6px; font-size: 0.72rem; min-height: 20px; }
+.csr-letter { color: #fff; border-radius: 4px; padding: 1px 4px; font-size: 0.62rem; font-weight: 900; flex-shrink: 0; min-width: 16px; text-align: center; }
 .csr-icon   { font-size: 0.75rem; flex-shrink: 0; }
-.csr-label  { font-weight: 600; font-size: 0.68rem; }
+.csr-label  { font-weight: 700; font-size: 0.68rem; }
 
 /* ---- بطاقات الملخص ---- */
 .cal-summary-cards { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
@@ -1334,12 +1338,12 @@ select   { direction: rtl; text-align: right; }
   .cal-month-grid { gap: 2px; min-width: 490px; }
   .cal-weekday    { padding: 5px 2px; font-size: 0.65rem; }
   .cal-day-cell   { min-height: 100px; border-radius: 8px !important; }
-  .cal-day-num    { width: 20px; height: 20px; font-size: 0.75rem; }
-  .cal-day-hijri  { display: none; }
-  .cal-shift-row  { padding: 1px 3px; gap: 2px; border-radius: 4px; }
-  .csr-letter     { font-size: 0.58rem; padding: 0 2px; }
-  .csr-icon       { font-size: 0.65rem; }
-  .csr-label      { display: none; }
+  .cal-day-num    { width: 20px; height: 20px; font-size: 0.72rem; }
+  .cal-day-hijri  { font-size: 0.52rem; }
+  .cal-shift-row  { padding: 1px 3px; gap: 2px; border-radius: 4px; min-height: 17px; }
+  .csr-letter     { font-size: 0.55rem; padding: 0 2px; min-width: 13px; }
+  .csr-icon       { font-size: 0.6rem; }
+  .csr-label      { font-size: 0.55rem; }
 
   /* بطاقات الملخص */
   .cal-summary-cards { grid-template-columns: repeat(2,1fr); gap: 8px; }
@@ -1448,3 +1452,29 @@ select   { direction: rtl; text-align: right; }
   box-shadow:0 2px 8px rgba(124,58,237,0.3);
 }
 .btn-card:hover { transform:translateY(-1px); box-shadow:0 4px 14px rgba(109,40,217,0.4); }
+
+/* ============================================================
+   انميشن الأزرار — تأثير النقر الدائري
+   ============================================================ */
+@keyframes btn-press {
+  0%   { transform: scale(1); box-shadow: 0 0 0 0 rgba(0,102,179,0.35); }
+  40%  { transform: scale(0.93); box-shadow: 0 0 0 10px rgba(0,102,179,0); }
+  100% { transform: scale(1); }
+}
+
+.btn-primary:active  { animation: btn-press 0.28s ease-out !important; }
+.btn-outline:active  { animation: btn-press 0.28s ease-out !important; }
+.btn-sm:active       { animation: btn-press 0.22s ease-out !important; }
+.btn-add:active      { animation: btn-press 0.28s ease-out !important; }
+.btn-approve:active  { animation: btn-press 0.22s ease-out !important; }
+.btn-reject:active   { animation: btn-press 0.22s ease-out !important; }
+.btn-view:active     { animation: btn-press 0.22s ease-out !important; }
+.btn-edit:active     { animation: btn-press 0.22s ease-out !important; }
+.btn-transfer:active { animation: btn-press 0.22s ease-out !important; }
+.btn-card:active     { animation: btn-press 0.22s ease-out !important; }
+.btn-export:active   { animation: btn-press 0.28s ease-out !important; }
+.btn-danger:active   { animation: btn-press 0.28s ease-out !important; }
+.nav-item:active     { animation: btn-press 0.18s ease-out !important; }
+.cal-nav-btn:active  { animation: btn-press 0.18s ease-out !important; }
+.cal-today-btn:active{ animation: btn-press 0.18s ease-out !important; }
+.ot-period-tab:active{ animation: btn-press 0.18s ease-out !important; }
