@@ -304,9 +304,11 @@ var Dashboard = (function () {
 
       var html = '<div class="dashboard-grid">';
 
-      // ---- بطاقة الورديات ----
+      // ============================================================
+      // 1. بطاقات الورديات — قابلة للنقر لفتح جدول الوردية
+      // ============================================================
       html += '<div class="dash-card dash-card-wide">';
-      html += '<h3 class="dash-card-title">حالة الورديات اليوم</h3>';
+      html += '<h3 class="dash-card-title">📊 حالة الورديات اليوم <span style="font-size:0.75rem;font-weight:400;color:var(--text-muted)">— اضغط على الوردية لعرض موظفيها</span></h3>';
       html += '<div class="shift-cards-row">';
       ['a','b','c','d'].forEach(function(sk) {
         var label  = CONFIG.SHIFTS[sk].label;
@@ -314,7 +316,9 @@ var Dashboard = (function () {
         var st2    = todayShifts[sk] || {};
         var stc2   = CONFIG.STATUS[st2.en] || CONFIG.STATUS.off;
         var stat   = shiftStats[sk] || {};
-        html += '<div class="shift-status-card" style="border-color:' + color + '">' +
+        var total  = (stat.emp||0) + (stat.sup||0);
+        html += '<div class="shift-status-card ssc-clickable" style="border-color:' + color + '" ' +
+          'onclick="App.navigate(\'employees\',{filterShift:\'' + label + '\'})" title="اضغط لعرض موظفي وردية ' + label + '">' +
           '<div class="ssc-header" style="background:' + color + '">' +
             '<span class="ssc-label">وردية ' + label + '</span>' +
             '<span class="ssc-status">' + stc2.icon + ' ' + (st2.ar||'—') + '</span>' +
@@ -322,25 +326,50 @@ var Dashboard = (function () {
           '<div class="ssc-body">' +
             '<div class="ssc-stat"><span class="ssc-num">' + (stat.emp||0) + '</span><span>موظف</span></div>' +
             '<div class="ssc-stat"><span class="ssc-num">' + (stat.sup||0) + '</span><span>مشرف</span></div>' +
+            '<div class="ssc-stat ssc-total"><span class="ssc-num ssc-num-total">' + total + '</span><span>الإجمالي</span></div>' +
+          '</div>' +
+          '<div class="ssc-footer" style="background:' + stc2.bg + ';color:' + stc2.text + '">' +
+            stc2.icon + ' ' + (st2.ar||'راحة') + ' اليوم' +
           '</div>' +
         '</div>';
       });
       html += '</div></div>';
 
-      // ---- بطاقة المتواجدون والطلبات المعلقة ----
-      var od = dash.onDuty || {};
-      html += '<div class="dash-card">' +
-        '<h3 class="dash-card-title">المتواجدون الآن</h3>' +
-        '<div class="on-duty-grid">' +
-          '<div class="od-item od-morning"><span class="od-icon">☀</span><span class="od-num">' + (od.morning||0) + '</span><span class="od-label">صباح</span></div>' +
-          '<div class="od-item od-evening"><span class="od-icon">🌙</span><span class="od-num">' + (od.evening||0) + '</span><span class="od-label">مساء</span></div>' +
-          '<div class="od-item od-total"><span class="od-icon">👥</span><span class="od-num">' + (od.total||0) + '</span><span class="od-label">الإجمالي</span></div>' +
-        '</div>' +
-      '</div>';
+      // ============================================================
+      // 2. المتواجدون الآن — حسب الدور
+      //    مشرف: وردييته فقط | مدير: الكل | اداري: مخفي
+      // ============================================================
+      if (role !== 'اداري') {
+        var od, odTitle;
+        if (role === 'مشرف') {
+          // حساب المتواجدين من وردية المشرف فقط
+          var mySk   = CONFIG.shiftKey(user.shift || '');
+          var myStat = shiftStats[mySk] || {};
+          var mySt   = todayShifts[mySk] || {};
+          var myTotal = (myStat.emp||0) + (myStat.sup||0);
+          var myMorning = mySt.en === 'morning' ? myTotal : 0;
+          var myEvening = mySt.en === 'evening' ? myTotal : 0;
+          od = { morning: myMorning, evening: myEvening, total: myTotal };
+          odTitle = 'المتواجدون — وردية ' + (user.shift||'');
+        } else {
+          od = dash.onDuty || {};
+          odTitle = 'المتواجدون الآن';
+        }
+        html += '<div class="dash-card">' +
+          '<h3 class="dash-card-title">👥 ' + odTitle + '</h3>' +
+          '<div class="on-duty-grid">' +
+            '<div class="od-item od-morning"><span class="od-icon">☀</span><span class="od-num">' + (od.morning||0) + '</span><span class="od-label">صباح</span></div>' +
+            '<div class="od-item od-evening"><span class="od-icon">🌙</span><span class="od-num">' + (od.evening||0) + '</span><span class="od-label">مساء</span></div>' +
+            '<div class="od-item od-total"><span class="od-icon">👥</span><span class="od-num">' + (od.total||0) + '</span><span class="od-label">الإجمالي</span></div>' +
+          '</div>' +
+        '</div>';
+      }
 
-      // ---- بطاقة الطلبات المعلقة ----
+      // ============================================================
+      // 3. الطلبات المعلقة
+      // ============================================================
       html += '<div class="dash-card">' +
-        '<h3 class="dash-card-title">الطلبات المعلقة</h3>' +
+        '<h3 class="dash-card-title">⏳ الطلبات المعلقة</h3>' +
         '<div class="pending-grid">' +
           '<div class="pend-item" onclick="App.navigate(\'leaves\')">' +
             '<span class="pend-icon">🏖️</span><span class="pend-num">' + lvPending + '</span><span class="pend-label">إجازات</span>' +
@@ -351,13 +380,13 @@ var Dashboard = (function () {
         '</div>' +
       '</div>';
 
-      // ---- بطاقة المراكز الشاملة (للمدير والمشرف) ----
-      html += _buildManagerRegionsCard(rgList, role, today, lvReqs, colors);
+      // ============================================================
+      // 4. بطاقة المراكز والمناطق الشاملة
+      // ============================================================
+      html += _buildManagerRegionsCard(rgList, role, today, lvReqs, colors, todayShifts);
 
-      // ---- بطاقة الاستهلاك للمدير ----
-      if (role === 'مدير') {
-        html += _apiUsageCard();
-      }
+      // ---- بطاقة الاستهلاك للمدير فقط ----
+      if (role === 'مدير') html += _apiUsageCard();
 
       html += '</div>';
       el.innerHTML = html;
@@ -370,7 +399,7 @@ var Dashboard = (function () {
           if (panel) {
             var isOpen = panel.style.display !== 'none';
             panel.style.display = isOpen ? 'none' : 'block';
-            regBtn.textContent  = isOpen ? 'عرض التفاصيل ▼' : 'إخفاء التفاصيل ▲';
+            regBtn.textContent  = isOpen ? '▼ عرض التفاصيل' : '▲ إخفاء التفاصيل';
           }
         };
       }
@@ -379,7 +408,7 @@ var Dashboard = (function () {
     });
   }
 
-  function _buildManagerRegionsCard(rgList, role, today, lvReqs, colors) {
+  function _buildManagerRegionsCard(rgList, role, today, lvReqs, colors, todayShifts) {
     // الموظفون في إجازة اليوم
     var onLeaveIds = {};
     lvReqs.forEach(function(r) {
@@ -430,20 +459,28 @@ var Dashboard = (function () {
         html += '<div class="center-section">' +
           '<div class="center-title">🏢 ' + center + '</div>' +
           '<div class="regions-table-wrap"><table class="regions-table"><thead><tr>' +
-            '<th>الرقم الوظيفي</th><th>الاسم</th><th>الوردية</th><th>المنطقة</th><th>المركز</th><th>السيارة</th>' +
+            '<th>الرقم الوظيفي</th><th>الاسم</th><th>الوردية</th><th>المنطقة</th><th>المركز</th><th>السيارة</th><th>الحالة</th>' +
           '</tr></thead><tbody>';
 
         cEmps.forEach(function(r) {
-          var sk = CONFIG.shiftKey(r.shift||'');
-          var sc = CONFIG.SHIFTS[sk] || CONFIG.SHIFTS.a;
-          var onL = onLeaveIds[String(r.empId)];
+          var sk   = CONFIG.shiftKey(r.shift||'');
+          var sc   = CONFIG.SHIFTS[sk] || CONFIG.SHIFTS.a;
+          var onL  = onLeaveIds[String(r.empId)];
+          // حالة الدوام اليوم
+          var shiftSt  = (todayShifts||{})[sk] || {};
+          var stcDuty  = CONFIG.STATUS[shiftSt.en] || CONFIG.STATUS.off;
+          var dutyHtml = onL
+            ? '<span class="duty-pill" style="background:#FEE2E2;color:#991B1B">🏖️ إجازة</span>'
+            : '<span class="duty-pill" style="background:' + stcDuty.bg + ';color:' + stcDuty.text + '">' + stcDuty.icon + ' ' + (shiftSt.ar||'راحة') + '</span>';
+
           html += '<tr' + (onL ? ' class="row-on-leave"' : '') + '>' +
             '<td>' + (r.empId||'—')  + '</td>' +
-            '<td>' + (r.name||'—') + (onL ? ' <span class="leave-badge-sm">🏖️ إجازة</span>' : '') + '</td>' +
+            '<td>' + (r.name||'—')   + '</td>' +
             '<td><span class="shift-badge-sm" style="background:' + sc.color + ';color:#fff">وردية ' + (r.shift||'—') + '</span></td>' +
             '<td>' + (r.region||'—') + '</td>' +
             '<td>' + (r.center||'—') + '</td>' +
             '<td>' + (r.car||'—')    + '</td>' +
+            '<td>' + dutyHtml        + '</td>' +
           '</tr>';
         });
 
