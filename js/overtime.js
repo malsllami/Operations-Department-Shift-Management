@@ -32,6 +32,12 @@ var Overtime = (function () {
       }
       html += '</div>';
 
+      // شريط التصدير
+      if (role !== 'موظف') {
+        var expShift = role === 'مشرف' ? Auth.getShift() : '';
+        html += Export.inlineBar('overtime', expShift);
+      }
+
       if (!res.data.length) {
         html += '<div class="empty-state">لا توجد طلبات عمل إضافي</div>';
       } else {
