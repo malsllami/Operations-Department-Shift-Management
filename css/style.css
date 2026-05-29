@@ -856,7 +856,82 @@ body {
 .empty-state { text-align: center; padding: 40px; color: var(--text-muted); font-size: 1rem; }
 .error-state  { text-align: center; padding: 40px; color: #EF4444; }
 
-/* بطاقة موظف سريعة */
+/* ============================================================
+   لوحة الموظف — بطاقات
+   ============================================================ */
+.emp-dashboard { }
+
+/* بطاقة بيانات الموظف */
+.emp-profile-card { padding: 0; overflow: hidden; }
+.epc-header {
+  display: flex; align-items: center; gap: 14px;
+  padding: 18px 20px; color: #fff;
+}
+.epc-avatar {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: rgba(255,255,255,0.25); font-size: 1.5rem; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.epc-info  { flex: 1; }
+.epc-name  { font-size: 1.05rem; font-weight: 800; }
+.epc-id    { font-size: 0.82rem; opacity: 0.8; margin-top: 2px; }
+.epc-shift-badge { padding: 5px 12px; border-radius: 99px; font-size: 0.82rem; font-weight: 700; flex-shrink: 0; }
+.epc-body  { padding: 12px 20px; }
+.epc-row   { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
+.epc-label { color: var(--text-muted); }
+.epc-val   { font-weight: 600; }
+.epc-footer{ padding: 12px 20px; border-top: 1px solid var(--border); }
+
+/* حالة الدوام */
+.status-pill { padding: 3px 10px; border-radius: 99px; font-size: 0.82rem; font-weight: 700; }
+.status-work  { background: #DCFCE7; color: #166534; }
+.status-leave { background: #FEF3C7; color: #92400E; }
+.status-off   { background: #F5F5F5; color: #616161; }
+
+/* بطاقة إحصاءات الطلبات */
+.req-stat-card { text-align: center; transition: transform var(--transition), box-shadow var(--transition); }
+.req-stat-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-hover); }
+.rsc-icon  { font-size: 2rem; margin-bottom: 4px; }
+.rsc-stats { display: flex; justify-content: space-around; margin: 14px 0; }
+.rsc-stat  { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.rss-num   { font-size: 1.8rem; font-weight: 900; }
+.rss-label { font-size: 0.75rem; color: var(--text-muted); }
+.rsc-balance { display: flex; justify-content: space-between; padding: 8px 12px; background: var(--bg); border-radius: 8px; font-size: 0.88rem; margin-bottom: 10px; }
+.rsc-link  { font-size: 0.82rem; color: var(--primary); font-weight: 600; margin-top: 4px; }
+
+/* بطاقة المناطق والمراكز */
+.regions-card { }
+.regions-summary { display: flex; gap: 16px; margin-bottom: 8px; }
+.rs-item   { text-align: center; flex: 1; padding: 10px; background: var(--bg); border-radius: 8px; }
+.rs-num    { display: block; font-size: 1.5rem; font-weight: 900; color: var(--primary); }
+.rs-label  { font-size: 0.78rem; color: var(--text-muted); }
+
+.region-section { margin-bottom: 16px; }
+.region-title   { font-weight: 800; color: var(--primary); font-size: 0.95rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.rs-count       { font-weight: 400; color: var(--text-muted); font-size: 0.85rem; }
+.center-section { margin-bottom: 12px; padding-right: 12px; border-right: 3px solid #DBEAFE; }
+.center-title   { font-weight: 700; color: var(--text); font-size: 0.88rem; margin-bottom: 6px; }
+
+.regions-table-wrap { overflow-x: auto; }
+.regions-table {
+  width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 500px;
+}
+.regions-table th {
+  background: var(--primary); color: #fff; padding: 8px 10px;
+  text-align: center; font-size: 0.82rem;
+}
+.regions-table td {
+  padding: 7px 10px; text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+.regions-table tr:hover td { background: #EFF6FF; }
+.row-on-leave td { background: #FEF3C7 !important; }
+.row-on-leave:hover td { background: #FDE68A !important; }
+
+.shift-badge-sm { padding: 2px 8px; border-radius: 99px; font-size: 0.75rem; font-weight: 700; }
+.leave-badge-sm { background: #FEF3C7; color: #92400E; padding: 1px 6px; border-radius: 99px; font-size: 0.72rem; }
+
+/* بطاقة موظف سريعة (legacy) */
 .emp-quick-header { padding: 14px 16px; color: #fff; border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
 .eqh-name { font-size: 1rem; font-weight: 700; }
 .eqh-id   { font-size: 0.82rem; opacity: 0.8; }
