@@ -6,8 +6,8 @@
   <meta name="description" content="نظام إدارة الورديات — السعودية للطاقة">
   <title>نظام إدارة الورديات — السعودية للطاقة</title>
 
-  <!-- أيقونة الموقع -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230066B3'/><text y='70' x='50' font-size='60' text-anchor='middle' fill='white'>⚡</text></svg>">
+  <!-- أيقونة الموقع — شعار السعودية للطاقة -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%230D1B2A'/%3E%3Cdefs%3E%3ClinearGradient id='b' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%231565C0'/%3E%3Cstop offset='1' stop-color='%2300AEEF'/%3E%3C/linearGradient%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2300AEEF'/%3E%3Cstop offset='1' stop-color='%2300843D'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M10,45 C28,15 55,8 80,22 L72,36 C52,24 28,32 12,58 Z' fill='url(%23b)'/%3E%3Cpath d='M22,55 C42,22 70,14 95,30 L88,45 C65,30 42,40 24,68 Z' fill='url(%23g)' opacity='.85'/%3E%3Ctext x='8' y='95' font-family='Arial' font-size='30' font-weight='900' fill='white'%3Ese%3C/text%3E%3C/svg%3E">
 
   <!-- CSS -->
   <link rel="stylesheet" href="css/style.css">
@@ -23,7 +23,26 @@
   <div id="screen-login">
     <div class="login-card">
       <div class="login-logo">
-        <div class="login-logo-icon">⚡</div>
+        <!-- شعار السعودية للطاقة -->
+        <svg class="se-logo-svg" viewBox="0 0 160 95" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="seB" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#1565C0"/>
+              <stop offset="100%" stop-color="#00AEEF"/>
+            </linearGradient>
+            <linearGradient id="seG" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#00AEEF"/>
+              <stop offset="60%" stop-color="#00A651"/>
+              <stop offset="100%" stop-color="#006B30"/>
+            </linearGradient>
+          </defs>
+          <!-- الموجة الزرقاء -->
+          <path d="M5,48 C25,12 62,4 98,22 L88,38 C58,22 28,34 8,65 Z" fill="url(#seB)"/>
+          <!-- الموجة الخضراء -->
+          <path d="M20,60 C44,20 82,12 118,32 L108,50 C78,33 46,46 24,78 Z" fill="url(#seG)" opacity="0.88"/>
+          <!-- نص se -->
+          <text x="4" y="93" font-family="Arial Black,Arial,sans-serif" font-size="34" font-weight="900" fill="#0D2A6B" letter-spacing="-1">se</text>
+        </svg>
         <div class="login-logo-text">السعودية للطاقة</div>
       </div>
       <div class="login-subtitle">نظام إدارة الورديات</div>
@@ -37,7 +56,24 @@
     <!-- الشريط الجانبي -->
     <nav id="sidebar">
       <div class="sidebar-logo">
-        <div class="sidebar-logo-text">⚡ إدارة الورديات</div>
+        <div class="sidebar-logo-inner">
+          <svg class="se-logo-sidebar" viewBox="0 0 160 95" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="sB2" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#1565C0"/>
+                <stop offset="100%" stop-color="#00AEEF"/>
+              </linearGradient>
+              <linearGradient id="sG2" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#00AEEF"/>
+                <stop offset="100%" stop-color="#00A651"/>
+              </linearGradient>
+            </defs>
+            <path d="M5,48 C25,12 62,4 98,22 L88,38 C58,22 28,34 8,65 Z" fill="url(#sB2)"/>
+            <path d="M20,60 C44,20 82,12 118,32 L108,50 C78,33 46,46 24,78 Z" fill="url(#sG2)" opacity="0.88"/>
+            <text x="4" y="93" font-family="Arial Black,Arial,sans-serif" font-size="34" font-weight="900" fill="#fff">se</text>
+          </svg>
+          <span class="sidebar-logo-text">إدارة الورديات</span>
+        </div>
       </div>
       <div id="sidebar-nav"></div>
       <div class="sidebar-bottom">
@@ -51,7 +87,24 @@
 
       <!-- الرأس -->
       <header id="app-header">
-        <div class="header-brand">⚡ نظام إدارة الورديات</div>
+        <div class="header-brand">
+          <svg class="se-logo-header" viewBox="0 0 160 95" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="hB" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#1565C0"/>
+                <stop offset="100%" stop-color="#00AEEF"/>
+              </linearGradient>
+              <linearGradient id="hG" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#00AEEF"/>
+                <stop offset="100%" stop-color="#00A651"/>
+              </linearGradient>
+            </defs>
+            <path d="M5,48 C25,12 62,4 98,22 L88,38 C58,22 28,34 8,65 Z" fill="url(#hB)"/>
+            <path d="M20,60 C44,20 82,12 118,32 L108,50 C78,33 46,46 24,78 Z" fill="url(#hG)" opacity="0.88"/>
+            <text x="4" y="93" font-family="Arial Black,Arial,sans-serif" font-size="34" font-weight="900" fill="#0D2A6B">se</text>
+          </svg>
+          <span>نظام إدارة الورديات</span>
+        </div>
         <div class="header-user-info" id="header-user"></div>
       </header>
 
