@@ -1,18 +1,28 @@
 // ============================================================
 // تصدير البيانات — Excel / PDF / طباعة
-// (يستخدم SheetJS لـ Excel و jsPDF لـ PDF)
 // ============================================================
 
 var Export = (function () {
 
   // ============================================================
-  // واجهة التصدير
+  // شريط التصدير المدمج (للموظفين / الإجازات / الأوفرتايم)
   // ============================================================
+  function inlineBar(type, shift) {
+    var s = shift || '';
+    return '<div class="export-inline-bar">' +
+      '<span class="eib-label">📤 تصدير:</span>' +
+      '<button class="btn-exp-sm btn-exp-xl" onclick="Export.quickExport(\'' + type + '\',\'' + s + '\',\'excel\')">📊 Excel</button>' +
+      '<button class="btn-exp-sm btn-exp-pdf" onclick="Export.quickExport(\'' + type + '\',\'' + s + '\',\'pdf\')">📄 PDF</button>' +
+      '<button class="btn-exp-sm btn-exp-pr"  onclick="Export.quickExport(\'' + type + '\',\'' + s + '\',\'print\')">🖨️ طباعة</button>' +
+    '</div>';
+  }
 
+  // ============================================================
+  // واجهة التصدير الكاملة (صفحة التصدير)
+  // ============================================================
   function renderExportPanel(containerId) {
     var el = document.getElementById(containerId);
     if (!el) return;
-
     var html = '<div class="export-panel card">' +
       '<h3 class="section-title">تصدير البيانات</h3>' +
       '<div class="form-grid">' +
@@ -21,7 +31,6 @@ var Export = (function () {
             '<option value="employees">الموظفون</option>' +
             '<option value="leaves">الإجازات</option>' +
             '<option value="overtime">العمل الإضافي</option>' +
-            '<option value="comprehensive">العرض الشامل</option>' +
           '</select>' +
         '</div>' +
         '<div class="form-field"><label>الوردية</label>' +
@@ -47,201 +56,260 @@ var Export = (function () {
       '</div>' +
       '<div id="exp-status" class="export-status"></div>' +
     '</div>';
-
     el.innerHTML = html;
   }
 
   // ============================================================
-  // جلب البيانات للتصدير
+  // تصدير سريع (من الصفحة مباشرة)
   // ============================================================
+  function quickExport(type, shift, format) {
+    _quickGetData(type, shift, function(data) {
+      if (format === 'excel') _doExcel(data);
+      else if (format === 'pdf') _doPDF(data);
+      else _doPrint(data);
+    });
+  }
 
+  // ============================================================
+  // جلب البيانات — من عناصر UI
+  // ============================================================
   function _getData(cb) {
     var type  = _val('exp-type')  || 'employees';
     var shift = _val('exp-shift') || '';
     var from  = _val('exp-from')  || '';
     var to    = _val('exp-to')    || '';
-
     var status = document.getElementById('exp-status');
     if (status) { status.textContent = 'جارٍ تجميع البيانات...'; status.className = 'export-status loading'; }
+    _quickGetData(type, shift, function(data) {
+      data.from = from; data.to = to;
+      if (status) { status.textContent = ''; status.className = 'export-status'; }
+      cb(data);
+    }, from, to);
+  }
 
-    var prom;
+  // ============================================================
+  // جلب البيانات — مباشرة بالمعامِلات
+  // ============================================================
+  function _quickGetData(type, shift, cb, from, to) {
+    var role    = Auth.getEffectiveRole();
+    var isAdmin = role === 'مدير' || role === 'اداري';  // يرى كل الورديات
+    var groupByShift = isAdmin && !shift;               // تجميع حسب الوردية للمدير فقط
+
     if (type === 'employees') {
-      prom = Promise.all([API.getEmployees(), API.getRegions(), API.getEquipment(), API.getLeaves()]).then(function(r) {
-        var empList = r[0].ok ? r[0].data : [];
-        var rgMap   = {}; if (r[1].ok) r[1].data.forEach(function(x) { rgMap[x.empId] = x; });
-        var eqMap   = {}; if (r[2].ok) r[2].data.forEach(function(x) { eqMap[x.empId] = x; });
-        var lvMap   = {}; if (r[3].ok) r[3].data.forEach(function(x) { lvMap[x.empId] = x; });
+      Promise.all([API.getEmployees(), API.getRegions(), API.getEquipment(), API.getLeaves()])
+        .then(function(r) {
+          var empList = r[0].ok ? r[0].data : [];
+          var rgMap = {}; if (r[1].ok) r[1].data.forEach(function(x) { rgMap[x.empId] = x; });
+          var eqMap = {}; if (r[2].ok) r[2].data.forEach(function(x) { eqMap[x.empId] = x; });
+          var lvMap = {}; if (r[3].ok) r[3].data.forEach(function(x) { lvMap[x.empId] = x; });
 
-        if (shift) empList = empList.filter(function(e) { return e.shift === shift; });
+          if (shift) empList = empList.filter(function(e) { return e.shift === shift; });
 
-        var headers = ['الرقم الوظيفي','الاسم','الجوال','الوردية','الصلاحية',
-                       'انتهاء العمل','مدة العمل','انتهاء المصدر','مدة المصدر',
-                       'المنطقة','المركز','السيارة',
-                       'CAT2 قميص','CAT2 بنطلون','سيفتي شوز','CAT4','برافو','ميجر','أخرى',
-                       'رصيد السنوية','المتبقي','رصيد المجدولة','مرضية','مولود','وفاة','زواج','اختبارات'];
-        var rows = empList.map(function(e) {
-          var rg = rgMap[e.empId] || {}; var eq = eqMap[e.empId] || {}; var lv = lvMap[e.empId] || {};
-          return [e.empId, e.name, '+966 '+e.phone, e.shift, e.role,
-                  CONFIG.fmtDate(e.workExpDate), e.workDaysLeft||'', CONFIG.fmtDate(e.srcExpDate), e.srcDaysLeft||'',
-                  rg.region||'', rg.center||'', rg.car||'',
-                  eq.cat2Shirt||'', eq.cat2Pants||'', eq.shoes||'', eq.cat4||'', eq.bravo||'', eq.major||'', eq.other||'',
-                  lv.annBal||'', lv.annRem||'', lv.schedBal||'', lv.sick||'', lv.birth||'', lv.death||'', lv.marriage||'', lv.exam||''];
+          var headers = ['الرقم الوظيفي','الاسم','الجوال','الوردية','الصلاحية',
+                         'انتهاء بطاقة العمل','أيام متبقية','انتهاء بطاقة المصدر','أيام متبقية',
+                         'المنطقة','المركز','السيارة',
+                         'CAT2 قميص','CAT2 بنطلون','شوز','CAT4','برافو','ميجر','أخرى',
+                         'رصيد السنوية','المتبقي','رصيد المجدولة','مرضية','مولود','وفاة','زواج','اختبارات'];
+
+          var toRow = function(e) {
+            var rg = rgMap[e.empId]||{}; var eq = eqMap[e.empId]||{}; var lv = lvMap[e.empId]||{};
+            return [e.empId, e.name, e.phone ? '+966 '+e.phone : '',
+                    e.shift, e.role,
+                    CONFIG.fmtDate(e.workExpDate), e.workDaysLeft||'',
+                    CONFIG.fmtDate(e.srcExpDate),  e.srcDaysLeft||'',
+                    rg.region||'', rg.center||'', rg.car||'',
+                    eq.cat2Shirt||'', eq.cat2Pants||'', eq.shoes||'', eq.cat4||'', eq.bravo||'', eq.major||'', eq.other||'',
+                    lv.annBal||'', lv.annRem||'', lv.schedBal||'', lv.sick||'', lv.birth||'', lv.death||'', lv.marriage||'', lv.exam||''];
+          };
+
+          var rows = empList.map(toRow);
+          cb({
+            headers: headers, rows: rows, title: 'الموظفون',
+            grouped: groupByShift,
+            shiftGroups: groupByShift ? _buildShiftGroups(empList, toRow) : null
+          });
         });
-        return { headers: headers, rows: rows, title: 'الموظفون', shiftRows: _groupByShift(empList, rows) };
-      });
+
     } else if (type === 'leaves') {
-      prom = API.getLeaveReqs({ from: from, to: to }).then(function(r) {
+      API.getLeaveReqs({ from: from||'', to: to||'' }).then(function(r) {
         var list = r.ok ? r.data : [];
         if (shift) list = list.filter(function(x) { return x.shift === shift; });
         var headers = ['رقم الطلب','الرقم الوظيفي','الاسم','الوردية','نوع الإجازة',
-                       'تاريخ البداية','تاريخ النهاية','الأيام','الحالة','ملاحظات','المراجع'];
-        var rows = list.map(function(x) {
+                       'من تاريخ','إلى تاريخ','الأيام','الحالة','ملاحظات الموظف','المراجع'];
+        var toRow = function(x) {
           return [x.no, x.empId, x.name, x.shift, _leaveTypeLabel(x.type),
-                  CONFIG.fmtDate(x.startDate), CONFIG.fmtDate(x.endDate), x.days, _statusLabel(x.status),
-                  x.empNotes||'', x.reviewerName||''];
+                  CONFIG.fmtDate(x.startDate), CONFIG.fmtDate(x.endDate), x.days,
+                  _statusLabel(x.status), x.empNotes||'', x.reviewerName||''];
+        };
+        var rows = list.map(toRow);
+        cb({
+          headers: headers, rows: rows, title: 'طلبات الإجازات',
+          grouped: groupByShift,
+          shiftGroups: groupByShift ? _buildShiftGroups(list, toRow) : null
         });
-        return { headers: headers, rows: rows, title: 'طلبات الإجازات' };
       });
+
     } else if (type === 'overtime') {
-      prom = API.getOvertimeReqs({ from: from, to: to }).then(function(r) {
+      API.getOvertimeReqs({ from: from||'', to: to||'' }).then(function(r) {
         var list = r.ok ? r.data : [];
         if (shift) list = list.filter(function(x) { return x.shift === shift; });
         var headers = ['رقم الطلب','الرقم الوظيفي','الاسم','الوردية','التاريخ','اليوم',
                        'الساعات','السبب','الحالة','تاريخ الإنشاء'];
-        var rows = list.map(function(x) {
+        var toRow = function(x) {
           return [x.no, x.empId, x.name, x.shift, CONFIG.fmtDate(x.date), x.day,
                   x.hours, x.reason, CONFIG.otStatusInfo(x.status).label, CONFIG.fmtDate(x.createdDate)];
+        };
+        var rows = list.map(toRow);
+        cb({
+          headers: headers, rows: rows, title: 'طلبات العمل الإضافي',
+          grouped: groupByShift,
+          shiftGroups: groupByShift ? _buildShiftGroups(list, toRow) : null
         });
-        return { headers: headers, rows: rows, title: 'طلبات العمل الإضافي' };
+      });
+    }
+  }
+
+  // بناء مجموعات الورديات للتصدير المجمّع
+  function _buildShiftGroups(list, toRow) {
+    var order = ['أ','ب','ج','د'];
+    var groups = {};
+    list.forEach(function(item) { var s = item.shift; (groups[s] = groups[s]||[]).push(item); });
+    return order.filter(function(s) { return groups[s] && groups[s].length; }).map(function(s) {
+      var sk = CONFIG.shiftKey(s);
+      return {
+        shift: s, label: 'وردية ' + CONFIG.SHIFTS[sk].label,
+        color: CONFIG.SHIFTS[sk].color,
+        bg: CONFIG.SHIFTS[sk].bg,
+        rows: groups[s].map(toRow)
+      };
+    });
+  }
+
+  // ============================================================
+  // تصدير Excel
+  // ============================================================
+  function _doExcel(data) {
+    if (typeof XLSX === 'undefined') { alert('مكتبة SheetJS غير محملة'); return; }
+    var wb = XLSX.utils.book_new();
+    var wsData = [data.headers];
+
+    if (data.grouped && data.shiftGroups && data.shiftGroups.length) {
+      data.shiftGroups.forEach(function(g) {
+        wsData.push(['═══ ' + g.label + ' ═══']);
+        g.rows.forEach(function(r) { wsData.push(r); });
+        wsData.push([]);  // صف فاصل فارغ
       });
     } else {
-      prom = API.buildComprehensiveView().then(function(r) {
-        if (!r.ok) return { headers:[], rows:[], title:'العرض الشامل' };
-        return API.getEmployees().then(function(er) {
-          if (!er.ok) return { headers:[], rows:[], title:'العرض الشامل' };
-          var list = er.data;
-          if (shift) list = list.filter(function(e) { return e.shift === shift; });
-          return { headers:['الموظفون'], rows: list.map(function(e) { return [e.empId, e.name, e.shift, e.role]; }),
-                   title: 'العرض الشامل' };
-        });
+      data.rows.forEach(function(r) { wsData.push(r); });
+    }
+
+    var ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws['!cols'] = data.headers.map(function() { return { wch: 18 }; });
+    XLSX.utils.book_append_sheet(wb, ws, data.title);
+    XLSX.writeFile(wb, data.title + '_' + CONFIG.todayStr() + '.xlsx');
+  }
+
+  function toExcel() { _getData(_doExcel); }
+
+  // ============================================================
+  // تصدير PDF
+  // ============================================================
+  function _doPDF(data) {
+    if (typeof jsPDF === 'undefined') { alert('مكتبة jsPDF غير محملة'); return; }
+    var doc  = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
+    doc.setFontSize(14);
+    doc.text(data.title + ' — ' + CONFIG.todayStr(), 10, 15);
+
+    var allRows = [];
+    if (data.grouped && data.shiftGroups && data.shiftGroups.length) {
+      data.shiftGroups.forEach(function(g) {
+        allRows.push(['═══ ' + g.label + ' ═══']);
+        g.rows.forEach(function(r) { allRows.push(r); });
+        allRows.push([]);
+      });
+    } else {
+      allRows = data.rows;
+    }
+
+    if (typeof doc.autoTable === 'function') {
+      doc.autoTable({ head: [data.headers], body: allRows, startY: 20, styles: { font:'courier', fontSize:7 } });
+    } else {
+      var y = 25; doc.setFontSize(7);
+      allRows.forEach(function(row) {
+        if (y > 195) { doc.addPage(); y = 15; }
+        doc.text(row.slice(0,8).join(' | '), 10, y); y += 5;
       });
     }
-
-    prom.then(function(data) {
-      if (status) { status.textContent = ''; status.className = 'export-status'; }
-      cb(data);
-    }).catch(function() {
-      if (status) { status.textContent = 'حدث خطأ أثناء جلب البيانات'; status.className = 'export-status error'; }
-    });
+    doc.save(data.title + '_' + CONFIG.todayStr() + '.pdf');
   }
 
-  // ============================================================
-  // تصدير Excel (SheetJS)
-  // ============================================================
-
-  function toExcel() {
-    if (typeof XLSX === 'undefined') {
-      alert('مكتبة SheetJS غير محملة — تحقق من الاتصال بالإنترنت'); return;
-    }
-    _getData(function(data) {
-      var wb = XLSX.utils.book_new();
-      var wsData = [data.headers].concat(data.rows);
-      var ws     = XLSX.utils.aoa_to_sheet(wsData);
-
-      // تنسيق رأس الجدول (XLSX لا يدعم ألوان مباشرة بدون مكتبة مدفوعة)
-      ws['!cols'] = data.headers.map(function() { return { wch: 20 }; });
-
-      XLSX.utils.book_append_sheet(wb, ws, data.title);
-      XLSX.writeFile(wb, data.title + '_' + CONFIG.todayStr() + '.xlsx');
-    });
-  }
+  function toPDF() { _getData(_doPDF); }
 
   // ============================================================
-  // تصدير PDF (jsPDF)
+  // طباعة — مع تلوين الورديات
   // ============================================================
+  function _doPrint(data) {
+    var win = window.open('', '_blank');
+    var shifts = CONFIG.SHIFTS;
+    var shiftCss = ['a','b','c','d'].map(function(k) {
+      return '.shift-' + k + ' { background:' + shifts[k].color + ';color:#fff;font-weight:700;text-align:center;padding:8px; }';
+    }).join('\n');
 
-  function toPDF() {
-    if (typeof jsPDF === 'undefined') {
-      alert('مكتبة jsPDF غير محملة — تحقق من الاتصال بالإنترنت'); return;
-    }
-    _getData(function(data) {
-      var doc  = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
-      var cols = data.headers;
-      var rows = data.rows;
-
-      doc.setFontSize(14);
-      doc.text(data.title + ' — ' + CONFIG.todayStr(), 10, 15);
-
-      if (typeof doc.autoTable === 'function') {
-        doc.autoTable({ head: [cols], body: rows, startY: 20, styles: { font:'courier', fontSize:8 } });
-      } else {
-        // fallback بسيط بدون autoTable
-        var y = 25;
-        doc.setFontSize(8);
-        rows.forEach(function(row) {
-          if (y > 195) { doc.addPage(); y = 15; }
-          doc.text(row.slice(0,6).join(' | '), 10, y);
-          y += 6;
+    var tableHtml = '';
+    if (data.grouped && data.shiftGroups && data.shiftGroups.length) {
+      data.shiftGroups.forEach(function(g) {
+        var sk = CONFIG.shiftKey(g.shift);
+        tableHtml +=
+          '<tr><td colspan="' + data.headers.length + '" class="shift-' + sk + '">' + g.label + '</td></tr>';
+        g.rows.forEach(function(row) {
+          tableHtml += '<tr>' + row.map(function(c) { return '<td>' + (c||'') + '</td>'; }).join('') + '</tr>';
         });
-      }
+        tableHtml += '<tr class="sep-row"><td colspan="' + data.headers.length + '"></td></tr>';
+      });
+    } else {
+      tableHtml = data.rows.map(function(row) {
+        return '<tr>' + row.map(function(c) { return '<td>' + (c||'') + '</td>'; }).join('') + '</tr>';
+      }).join('');
+    }
 
-      doc.save(data.title + '_' + CONFIG.todayStr() + '.pdf');
-    });
+    var html = '<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8">' +
+      '<title>' + data.title + '</title><style>' +
+      'body{font-family:Arial,sans-serif;font-size:11px;margin:16px}' +
+      'h2{color:#0066B3;margin-bottom:4px}p.meta{color:#666;font-size:10px;margin-bottom:12px}' +
+      'table{border-collapse:collapse;width:100%}' +
+      'th{background:#0066B3;color:#fff;padding:6px;text-align:center;font-size:11px}' +
+      'td{border:1px solid #ccc;padding:4px;text-align:center;font-size:10px}' +
+      'tr:nth-child(even){background:#F9FAFB}.sep-row td{height:12px;border:none;background:#fff}' +
+      shiftCss +
+      '@media print{button{display:none}}</style></head><body>' +
+      '<h2>' + data.title + '</h2>' +
+      '<p class="meta">تاريخ التصدير: ' + CONFIG.todayStr() + '</p>' +
+      '<button onclick="window.print()" style="margin-bottom:12px;padding:6px 20px;background:#0066B3;color:#fff;border:none;border-radius:4px;cursor:pointer">🖨️ طباعة</button>' +
+      '<table><thead><tr>' +
+        data.headers.map(function(h) { return '<th>' + h + '</th>'; }).join('') +
+      '</tr></thead><tbody>' + tableHtml + '</tbody></table>' +
+      '</body></html>';
+
+    win.document.write(html);
+    win.document.close();
+    win.focus();
   }
 
-  // ============================================================
-  // طباعة
-  // ============================================================
-
-  function print() {
-    _getData(function(data) {
-      var win = window.open('', '_blank');
-      var html = '<html dir="rtl"><head><meta charset="UTF-8">' +
-        '<title>' + data.title + '</title>' +
-        '<style>body{font-family:Arial,sans-serif;font-size:12px}' +
-        'table{border-collapse:collapse;width:100%}' +
-        'th{background:#0066B3;color:#fff;padding:6px;text-align:center}' +
-        'td{border:1px solid #ccc;padding:5px;text-align:center}' +
-        'h2{color:#0066B3}' +
-        '@media print{button{display:none}}' +
-        '</style></head><body>' +
-        '<h2>' + data.title + ' — ' + CONFIG.todayStr() + '</h2>' +
-        '<button onclick="window.print()">طباعة</button>' +
-        '<table><thead><tr>' + data.headers.map(function(h) { return '<th>' + h + '</th>'; }).join('') + '</tr></thead>' +
-        '<tbody>' + data.rows.map(function(row) {
-          return '<tr>' + row.map(function(cell) { return '<td>' + (cell||'') + '</td>'; }).join('') + '</tr>';
-        }).join('') + '</tbody></table>' +
-        '</body></html>';
-      win.document.write(html);
-      win.document.close();
-      win.focus();
-    });
-  }
+  function print() { _getData(_doPrint); }
 
   // ============================================================
   // مساعدات
   // ============================================================
-
-  function _groupByShift(empList, rows) {
-    var map = {};
-    empList.forEach(function(e, i) { var s = e.shift; (map[s] = map[s]||[]).push(rows[i]); });
-    return map;
-  }
-
-  function _val(id) {
-    var el = document.getElementById(id);
-    return el ? el.value : '';
-  }
+  function _val(id) { var el = document.getElementById(id); return el ? el.value : ''; }
 
   function _leaveTypeLabel(key) {
     var t = CONFIG.LEAVE_TYPES.filter(function(l) { return l.key === key; })[0];
     return t ? t.label : (key||'—');
   }
 
-  function _statusLabel(status) {
-    var map = { pending_review:'قيد المراجعة', approved:'معتمد', rejected:'مرفوض' };
-    return map[status] || status;
+  function _statusLabel(s) {
+    return { pending_review:'قيد المراجعة', approved:'معتمد', rejected:'مرفوض' }[s] || s;
   }
 
-  return { renderExportPanel, toExcel, toPDF, print };
+  return { renderExportPanel, inlineBar, quickExport, toExcel, toPDF, print };
 })();
