@@ -241,10 +241,10 @@ var Leaves = (function () {
       }
 
       var btn = form.querySelector('[type=submit]');
-      btn.disabled = true; btn.textContent = 'جارٍ الإرسال...';
+      App.btnLoad(btn);
 
       API.submitLeave(data).then(function(res) {
-        btn.disabled = false; btn.textContent = 'إرسال الطلب';
+        App.btnDone(btn);
         if (res.ok) {
           App.toast('تم إرسال طلب الإجازة: ' + res.no, 'success');
           App.navigate('leaves');
