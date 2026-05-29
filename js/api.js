@@ -5,6 +5,11 @@
 var API = (function () {
 
   function _call(params) {
+    // التحقق من ضبط الرابط
+    if (!CONFIG.API_URL || CONFIG.API_URL === 'YOUR_GAS_WEB_APP_URL_HERE') {
+      return Promise.resolve({ ok: false, error: 'api_not_configured' });
+    }
+
     var token = Auth ? Auth.getToken() : null;
     if (token) params.token = token;
 
@@ -13,8 +18,14 @@ var API = (function () {
     }).join('&');
 
     return fetch(url, { redirect: 'follow' })
-      .then(function(r) { return r.json(); })
-      .catch(function() { return { ok: false, error: 'network_error' }; });
+      .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .catch(function(err) {
+        console.warn('[API] خطأ في الاتصال:', err && err.message ? err.message : 'network_error');
+        return { ok: false, error: 'network_error' };
+      });
   }
 
   // ---- المصادقة ----
