@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="نظام إدارة الورديات — السعودية للطاقة">
+  <title>نظام إدارة الورديات — السعودية للطاقة</title>
+
+  <!-- أيقونة الموقع -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230066B3'/><text y='70' x='50' font-size='60' text-anchor='middle' fill='white'>⚡</text></svg>">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- مكتبات التصدير (CDN) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+
+  <!-- ==================== شاشة الدخول ==================== -->
+  <div id="screen-login">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="login-logo-icon">⚡</div>
+        <div class="login-logo-text">السعودية للطاقة</div>
+      </div>
+      <div class="login-subtitle">نظام إدارة الورديات</div>
+      <div id="login-form-container"></div>
+    </div>
+  </div>
+
+  <!-- ==================== شاشة التطبيق ==================== -->
+  <div id="screen-app">
+
+    <!-- الشريط الجانبي -->
+    <nav id="sidebar">
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-text">⚡ إدارة الورديات</div>
+      </div>
+      <div id="sidebar-nav"></div>
+      <div class="sidebar-bottom">
+        <button id="toggle-mode-btn" style="display:none">🛡️ وضع الإدارة</button>
+        <button id="btn-logout">🚪 خروج</button>
+      </div>
+    </nav>
+
+    <!-- المنطقة الرئيسية -->
+    <div id="main-area">
+
+      <!-- الرأس -->
+      <header id="app-header">
+        <div class="header-brand">⚡ نظام إدارة الورديات</div>
+        <div class="header-user-info" id="header-user"></div>
+      </header>
+
+      <!-- المحتوى -->
+      <main id="main-content"></main>
+
+    </div><!-- /main-area -->
+
+  </div><!-- /screen-app -->
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <!-- ==================== السكريبتات (بالترتيب) ==================== -->
+  <script src="js/config.js"></script>
+  <script src="js/hijri.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/calendar.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/employees.js"></script>
+  <script src="js/leaves.js"></script>
+  <script src="js/overtime.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
