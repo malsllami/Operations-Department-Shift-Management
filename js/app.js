@@ -28,6 +28,17 @@ var App = (function () {
     document.getElementById('screen-login').style.display = 'flex';
     document.getElementById('screen-app').style.display   = 'none';
     _renderLoginForm();
+    // تحذير إذا لم يُضبط رابط GAS
+    if (!CONFIG.API_URL || CONFIG.API_URL === 'YOUR_GAS_WEB_APP_URL_HERE') {
+      setTimeout(function() {
+        var container = document.getElementById('login-form-container');
+        if (!container) return;
+        var warn = document.createElement('div');
+        warn.className = 'setup-warning';
+        warn.innerHTML = '<strong>⚙️ إعداد مطلوب</strong><br>افتح <code>js/config.js</code> وضع رابط Google Apps Script في <code>API_URL</code>';
+        container.insertBefore(warn, container.firstChild);
+      }, 100);
+    }
   }
 
   function _showApp() {
@@ -58,17 +69,17 @@ var App = (function () {
 
     document.getElementById('login-form').onsubmit = function(e) {
       e.preventDefault();
-      var empId = document.getElementById('l-empid').value.trim();
-      var pass  = document.getElementById('l-pass').value;
+      var empId = CONFIG.toLatinNums(document.getElementById('l-empid').value.trim());
+      var pass  = document.getElementById('l-pass').value.trim();
       var errEl = document.getElementById('l-err');
       var btn   = document.getElementById('l-btn');
 
       if (!empId || !pass) { errEl.textContent = 'يرجى إدخال الرقم الوظيفي وكلمة المرور'; errEl.style.display = 'block'; return; }
-      btn.disabled = true; btn.textContent = 'جارٍ الدخول...';
+      App.btnLoad(btn);
       errEl.style.display = 'none';
 
       Auth.login(empId, pass).then(function(res) {
-        btn.disabled = false; btn.textContent = 'دخول';
+        App.btnDone(btn);
         if (res.ok) {
           if (res.force_change) {
             _renderChangePassForm();
@@ -76,7 +87,11 @@ var App = (function () {
             _showApp(); navigate('dashboard');
           }
         } else {
-          var errs = { invalid_credentials:'رقم وظيفي أو كلمة مرور غير صحيحة', network_error:'خطأ في الاتصال — تحقق من الإنترنت' };
+          var errs = {
+            invalid_credentials: 'رقم وظيفي أو كلمة مرور غير صحيحة',
+            network_error:       'خطأ في الاتصال — تحقق من الإنترنت',
+            api_not_configured:  '⚙️ لم يتم ضبط رابط GAS بعد — افتح js/config.js وضع رابط Web App في API_URL'
+          };
           errEl.textContent = errs[res.error] || 'حدث خطأ: ' + res.error;
           errEl.style.display = 'block';
         }
@@ -87,40 +102,95 @@ var App = (function () {
   function _renderChangePassForm() {
     var el = document.getElementById('login-form-container');
     if (!el) return;
+
+    // إخفاء شعار تسجيل الدخول وإظهار شاشة التغيير كاملة
+    var logoEl = document.querySelector('.login-logo');
+    var subEl  = document.querySelector('.login-subtitle');
+    if (logoEl) logoEl.style.display = 'none';
+    if (subEl)  subEl.style.display  = 'none';
+
     el.innerHTML =
-      '<div class="change-pass-notice">🔒 يجب تغيير كلمة المرور الافتراضية قبل المتابعة</div>' +
+      '<div class="force-change-header">' +
+        '<div class="fch-icon">🔐</div>' +
+        '<h2>تغيير كلمة المرور إلزامي</h2>' +
+        '<p>لأمان حسابك، يجب تغيير كلمة المرور الافتراضية قبل الدخول</p>' +
+      '</div>' +
       '<form id="chpass-form" novalidate>' +
         '<div class="login-field"><label>كلمة المرور الجديدة</label>' +
-          '<div class="pw-wrap"><input type="password" id="cp-new" class="login-input" placeholder="6 أحرف على الأقل" required>' +
-          '<button type="button" class="pw-eye" onclick="App.togglePw(\'cp-new\',this)">👁</button></div>' +
+          '<div class="pw-wrap">' +
+            '<input type="password" id="cp-new" class="login-input" placeholder="6 أحرف على الأقل" required autocomplete="new-password">' +
+            '<button type="button" class="pw-eye" onclick="App.togglePw(\'cp-new\',this)">' +
+              '<svg viewBox="0 0 24 24" width="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>' +
+            '</button>' +
+          '</div>' +
         '</div>' +
-        '<div class="login-field"><label>تأكيد كلمة المرور</label>' +
-          '<div class="pw-wrap"><input type="password" id="cp-confirm" class="login-input" placeholder="••••••" required>' +
-          '<button type="button" class="pw-eye" onclick="App.togglePw(\'cp-confirm\',this)">👁</button></div>' +
+        '<div class="login-field"><label>تأكيد كلمة المرور الجديدة</label>' +
+          '<div class="pw-wrap">' +
+            '<input type="password" id="cp-confirm" class="login-input" placeholder="أعد كتابة كلمة المرور" required autocomplete="new-password">' +
+            '<button type="button" class="pw-eye" onclick="App.togglePw(\'cp-confirm\',this)">' +
+              '<svg viewBox="0 0 24 24" width="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>' +
+            '</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="pass-rules">' +
+          '<span id="rule-len"  class="pass-rule">✗ 6 أحرف على الأقل</span>' +
+          '<span id="rule-diff" class="pass-rule">✗ مختلفة عن 123456</span>' +
+          '<span id="rule-match"class="pass-rule">✗ متطابقتان</span>' +
         '</div>' +
         '<div id="cp-err" class="login-error" style="display:none"></div>' +
-        '<button type="submit" class="btn-login" id="cp-btn">تغيير وحفظ</button>' +
+        '<button type="submit" class="btn-login" id="cp-btn" disabled>تغيير وحفظ</button>' +
       '</form>';
+
+    // التحقق الفوري أثناء الكتابة
+    var newEl = document.getElementById('cp-new');
+    var conEl = document.getElementById('cp-confirm');
+    var rLen  = document.getElementById('rule-len');
+    var rDiff = document.getElementById('rule-diff');
+    var rMtch = document.getElementById('rule-match');
+    var btn   = document.getElementById('cp-btn');
+
+    function _validate() {
+      var np = newEl.value;
+      var cp = conEl.value;
+      var okLen  = np.length >= 6;
+      var okDiff = np !== '123456';
+      var okMtch = np.length > 0 && np === cp;
+      rLen.className  = 'pass-rule ' + (okLen  ? 'pass-ok' : 'pass-fail');
+      rLen.textContent  = (okLen  ? '✓' : '✗') + ' 6 أحرف على الأقل';
+      rDiff.className = 'pass-rule ' + (okDiff ? 'pass-ok' : 'pass-fail');
+      rDiff.textContent = (okDiff ? '✓' : '✗') + ' مختلفة عن 123456';
+      rMtch.className = 'pass-rule ' + (okMtch ? 'pass-ok' : 'pass-fail');
+      rMtch.textContent = (okMtch ? '✓' : '✗') + ' متطابقتان';
+      btn.disabled = !(okLen && okDiff && okMtch);
+    }
+    newEl.addEventListener('input', _validate);
+    conEl.addEventListener('input', _validate);
 
     document.getElementById('chpass-form').onsubmit = function(e) {
       e.preventDefault();
-      var newPass = document.getElementById('cp-new').value;
-      var confirm = document.getElementById('cp-confirm').value;
+      var newPass = newEl.value;
+      var confirm = conEl.value;
       var errEl   = document.getElementById('cp-err');
-      var btn     = document.getElementById('cp-btn');
 
-      if (newPass.length < 6) { errEl.textContent = 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'; errEl.style.display='block'; return; }
-      if (newPass !== confirm) { errEl.textContent = 'كلمتا المرور غير متطابقتين'; errEl.style.display='block'; return; }
+      if (newPass.length < 6)      { errEl.textContent = 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'; errEl.style.display='block'; return; }
+      if (newPass === '123456')     { errEl.textContent = 'لا يمكن استخدام كلمة المرور الافتراضية'; errEl.style.display='block'; return; }
+      if (newPass !== confirm)      { errEl.textContent = 'كلمتا المرور غير متطابقتين'; errEl.style.display='block'; return; }
 
-      btn.disabled = true; btn.textContent = 'جارٍ الحفظ...';
+      App.btnLoad(btn);
       errEl.style.display = 'none';
 
       Auth.changePassword(newPass).then(function(res) {
-        btn.disabled = false; btn.textContent = 'تغيير وحفظ';
-        if (res.ok) { _showApp(); navigate('dashboard'); }
-        else {
-          var errs = { password_too_short:'كلمة المرور قصيرة (6 أحرف كحد أدنى)', password_same_as_default:'لا يمكن استخدام كلمة المرور الافتراضية' };
-          errEl.textContent = errs[res.error] || 'حدث خطأ';
+        App.btnDone(btn);
+        if (res.ok) {
+          App.toast('تم تغيير كلمة المرور بنجاح ✓', 'success');
+          _showApp();
+          navigate('dashboard');
+        } else {
+          var errs = {
+            password_too_short:       'كلمة المرور قصيرة (6 أحرف كحد أدنى)',
+            password_same_as_default: 'لا يمكن استخدام كلمة المرور الافتراضية'
+          };
+          errEl.textContent = errs[res.error] || 'حدث خطأ: ' + res.error;
           errEl.style.display = 'block';
         }
       });
@@ -299,7 +369,7 @@ var App = (function () {
       case 'dashboard':      Dashboard.render('view-content'); break;
       case 'calendar':       Calendar.init('view-content'); break;
       case 'employees':      Employees.renderList('view-content', params && params.filterShift); break;
-      case 'employee-form':  Employees.renderForm('view-content', params && params.emp, !!(params && params.emp)); break;
+      case 'employee-form':  Employees.renderForm('view-content', params || {}, !!(params && (params.emp || params.empId))); break;
       case 'employee-view':  Employees.renderProfile('view-content', params && params.empId); break;
       case 'leaves':         Leaves.renderList('view-content'); break;
       case 'leave-form':     Leaves.renderForm('view-content'); break;
@@ -309,7 +379,10 @@ var App = (function () {
       case 'notifications':  Notifications.render('view-content'); break;
       case 'export':         Export.renderExportPanel('view-content'); break;
       case 'settings':       _renderSettings('view-content'); break;
-      case 'profile':        Employees.renderProfile('view-content', null); break;
+      case 'profile':
+        var _me = Auth.getUser();
+        Employees.renderForm('view-content', { empId: _me ? String(_me.empId) : '' }, true);
+        break;
     }
   }
 
@@ -461,7 +534,27 @@ var App = (function () {
     if (!inp) return;
     var show = inp.type === 'password';
     inp.type = show ? 'text' : 'password';
-    eyeEl.textContent = show ? '🙈' : '👁';
+    eyeEl.innerHTML = show
+      ? '<svg viewBox="0 0 24 24" width="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+      : '<svg viewBox="0 0 24 24" width="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  }
+
+  // ---- أنيميشن زر التحميل (عام في الموقع) ----
+  function btnLoad(btn) {
+    if (!btn) return;
+    btn._origHtml = btn.innerHTML;
+    btn._origW    = btn.offsetWidth;
+    btn.style.minWidth = btn._origW + 'px';
+    btn.classList.add('btn-loading');
+    btn.disabled = true;
+  }
+
+  function btnDone(btn, text) {
+    if (!btn) return;
+    btn.classList.remove('btn-loading');
+    btn.disabled = false;
+    btn.style.minWidth = '';
+    btn.innerHTML = btn._origHtml || text || 'حفظ';
   }
 
   function _roleClass(role) {
@@ -469,9 +562,31 @@ var App = (function () {
   }
 
   return {
-    init, navigate, goBack, toast, togglePw, loadNotifBadge
+    init, navigate, goBack, toast, togglePw, loadNotifBadge,
+    btnLoad, btnDone
   };
 })();
 
 // ---- تشغيل التطبيق ----
 document.addEventListener('DOMContentLoaded', function() { App.init(); });
+
+// ---- تحويل الأرقام العربية/الفارسية تلقائياً في جميع حقول الإدخال ----
+document.addEventListener('input', function(e) {
+  var el = e.target;
+  if (!el || !el.tagName) return;
+  var tag = el.tagName.toLowerCase();
+  if (tag !== 'input' && tag !== 'textarea') return;
+  var t = (el.type || '').toLowerCase();
+  if (t === 'password' || t === 'date' || t === 'time' || t === 'color') return;
+
+  var val = el.value;
+  // تحقق إذا يوجد أرقام عربية أو فارسية
+  if (!/[٠-٩۰-۹]/.test(val)) return;
+
+  var converted = CONFIG.toLatinNums(val);
+  if (converted !== val) {
+    var pos = el.selectionStart;
+    el.value = converted;
+    try { el.setSelectionRange(pos, pos); } catch(err) {}
+  }
+});
