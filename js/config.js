@@ -6,7 +6,7 @@
 var CONFIG = {
 
   // رابط Google Apps Script Web App — يُملأ بعد النشر
-  API_URL: 'YOUR_GAS_WEB_APP_URL_HERE',
+  API_URL: 'https://script.google.com/macros/s/AKfycbwIxS7S7erKzAwdAyseTD0iEUWPyGBg60s3Bz0Z_YAOw-Orl7yyXn6vT281H4Fb5asWGg/exec',
 
   // ---- ألوان الشعار (السعودية للطاقة) ----
   BRAND: {
