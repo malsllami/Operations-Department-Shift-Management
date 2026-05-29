@@ -126,32 +126,22 @@ var Dashboard = (function () {
       html += '</div></div>';
 
       // ---- 3. بطاقة إجازاتي ----
-      html += '<div class="dash-card req-stat-card" onclick="App.navigate(\'leaves\')" style="cursor:pointer">' +
-        '<div class="rsc-icon">🏖️</div>' +
-        '<h3 class="dash-card-title">إجازاتي</h3>' +
-        '<div class="rsc-stats">' +
-          _rscStat(lvTotal,   'إجمالي الطلبات', '#0066B3') +
-          _rscStat(lvPending, 'قيد المراجعة',   '#F59E0B') +
-          _rscStat(lvDone,    'تمت المراجعة',   '#22C55E') +
-        '</div>' +
-        '<div class="rsc-balance">' +
-          '<span>الرصيد المتبقي</span>' +
-          '<strong style="color:var(--primary)">' + (lv.annRem !== undefined ? lv.annRem + ' يوم' : '—') + '</strong>' +
-        '</div>' +
-        '<div class="rsc-link">عرض طلبات الإجازات ◄</div>' +
-      '</div>';
+      html += _reqStatCard('leaves',
+        '🏖️', 'إجازاتي',
+        lvTotal, lvPending, lvDone,
+        '<div class="rsc-balance-box">' +
+          '<span class="rsc-bal-label">الرصيد المتبقي</span>' +
+          '<span class="rsc-bal-val">' + (lv.annRem !== undefined ? lv.annRem + ' يوم' : '—') + '</span>' +
+        '</div>',
+        'عرض طلبات الإجازات'
+      );
 
       // ---- 4. بطاقة ساعاتي الإضافية ----
-      html += '<div class="dash-card req-stat-card" onclick="App.navigate(\'overtime\')" style="cursor:pointer">' +
-        '<div class="rsc-icon">⏱️</div>' +
-        '<h3 class="dash-card-title">ساعاتي الإضافية</h3>' +
-        '<div class="rsc-stats">' +
-          _rscStat(otTotal,   'إجمالي الطلبات', '#0066B3') +
-          _rscStat(otPending, 'قيد المراجعة',   '#F59E0B') +
-          _rscStat(otDone,    'تمت المراجعة',   '#22C55E') +
-        '</div>' +
-        '<div class="rsc-link">عرض طلبات الإضافي ◄</div>' +
-      '</div>';
+      html += _reqStatCard('overtime',
+        '⏱️', 'ساعاتي الإضافية',
+        otTotal, otPending, otDone,
+        '', 'عرض طلبات العمل الإضافي'
+      );
 
       // ---- 5. بطاقة المراكز والمناطق ----
       html += _buildRegionsCard(rgList, results[2], results[3]);
@@ -172,6 +162,32 @@ var Dashboard = (function () {
         };
       }
     });
+  }
+
+  // بطاقة إحصاءات الطلبات (مع إطارات لكل عنصر)
+  function _reqStatCard(navTo, icon, title, total, pending, done, extra, linkLabel) {
+    return '<div class="dash-card req-stat-card" onclick="App.navigate(\'' + navTo + '\')">' +
+      '<div class="rsc-header">' +
+        '<span class="rsc-icon-wrap">' + icon + '</span>' +
+        '<span class="rsc-title">' + title + '</span>' +
+      '</div>' +
+      '<div class="rsc-grid">' +
+        '<div class="rsc-box rsc-box-total">' +
+          '<span class="rsc-box-num">' + total + '</span>' +
+          '<span class="rsc-box-label">إجمالي الطلبات</span>' +
+        '</div>' +
+        '<div class="rsc-box rsc-box-pending">' +
+          '<span class="rsc-box-num">' + pending + '</span>' +
+          '<span class="rsc-box-label">قيد المراجعة</span>' +
+        '</div>' +
+        '<div class="rsc-box rsc-box-done">' +
+          '<span class="rsc-box-num">' + done + '</span>' +
+          '<span class="rsc-box-label">تمت المراجعة</span>' +
+        '</div>' +
+      '</div>' +
+      (extra || '') +
+      '<div class="rsc-link-btn">' + linkLabel + ' ◄</div>' +
+    '</div>';
   }
 
   function _epcRow(label, val) {
@@ -199,12 +215,16 @@ var Dashboard = (function () {
     var centerCount = Object.values(regions).reduce(function(s, a){ return s + a.length; }, 0);
 
     var html = '<div class="dash-card regions-card">' +
-      '<h3 class="dash-card-title">🗺️ المناطق والمراكز</h3>' +
-      '<div class="regions-summary">' +
-        '<div class="rs-item"><span class="rs-num">' + regionCount + '</span><span class="rs-label">منطقة</span></div>' +
-        '<div class="rs-item"><span class="rs-num">' + centerCount + '</span><span class="rs-label">مركز</span></div>' +
+      '<div class="rsc-header"><span class="rsc-icon-wrap">🗺️</span><span class="rsc-title">المناطق والمراكز</span></div>' +
+      '<div class="rsc-grid">' +
+        '<div class="rsc-box rsc-box-total">' +
+          '<span class="rsc-box-num">' + regionCount + '</span><span class="rsc-box-label">منطقة</span>' +
+        '</div>' +
+        '<div class="rsc-box rsc-box-pending">' +
+          '<span class="rsc-box-num">' + centerCount + '</span><span class="rsc-box-label">مركز</span>' +
+        '</div>' +
       '</div>' +
-      '<button class="btn-outline" id="btn-show-regions" style="width:100%;margin-top:10px">عرض التفاصيل ▼</button>' +
+      '<button class="btn-outline rsc-link-btn" id="btn-show-regions" style="width:100%;margin-top:12px;text-align:center">عرض التفاصيل ▼</button>' +
       '<div id="regions-panel" style="display:none;margin-top:12px">';
 
     if (rgList.length === 0) {
@@ -362,14 +382,14 @@ var Dashboard = (function () {
     var centerCount = Object.keys(centerSet).length;
 
     var html = '<div class="dash-card regions-card dash-card-wide">' +
-      '<h3 class="dash-card-title">🗺️ المناطق والمراكز</h3>' +
-      '<div class="regions-summary">' +
-        '<div class="rs-item"><span class="rs-num">' + regionCount + '</span><span class="rs-label">منطقة</span></div>' +
-        '<div class="rs-item"><span class="rs-num">' + centerCount + '</span><span class="rs-label">مركز</span></div>' +
-        '<div class="rs-item"><span class="rs-num">' + rgList.length + '</span><span class="rs-label">موظف</span></div>' +
-        '<div class="rs-item" style="color:#EF4444"><span class="rs-num" style="color:#EF4444">' + Object.keys(onLeaveIds).length + '</span><span class="rs-label">في إجازة</span></div>' +
+      '<div class="rsc-header"><span class="rsc-icon-wrap">🗺️</span><span class="rsc-title">المناطق والمراكز</span></div>' +
+      '<div class="rsc-grid rsc-grid-4">' +
+        '<div class="rsc-box rsc-box-total"><span class="rsc-box-num">' + regionCount + '</span><span class="rsc-box-label">منطقة</span></div>' +
+        '<div class="rsc-box rsc-box-pending"><span class="rsc-box-num">' + centerCount + '</span><span class="rsc-box-label">مركز</span></div>' +
+        '<div class="rsc-box rsc-box-done"><span class="rsc-box-num">' + rgList.length + '</span><span class="rsc-box-label">موظف</span></div>' +
+        '<div class="rsc-box rsc-box-leave"><span class="rsc-box-num">' + Object.keys(onLeaveIds).length + '</span><span class="rsc-box-label">في إجازة</span></div>' +
       '</div>' +
-      '<button class="btn-outline" id="btn-show-regions" style="width:100%;margin-top:10px">عرض التفاصيل ▼</button>' +
+      '<button class="btn-outline rsc-link-btn" id="btn-show-regions" style="width:100%;margin-top:12px;text-align:center">عرض التفاصيل ▼</button>' +
       '<div id="regions-panel" style="display:none;margin-top:12px">';
 
     Object.keys(byRegion).forEach(function(reg) {
@@ -473,4 +493,3 @@ var Dashboard = (function () {
 
   return { render: render };
 })();
-
