@@ -1,5 +1,5 @@
 // ============================================================
-// لوحات التحكم — 4 أدوار
+// لوحات التحكم — حسب الدور
 // ============================================================
 
 var Dashboard = (function () {
@@ -10,30 +10,311 @@ var Dashboard = (function () {
     el.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
 
     var role = Auth.getEffectiveRole();
+    var user = Auth.getUser();
 
-    API.getDashboard().then(function(res) {
-      if (!res.ok) { el.innerHTML = '<div class="empty-state">تعذّر تحميل لوحة التحكم</div>'; return; }
-      var data = res.data;
+    if (role === 'موظف') {
+      _renderEmployee(el, user);
+    } else {
+      _renderManager(el, role, user);
+    }
+  }
+
+  // ============================================================
+  // لوحة الموظف
+  // ============================================================
+  function _renderEmployee(el, user) {
+    var today = CONFIG.todayStr();
+
+    Promise.all([
+      API.getDashboard(),
+      API.getEmployee(),
+      API.getLeaves(),
+      API.getRegions(),
+      API.getLeaveReqs(),
+      API.getOvertimeReqs()
+    ]).then(function(results) {
+      var dash   = results[0].ok ? results[0].data  : {};
+      var emp    = results[1].ok ? results[1].data   : {};
+      var lv     = results[2].ok && results[2].data.length ? results[2].data[0] : {};
+      var rgList = results[3].ok ? results[3].data   : [];
+      var lvReqs = results[4].ok ? results[4].data   : [];
+      var otReqs = results[5].ok ? results[5].data   : [];
+
+      // هل الموظف في إجازة اليوم؟
+      var onLeave = lvReqs.some(function(r) {
+        return r.status === 'approved' && r.startDate <= today && r.endDate >= today;
+      });
+
+      // حالة الوردية اليوم
+      var shiftSt  = CONFIG.getShiftStatus(user.shift, today);
+      var stc      = CONFIG.STATUS[shiftSt.en] || CONFIG.STATUS.off;
+      var sk       = CONFIG.shiftKey(user.shift);
+      var sc       = CONFIG.SHIFTS[sk] || CONFIG.SHIFTS.a;
+      var colors   = (dash.colors) || {};
+
+      // إحصاءات الإجازات
+      var lvTotal   = lvReqs.length;
+      var lvPending = lvReqs.filter(function(r){ return r.status==='pending_review'; }).length;
+      var lvDone    = lvReqs.filter(function(r){ return r.status==='approved'||r.status==='rejected'; }).length;
+
+      // إحصاءات الأوفرتايم
+      var otTotal   = otReqs.length;
+      var otPending = otReqs.filter(function(r){ return r.status==='created'||r.status==='pending_supervisor'; }).length;
+      var otDone    = otReqs.filter(function(r){ return r.status==='sent_to_system'||r.status==='received'||r.status==='rejected'; }).length;
+
+      // رقم المنطقة والمركز
+      var myRg = rgList.length ? rgList[0] : {};
+
+      var html = '<div class="dashboard-grid emp-dashboard">';
+
+      // ---- 1. بطاقة بياناتي (أولى وكاملة العرض) ----
+      html += '<div class="dash-card emp-profile-card">';
+      html += '<div class="epc-header" style="background:' + sc.color + '">' +
+        '<div class="epc-avatar">' + ((user.name||'?')[0]) + '</div>' +
+        '<div class="epc-info">' +
+          '<div class="epc-name">' + (user.name||'') + '</div>' +
+          '<div class="epc-id">' + (user.empId||'') + '</div>' +
+        '</div>' +
+        '<div class="epc-shift-badge" style="background:' + stc.bg + ';color:' + stc.text + '">' +
+          stc.icon + ' ' + stc.label + ' اليوم' +
+        '</div>' +
+      '</div>';
+
+      html += '<div class="epc-body">';
+      html += _epcRow('الوردية',    'وردية ' + (user.shift||''));
+      html += _epcRow('رقم الجوال', emp.phone ? '+966 ' + emp.phone : '—');
+      html += _epcRow('المنطقة',    myRg.region || '—');
+      html += _epcRow('المركز',     myRg.center  || '—');
+      html += _epcRow('السيارة',    myRg.car     || '—');
+      html += _epcRow('الحالة',
+        onLeave
+          ? '<span class="status-pill status-leave">🏖️ في إجازة</span>'
+          : shiftSt.en === 'off'
+            ? '<span class="status-pill status-off">🏠 راحة</span>'
+            : '<span class="status-pill status-work">✅ مداوم</span>'
+      );
+      html += '</div>';
+
+      html += '<div class="epc-footer">' +
+        '<button class="btn-sm btn-primary" onclick="App.navigate(\'profile\')">تعديل بياناتي</button>' +
+      '</div>';
+      html += '</div>'; // emp-profile-card
+
+      // ---- 2. بطاقات الورديات الأربع ----
+      html += '<div class="dash-card dash-card-wide">';
+      html += '<h3 class="dash-card-title">حالة الورديات اليوم</h3>';
+      html += '<div class="shift-cards-row">';
+      var shiftStats = dash.shiftStats || {};
+      var todayShifts = dash.todayShifts || {};
+      ['a','b','c','d'].forEach(function(sk2) {
+        var label  = CONFIG.SHIFTS[sk2].label;
+        var color  = colors[sk2] || CONFIG.SHIFTS[sk2].color;
+        var st2    = todayShifts[sk2] || {};
+        var stc2   = CONFIG.STATUS[st2.en] || CONFIG.STATUS.off;
+        var stat   = shiftStats[sk2] || {};
+        html += '<div class="shift-status-card" style="border-color:' + color + '">' +
+          '<div class="ssc-header" style="background:' + color + '">' +
+            '<span class="ssc-label">وردية ' + label + '</span>' +
+            '<span class="ssc-status">' + stc2.icon + ' ' + (st2.ar||'—') + '</span>' +
+          '</div>' +
+          '<div class="ssc-body">' +
+            '<div class="ssc-stat"><span class="ssc-num">' + (stat.emp||0) + '</span><span>موظف</span></div>' +
+            '<div class="ssc-stat"><span class="ssc-num">' + (stat.sup||0) + '</span><span>مشرف</span></div>' +
+          '</div>' +
+        '</div>';
+      });
+      html += '</div></div>';
+
+      // ---- 3. بطاقة إجازاتي ----
+      html += '<div class="dash-card req-stat-card" onclick="App.navigate(\'leaves\')" style="cursor:pointer">' +
+        '<div class="rsc-icon">🏖️</div>' +
+        '<h3 class="dash-card-title">إجازاتي</h3>' +
+        '<div class="rsc-stats">' +
+          _rscStat(lvTotal,   'إجمالي الطلبات', '#0066B3') +
+          _rscStat(lvPending, 'قيد المراجعة',   '#F59E0B') +
+          _rscStat(lvDone,    'تمت المراجعة',   '#22C55E') +
+        '</div>' +
+        '<div class="rsc-balance">' +
+          '<span>الرصيد المتبقي</span>' +
+          '<strong style="color:var(--primary)">' + (lv.annRem !== undefined ? lv.annRem + ' يوم' : '—') + '</strong>' +
+        '</div>' +
+        '<div class="rsc-link">عرض طلبات الإجازات ◄</div>' +
+      '</div>';
+
+      // ---- 4. بطاقة ساعاتي الإضافية ----
+      html += '<div class="dash-card req-stat-card" onclick="App.navigate(\'overtime\')" style="cursor:pointer">' +
+        '<div class="rsc-icon">⏱️</div>' +
+        '<h3 class="dash-card-title">ساعاتي الإضافية</h3>' +
+        '<div class="rsc-stats">' +
+          _rscStat(otTotal,   'إجمالي الطلبات', '#0066B3') +
+          _rscStat(otPending, 'قيد المراجعة',   '#F59E0B') +
+          _rscStat(otDone,    'تمت المراجعة',   '#22C55E') +
+        '</div>' +
+        '<div class="rsc-link">عرض طلبات الإضافي ◄</div>' +
+      '</div>';
+
+      // ---- 5. بطاقة المراكز والمناطق ----
+      html += _buildRegionsCard(rgList, results[2], results[3]);
+
+      html += '</div>'; // dashboard-grid
+      el.innerHTML = html;
+
+      // ربط بطاقة المناطق (التوسع)
+      var regBtn = document.getElementById('btn-show-regions');
+      if (regBtn) {
+        regBtn.onclick = function() {
+          var panel = document.getElementById('regions-panel');
+          if (panel) {
+            var isOpen = panel.style.display !== 'none';
+            panel.style.display = isOpen ? 'none' : 'block';
+            regBtn.textContent  = isOpen ? 'عرض التفاصيل ▼' : 'إخفاء التفاصيل ▲';
+          }
+        };
+      }
+    });
+  }
+
+  function _epcRow(label, val) {
+    return '<div class="epc-row"><span class="epc-label">' + label + '</span><span class="epc-val">' + val + '</span></div>';
+  }
+
+  function _rscStat(num, label, color) {
+    return '<div class="rsc-stat">' +
+      '<span class="rss-num" style="color:' + color + '">' + num + '</span>' +
+      '<span class="rss-label">' + label + '</span>' +
+    '</div>';
+  }
+
+  function _buildRegionsCard(rgList, lvRes2, rgRes2) {
+    // رقم المراكز الفريدة والمناطق
+    var regions = {};
+    rgList.forEach(function(r) {
+      if (!r.region) return;
+      if (!regions[r.region]) regions[r.region] = [];
+      if (r.center && !regions[r.region].includes(r.center)) {
+        regions[r.region].push(r.center);
+      }
+    });
+    var regionCount = Object.keys(regions).length;
+    var centerCount = Object.values(regions).reduce(function(s, a){ return s + a.length; }, 0);
+
+    var html = '<div class="dash-card regions-card">' +
+      '<h3 class="dash-card-title">🗺️ المناطق والمراكز</h3>' +
+      '<div class="regions-summary">' +
+        '<div class="rs-item"><span class="rs-num">' + regionCount + '</span><span class="rs-label">منطقة</span></div>' +
+        '<div class="rs-item"><span class="rs-num">' + centerCount + '</span><span class="rs-label">مركز</span></div>' +
+      '</div>' +
+      '<button class="btn-outline" id="btn-show-regions" style="width:100%;margin-top:10px">عرض التفاصيل ▼</button>' +
+      '<div id="regions-panel" style="display:none;margin-top:12px">';
+
+    if (rgList.length === 0) {
+      html += '<div class="empty-state" style="padding:16px">لا توجد بيانات مناطق</div>';
+    } else {
+      // جدول كل الموظفين
+      html += '<div class="regions-table-wrap"><table class="regions-table">' +
+        '<thead><tr>' +
+          '<th>الرقم الوظيفي</th><th>الاسم</th><th>الوردية</th>' +
+          '<th>المنطقة</th><th>المركز</th><th>السيارة</th>' +
+        '</tr></thead><tbody>';
+
+      rgList.forEach(function(r) {
+        var sk = CONFIG.shiftKey(r.shift||'');
+        var sc = CONFIG.SHIFTS[sk] || CONFIG.SHIFTS.a;
+        html += '<tr>' +
+          '<td>' + (r.empId||'—')  + '</td>' +
+          '<td>' + (r.name||'—')   + '</td>' +
+          '<td><span class="shift-badge-sm" style="background:' + sc.color + ';color:#fff">وردية ' + (r.shift||'—') + '</span></td>' +
+          '<td>' + (r.region||'—') + '</td>' +
+          '<td>' + (r.center||'—') + '</td>' +
+          '<td>' + (r.car||'—')    + '</td>' +
+        '</tr>';
+      });
+
+      html += '</tbody></table></div>';
+    }
+
+    html += '</div></div>'; // regions-panel + regions-card
+    return html;
+  }
+
+  // ============================================================
+  // لوحة المشرف / الإداري / المدير
+  // ============================================================
+  function _renderManager(el, role, user) {
+    var today = CONFIG.todayStr();
+
+    Promise.all([
+      API.getDashboard(),
+      API.getLeaveReqs(),
+      API.getOvertimeReqs(),
+      API.getRegions()
+    ]).then(function(results) {
+      var dash    = results[0].ok ? results[0].data : {};
+      var lvReqs  = results[1].ok ? results[1].data : [];
+      var otReqs  = results[2].ok ? results[2].data : [];
+      var rgList  = results[3].ok ? results[3].data : [];
+      var colors  = dash.colors || {};
+      var todayShifts = dash.todayShifts || {};
+      var shiftStats  = dash.shiftStats  || {};
+
+      var lvPending = lvReqs.filter(function(r){ return r.status==='pending_review'; }).length;
+      var otPending = otReqs.filter(function(r){
+        return r.status==='created'||r.status==='sent_to_coordinator';
+      }).length;
 
       var html = '<div class="dashboard-grid">';
 
-      // بطاقة الورديات (مشترك للجميع)
-      html += _shiftStatusCard(data);
+      // ---- بطاقة الورديات ----
+      html += '<div class="dash-card dash-card-wide">';
+      html += '<h3 class="dash-card-title">حالة الورديات اليوم</h3>';
+      html += '<div class="shift-cards-row">';
+      ['a','b','c','d'].forEach(function(sk) {
+        var label  = CONFIG.SHIFTS[sk].label;
+        var color  = colors[sk] || CONFIG.SHIFTS[sk].color;
+        var st2    = todayShifts[sk] || {};
+        var stc2   = CONFIG.STATUS[st2.en] || CONFIG.STATUS.off;
+        var stat   = shiftStats[sk] || {};
+        html += '<div class="shift-status-card" style="border-color:' + color + '">' +
+          '<div class="ssc-header" style="background:' + color + '">' +
+            '<span class="ssc-label">وردية ' + label + '</span>' +
+            '<span class="ssc-status">' + stc2.icon + ' ' + (st2.ar||'—') + '</span>' +
+          '</div>' +
+          '<div class="ssc-body">' +
+            '<div class="ssc-stat"><span class="ssc-num">' + (stat.emp||0) + '</span><span>موظف</span></div>' +
+            '<div class="ssc-stat"><span class="ssc-num">' + (stat.sup||0) + '</span><span>مشرف</span></div>' +
+          '</div>' +
+        '</div>';
+      });
+      html += '</div></div>';
 
-      // بطاقة المتواجدون الآن
-      html += _onDutyCard(data);
+      // ---- بطاقة المتواجدون والطلبات المعلقة ----
+      var od = dash.onDuty || {};
+      html += '<div class="dash-card">' +
+        '<h3 class="dash-card-title">المتواجدون الآن</h3>' +
+        '<div class="on-duty-grid">' +
+          '<div class="od-item od-morning"><span class="od-icon">☀</span><span class="od-num">' + (od.morning||0) + '</span><span class="od-label">صباح</span></div>' +
+          '<div class="od-item od-evening"><span class="od-icon">🌙</span><span class="od-num">' + (od.evening||0) + '</span><span class="od-label">مساء</span></div>' +
+          '<div class="od-item od-total"><span class="od-icon">👥</span><span class="od-num">' + (od.total||0) + '</span><span class="od-label">الإجمالي</span></div>' +
+        '</div>' +
+      '</div>';
 
-      // بطاقة الطلبات المعلقة
-      if (role !== 'موظف') {
-        html += _pendingCard(data);
-      }
+      // ---- بطاقة الطلبات المعلقة ----
+      html += '<div class="dash-card">' +
+        '<h3 class="dash-card-title">الطلبات المعلقة</h3>' +
+        '<div class="pending-grid">' +
+          '<div class="pend-item" onclick="App.navigate(\'leaves\')">' +
+            '<span class="pend-icon">🏖️</span><span class="pend-num">' + lvPending + '</span><span class="pend-label">إجازات</span>' +
+          '</div>' +
+          '<div class="pend-item" onclick="App.navigate(\'overtime\')">' +
+            '<span class="pend-icon">⏱️</span><span class="pend-num">' + otPending + '</span><span class="pend-label">عمل إضافي</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
 
-      // بطاقة الموظف (للموظف فقط)
-      if (role === 'موظف') {
-        html += _employeeQuickCard();
-      }
+      // ---- بطاقة المراكز الشاملة (للمدير والمشرف) ----
+      html += _buildManagerRegionsCard(rgList, role, today, lvReqs, colors);
 
-      // بطاقة الاستهلاك (للمدير فقط)
+      // ---- بطاقة الاستهلاك للمدير ----
       if (role === 'مدير') {
         html += _apiUsageCard();
       }
@@ -41,164 +322,109 @@ var Dashboard = (function () {
       html += '</div>';
       el.innerHTML = html;
 
-      // تحميل بطاقة الاستهلاك بيانات حقيقية
-      if (role === 'مدير') {
-        _loadApiUsage();
+      // ربط بطاقة المناطق
+      var regBtn = document.getElementById('btn-show-regions');
+      if (regBtn) {
+        regBtn.onclick = function() {
+          var panel = document.getElementById('regions-panel');
+          if (panel) {
+            var isOpen = panel.style.display !== 'none';
+            panel.style.display = isOpen ? 'none' : 'block';
+            regBtn.textContent  = isOpen ? 'عرض التفاصيل ▼' : 'إخفاء التفاصيل ▲';
+          }
+        };
       }
 
-      // تحميل بيانات الموظف
-      if (role === 'موظف') {
-        _loadEmployeeCard();
-      }
+      if (role === 'مدير') { _loadApiUsage(); }
     });
   }
 
-  // ---- بطاقة حالة الورديات ----
-  function _shiftStatusCard(data) {
-    var shifts = data.todayShifts || {};
-    var stats  = data.shiftStats  || {};
-    var colors = data.colors      || {};
-
-    var html = '<div class="dash-card dash-card-wide">';
-    html += '<h3 class="dash-card-title">حالة الورديات اليوم</h3>';
-    html += '<div class="shift-cards-row">';
-
-    ['a','b','c','d'].forEach(function(sk) {
-      var label  = CONFIG.SHIFTS[sk].label;
-      var color  = colors[sk] || CONFIG.SHIFTS[sk].color;
-      var st     = shifts[sk] || {};
-      var stc    = CONFIG.STATUS[st.en] || CONFIG.STATUS.off;
-      var stat   = stats[sk] || {};
-      html += '<div class="shift-status-card" style="border-color:' + color + '">' +
-        '<div class="ssc-header" style="background:' + color + '">' +
-          '<span class="ssc-label">وردية ' + label + '</span>' +
-          '<span class="ssc-status">' + stc.icon + ' ' + (st.ar||'—') + '</span>' +
-        '</div>' +
-        '<div class="ssc-body">' +
-          '<div class="ssc-stat"><span class="ssc-num">' + (stat.emp||0) + '</span><span>موظف</span></div>' +
-          '<div class="ssc-stat"><span class="ssc-num">' + (stat.sup||0) + '</span><span>مشرف</span></div>' +
-        '</div>' +
-      '</div>';
+  function _buildManagerRegionsCard(rgList, role, today, lvReqs, colors) {
+    // الموظفون في إجازة اليوم
+    var onLeaveIds = {};
+    lvReqs.forEach(function(r) {
+      if (r.status === 'approved' && r.startDate <= today && r.endDate >= today) {
+        onLeaveIds[String(r.empId)] = true;
+      }
     });
 
-    html += '</div></div>';
+    // تجميع حسب المنطقة
+    var byRegion = {};
+    rgList.forEach(function(r) {
+      var reg = r.region || 'غير محدد';
+      if (!byRegion[reg]) byRegion[reg] = [];
+      byRegion[reg].push(r);
+    });
+
+    var regionCount = Object.keys(byRegion).length;
+    var centerSet   = {};
+    rgList.forEach(function(r) { if (r.center) centerSet[r.center] = true; });
+    var centerCount = Object.keys(centerSet).length;
+
+    var html = '<div class="dash-card regions-card dash-card-wide">' +
+      '<h3 class="dash-card-title">🗺️ المناطق والمراكز</h3>' +
+      '<div class="regions-summary">' +
+        '<div class="rs-item"><span class="rs-num">' + regionCount + '</span><span class="rs-label">منطقة</span></div>' +
+        '<div class="rs-item"><span class="rs-num">' + centerCount + '</span><span class="rs-label">مركز</span></div>' +
+        '<div class="rs-item"><span class="rs-num">' + rgList.length + '</span><span class="rs-label">موظف</span></div>' +
+        '<div class="rs-item" style="color:#EF4444"><span class="rs-num" style="color:#EF4444">' + Object.keys(onLeaveIds).length + '</span><span class="rs-label">في إجازة</span></div>' +
+      '</div>' +
+      '<button class="btn-outline" id="btn-show-regions" style="width:100%;margin-top:10px">عرض التفاصيل ▼</button>' +
+      '<div id="regions-panel" style="display:none;margin-top:12px">';
+
+    Object.keys(byRegion).forEach(function(reg) {
+      var emps = byRegion[reg];
+      // تجميع حسب المركز
+      var byCenters = {};
+      emps.forEach(function(e) {
+        var c = e.center || 'غير محدد';
+        if (!byCenters[c]) byCenters[c] = [];
+        byCenters[c].push(e);
+      });
+
+      html += '<div class="region-section">' +
+        '<div class="region-title">📍 ' + reg + ' <span class="rs-count">(' + emps.length + ' موظف)</span></div>';
+
+      Object.keys(byCenters).forEach(function(center) {
+        var cEmps = byCenters[center];
+        html += '<div class="center-section">' +
+          '<div class="center-title">🏢 ' + center + '</div>' +
+          '<div class="regions-table-wrap"><table class="regions-table"><thead><tr>' +
+            '<th>الرقم الوظيفي</th><th>الاسم</th><th>الوردية</th><th>المنطقة</th><th>المركز</th><th>السيارة</th>' +
+          '</tr></thead><tbody>';
+
+        cEmps.forEach(function(r) {
+          var sk = CONFIG.shiftKey(r.shift||'');
+          var sc = CONFIG.SHIFTS[sk] || CONFIG.SHIFTS.a;
+          var onL = onLeaveIds[String(r.empId)];
+          html += '<tr' + (onL ? ' class="row-on-leave"' : '') + '>' +
+            '<td>' + (r.empId||'—')  + '</td>' +
+            '<td>' + (r.name||'—') + (onL ? ' <span class="leave-badge-sm">🏖️ إجازة</span>' : '') + '</td>' +
+            '<td><span class="shift-badge-sm" style="background:' + sc.color + ';color:#fff">وردية ' + (r.shift||'—') + '</span></td>' +
+            '<td>' + (r.region||'—') + '</td>' +
+            '<td>' + (r.center||'—') + '</td>' +
+            '<td>' + (r.car||'—')    + '</td>' +
+          '</tr>';
+        });
+
+        html += '</tbody></table></div></div>'; // center-section
+      });
+
+      html += '</div>'; // region-section
+    });
+
+    if (rgList.length === 0) {
+      html += '<div class="empty-state" style="padding:16px">لا توجد بيانات مناطق</div>';
+    }
+
+    html += '</div></div>'; // regions-panel + regions-card
     return html;
-  }
-
-  // ---- بطاقة المتواجدون الآن ----
-  function _onDutyCard(data) {
-    var od = data.onDuty || {};
-    return '<div class="dash-card">' +
-      '<h3 class="dash-card-title">المتواجدون الآن</h3>' +
-      '<div class="on-duty-grid">' +
-        '<div class="od-item od-morning">' +
-          '<span class="od-icon">☀</span>' +
-          '<span class="od-num">' + (od.morning||0) + '</span>' +
-          '<span class="od-label">صباح</span>' +
-        '</div>' +
-        '<div class="od-item od-evening">' +
-          '<span class="od-icon">🌙</span>' +
-          '<span class="od-num">' + (od.evening||0) + '</span>' +
-          '<span class="od-label">مساء</span>' +
-        '</div>' +
-        '<div class="od-item od-total">' +
-          '<span class="od-icon">👥</span>' +
-          '<span class="od-num">' + (od.total||0) + '</span>' +
-          '<span class="od-label">الإجمالي</span>' +
-        '</div>' +
-      '</div>' +
-    '</div>';
-  }
-
-  // ---- بطاقة الطلبات المعلقة ----
-  function _pendingCard(data) {
-    return '<div class="dash-card">' +
-      '<h3 class="dash-card-title">الطلبات المعلقة</h3>' +
-      '<div class="pending-grid">' +
-        '<div class="pend-item" onclick="App.navigate(\'leaves\')">' +
-          '<span class="pend-icon">🏖️</span>' +
-          '<span class="pend-num">' + (data.pendingLeave||0) + '</span>' +
-          '<span class="pend-label">إجازات</span>' +
-        '</div>' +
-        '<div class="pend-item" onclick="App.navigate(\'overtime\')">' +
-          '<span class="pend-icon">⏱️</span>' +
-          '<span class="pend-num">' + (data.pendingOT||0) + '</span>' +
-          '<span class="pend-label">عمل إضافي</span>' +
-        '</div>' +
-      '</div>' +
-    '</div>';
-  }
-
-  // ---- بطاقة الموظف السريعة ----
-  function _employeeQuickCard() {
-    return '<div class="dash-card" id="emp-quick-card">' +
-      '<h3 class="dash-card-title">بياناتي</h3>' +
-      '<div class="loading-spinner"><div class="spinner small"></div></div>' +
-    '</div>';
-  }
-
-  function _loadEmployeeCard() {
-    var user = Auth.getUser();
-    if (!user) return;
-
-    Promise.all([
-      API.getEmployee(),
-      API.getLeaves(),
-      API.getRegions()
-    ]).then(function(results) {
-      var empRes  = results[0];
-      var lvRes   = results[1];
-      var rgRes   = results[2];
-      var card    = document.getElementById('emp-quick-card');
-      if (!card) return;
-
-      var emp  = empRes.ok  ? empRes.data  : {};
-      var lv   = lvRes.ok && lvRes.data.length ? lvRes.data[0] : {};
-      var rg   = rgRes.ok && rgRes.data.length ? rgRes.data[0] : {};
-      var st   = CONFIG.getShiftStatus(user.shift, CONFIG.todayStr());
-      var stc  = CONFIG.STATUS[st.en] || CONFIG.STATUS.off;
-      var sk   = CONFIG.shiftKey(user.shift);
-      var sc   = CONFIG.SHIFTS[sk] || CONFIG.SHIFTS.a;
-
-      card.innerHTML =
-        '<h3 class="dash-card-title">بياناتي</h3>' +
-        '<div class="emp-quick-header" style="background:' + sc.color + '">' +
-          '<div class="eqh-name">' + user.name + '</div>' +
-          '<div class="eqh-id">' + user.empId + '</div>' +
-          '<div class="eqh-status" style="background:' + stc.bg + ';color:' + stc.text + '">' +
-            stc.icon + ' ' + stc.label + ' اليوم' +
-          '</div>' +
-        '</div>' +
-        '<div class="emp-quick-body">' +
-          _quickRow('الوردية',  'وردية ' + user.shift) +
-          _quickRow('المنطقة',  rg.region || '—') +
-          _quickRow('المركز',   rg.center  || '—') +
-          _quickRow('رصيد الإجازات', (lv.annRem !== undefined ? lv.annRem : '—') + ' يوم') +
-          _quickRow('بطاقة العمل', _expiryHtml(emp.workDaysLeft)) +
-        '</div>' +
-        '<div class="emp-quick-actions">' +
-          '<button class="btn-sm btn-primary" onclick="App.navigate(\'profile\')">ملفي الشخصي</button>' +
-          '<button class="btn-sm btn-outline" onclick="App.navigate(\'leaves\')">طلب إجازة</button>' +
-        '</div>';
-    });
-  }
-
-  function _quickRow(label, val) {
-    return '<div class="quick-row"><span class="qr-label">' + label + '</span><span class="qr-val">' + val + '</span></div>';
-  }
-
-  function _expiryHtml(days) {
-    if (days === null || days === undefined) return '—';
-    var cls = CONFIG.expiryClass(days);
-    if (!cls) return '—';
-    var txt = days >= 0 ? days + ' يوم' : 'منتهية';
-    return '<span style="background:' + cls.bg + ';color:' + cls.text + ';padding:2px 8px;border-radius:99px;font-size:12px">' + txt + '</span>';
   }
 
   // ---- بطاقة الاستهلاك (المدير فقط) ----
   function _apiUsageCard() {
     return '<div class="dash-card dash-card-wide" id="api-usage-card">' +
-      '<h3 class="dash-card-title">بطاقة الاستهلاك — طلبات API اليومية (حد أقصى 20,000)</h3>' +
+      '<h3 class="dash-card-title">📊 بطاقة الاستهلاك — طلبات API اليومية (الحد الأقصى 20,000)</h3>' +
       '<div class="loading-spinner"><div class="spinner small"></div></div>' +
     '</div>';
   }
@@ -206,25 +432,18 @@ var Dashboard = (function () {
   function _loadApiUsage() {
     API.getApiUsage().then(function(res) {
       var card = document.getElementById('api-usage-card');
-      if (!card) return;
-      if (!res.ok) { card.innerHTML += '<p class="error-text">تعذّر تحميل بيانات الاستهلاك</p>'; return; }
-
+      if (!card || !res.ok) return;
       var d     = res.data;
       var pct   = Math.min(100, d.pct || 0);
       var color = pct >= 96 ? '#EF4444' : pct >= 76 ? '#F97316' : pct >= 61 ? '#EAB308' : '#22C55E';
-      var today = d.today  || 0;
-      var limit = d.limit  || 20000;
+      var limit = d.limit || 20000;
 
-      var html = '<h3 class="dash-card-title">بطاقة الاستهلاك — طلبات API اليومية (حد أقصى ' + limit.toLocaleString() + ')</h3>';
-
-      // شريط التقدم
+      var html = '<h3 class="dash-card-title">📊 بطاقة الاستهلاك — طلبات API اليومية (الحد الأقصى ' + limit.toLocaleString() + ')</h3>';
       html += '<div class="api-gauge-container">' +
-        '<div class="api-gauge-bar">' +
-          '<div class="api-gauge-fill" style="width:' + pct + '%;background:' + color + '"></div>' +
-        '</div>' +
+        '<div class="api-gauge-bar"><div class="api-gauge-fill" style="width:' + pct + '%;background:' + color + '"></div></div>' +
         '<div class="api-gauge-labels">' +
           '<span style="color:' + color + ';font-weight:700;font-size:1.4rem">' + pct + '%</span>' +
-          '<span class="api-count">' + today.toLocaleString() + ' / ' + limit.toLocaleString() + ' طلب</span>' +
+          '<span class="api-count">' + (d.today||0).toLocaleString() + ' / ' + limit.toLocaleString() + ' طلب</span>' +
         '</div>' +
         '<div class="api-gauge-zones">' +
           '<span style="color:#22C55E">0-60% طبيعي</span>' +
@@ -234,23 +453,20 @@ var Dashboard = (function () {
         '</div>' +
       '</div>';
 
-      // بطاقات أيام الأسبوع
       html += '<div class="api-week-cards">';
-      var weekData = d.weekData || [];
-      weekData.forEach(function(day) {
-        var date = new Date(day.date);
+      (d.weekData || []).forEach(function(day) {
+        var date    = new Date(day.date);
         var dayName = CONFIG.DAYS_AR[date.getDay()];
-        var dayPct  = Math.min(100, Math.round((day.count / limit) * 100));
-        var dc = dayPct >= 96 ? '#EF4444' : dayPct >= 76 ? '#F97316' : dayPct >= 61 ? '#EAB308' : '#22C55E';
+        var dp      = Math.min(100, Math.round((day.count / limit) * 100));
+        var dc      = dp >= 96 ? '#EF4444' : dp >= 76 ? '#F97316' : dp >= 61 ? '#EAB308' : '#22C55E';
         html += '<div class="api-day-card">' +
           '<div class="adc-day">' + dayName + '</div>' +
           '<div class="adc-date">' + date.getDate() + '</div>' +
-          '<div class="adc-bar"><div class="adc-fill" style="height:' + dayPct + '%;background:' + dc + '"></div></div>' +
+          '<div class="adc-bar"><div class="adc-fill" style="height:' + dp + '%;background:' + dc + '"></div></div>' +
           '<div class="adc-count">' + day.count + '</div>' +
         '</div>';
       });
       html += '</div>';
-
       card.innerHTML = html;
     });
   }
