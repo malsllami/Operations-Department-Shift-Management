@@ -1,5 +1,5 @@
 // ============================================================
-// تقويم الورديات — شبكة شهرية حقيقية
+// تقويم الورديات — تصميم محسّن
 // ============================================================
 
 var Calendar = (function () {
@@ -18,52 +18,66 @@ var Calendar = (function () {
 
   function _render() {
     if (!_el) return;
-    _el.innerHTML = '<div class="cal-loading"><div class="spinner"></div></div>';
-
+    _el.innerHTML = '<div class="cal-loading"><div class="spinner"></div><p>جارٍ تحميل التقويم…</p></div>';
     API.getSchedule(_year, _month).then(function(res) {
       if (!res.ok) { _el.innerHTML = '<div class="empty-state">تعذّر تحميل التقويم</div>'; return; }
-      _el.innerHTML = _buildGrid(res);
+      _el.innerHTML = _build(res);
       _bindNav();
       _scrollToday();
     });
   }
 
   // ============================================================
-  // بناء الشبكة الشهرية
+  // بناء التقويم
   // ============================================================
-  function _buildGrid(res) {
-    var schedule = res.schedule;
-    var summary  = res.summary;
-    var colors   = res.colors;
-    var today    = CONFIG.todayStr();
+  function _build(res) {
+    var schedule  = res.schedule;
+    var summary   = res.summary;
+    var colors    = res.colors;
+    var today     = CONFIG.todayStr();
 
-    // بناء خريطة date → بيانات اليوم
     var dayMap = {};
     schedule.forEach(function(d) { dayMap[d.date] = d; });
 
-    // أول وآخر يوم في الشهر
-    var firstDay = new Date(_year, _month - 1, 1);
-    var lastDay  = new Date(_year, _month, 0);
+    var firstDay  = new Date(_year, _month - 1, 1);
+    var lastDay   = new Date(_year, _month, 0);
     var totalDays = lastDay.getDate();
-    // يوم الأسبوع لأول يوم (0=أحد)
-    var startDow = firstDay.getDay();
+    var startDow  = firstDay.getDay();
 
     var html = '';
 
-    // ---- شريط التنقل ----
+    // ---- رأس التنقل ----
+    var hMid = Hijri.fromDate(new Date(_year, _month - 1, 15));
+    var hijriLabel = CONFIG.HIJRI_MONTHS[hMid.month - 1] + ' ' + hMid.year + ' هـ';
     html += '<div class="cal-nav-bar">' +
-      '<button class="cal-nav-btn" id="cal-prev">&#8250;</button>' +
+      '<button class="cal-nav-btn" id="cal-prev">&#10094;</button>' +
       '<div class="cal-nav-center">' +
-        '<span class="cal-month-title">' + CONFIG.MONTHS_AR[_month-1] + ' ' + _year + '</span>' +
+        '<div class="cal-title-wrap">' +
+          '<h2 class="cal-month-title">' + CONFIG.MONTHS_AR[_month-1] + ' ' + _year + '</h2>' +
+          '<span class="cal-title-hijri">' + hijriLabel + '</span>' +
+        '</div>' +
         '<button class="cal-today-btn" id="cal-today-btn">اليوم</button>' +
       '</div>' +
-      '<button class="cal-nav-btn" id="cal-next">&#8249;</button>' +
+      '<button class="cal-nav-btn" id="cal-next">&#10095;</button>' +
     '</div>';
 
-    // ---- الشبكة ----
-    html += '<div class="cal-month-grid">';
+    // ---- مفتاح الألوان (Legend) ----
+    html += '<div class="cal-legend">';
+    ['a','b','c','d'].forEach(function(sk) {
+      var color = colors[sk] || CONFIG.SHIFTS[sk].color;
+      html += '<span class="cal-leg-item">' +
+        '<span class="cal-leg-dot" style="background:' + color + '"></span>' +
+        'وردية ' + CONFIG.SHIFTS[sk].label + '</span>';
+    });
+    html += '<span class="cal-leg-item"><span class="cal-leg-icon">☀</span>صباح</span>' +
+            '<span class="cal-leg-item"><span class="cal-leg-icon">🌙</span>مساء</span>' +
+            '<span class="cal-leg-item"><span class="cal-leg-icon">🏠</span>راحة</span>';
+    html += '</div>';
 
-    // رأس أيام الأسبوع
+    // ---- الشبكة (قابلة للتمرير أفقياً على الجوال) ----
+    html += '<div class="cal-scroll-wrap"><div class="cal-month-grid">';
+
+    // أيام الأسبوع
     ['أحد','اثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت'].forEach(function(d) {
       html += '<div class="cal-weekday">' + d + '</div>';
     });
@@ -79,62 +93,63 @@ var Calendar = (function () {
       var dayData = dayMap[ds] || {};
       var isToday = ds === today;
       var hDate   = Hijri.fromDate(new Date(ds));
+      var dowIdx  = (startDow + d2 - 1) % 7;
+      var isWeekend = dowIdx === 5 || dowIdx === 6; // جمعة وسبت
 
-      html += '<div class="cal-day-cell' + (isToday ? ' cal-today' : '') + '"' +
-              (isToday ? ' id="cal-today-cell"' : '') + '>';
+      html += '<div class="cal-day-cell' +
+        (isToday    ? ' cal-today'   : '') +
+        (isWeekend  ? ' cal-weekend' : '') + '"' +
+        (isToday    ? ' id="cal-today-cell"' : '') + '>';
 
-      // رقم اليوم والهجري
-      html += '<div class="cal-day-header">' +
-        '<span class="cal-day-num' + (isToday ? ' cal-today-num' : '') + '">' + d2 + '</span>' +
-        '<span class="cal-day-hijri">' + hDate.day + ' ' + CONFIG.HIJRI_MONTHS[hDate.month-1].substring(0,3) + '</span>' +
+      // رقم اليوم الميلادي + الهجري أسفله
+      html += '<div class="cal-day-top">' +
+        '<div class="cal-day-num' + (isToday ? ' cal-today-num' : '') + '">' + d2 + '</div>' +
+        '<div class="cal-day-hijri">' + hDate.day + ' ' + CONFIG.HIJRI_MONTHS[hDate.month-1].substring(0,3) + '</div>' +
       '</div>';
 
-      // شارات الورديات الأربع
-      html += '<div class="cal-day-shifts">';
+      // أعمدة الورديات الأربع
+      html += '<div class="cal-day-body">';
       ['a','b','c','d'].forEach(function(sk) {
         var status = dayData[sk] || 'off';
-        var st     = CONFIG.STATUS[status] || CONFIG.STATUS.off;
+        var stc    = CONFIG.STATUS[status] || CONFIG.STATUS.off;
         var color  = colors[sk] || CONFIG.SHIFTS[sk].color;
-        var lbl    = CONFIG.SHIFTS[sk].label;
-        html += '<div class="cal-shift-pill" style="background:' + st.bg + ';color:' + st.text + ';border-color:' + color + '">' +
-          '<span class="csp-letter" style="background:' + color + '">' + lbl + '</span>' +
-          '<span class="csp-icon">' + st.icon + '</span>' +
-          '<span class="csp-txt">' + st.label + '</span>' +
+        html += '<div class="cal-shift-row" style="background:' + stc.bg + ';color:' + stc.text + '">' +
+          '<span class="csr-letter" style="background:' + color + '">' + CONFIG.SHIFTS[sk].label + '</span>' +
+          '<span class="csr-icon">' + stc.icon + '</span>' +
+          '<span class="csr-label">' + stc.label + '</span>' +
         '</div>';
       });
-      html += '</div>'; // cal-day-shifts
+      html += '</div>'; // cal-day-body
 
       html += '</div>'; // cal-day-cell
     }
 
-    // خلايا فارغة بعد آخر يوم لإكمال الأسبوع
-    var remaining = (7 - (startDow + totalDays) % 7) % 7;
+    // خلايا لإتمام الأسبوع الأخير
+    var filled = startDow + totalDays;
+    var remaining = filled % 7 === 0 ? 0 : 7 - (filled % 7);
     for (var r = 0; r < remaining; r++) {
       html += '<div class="cal-day-cell cal-day-empty"></div>';
     }
 
-    html += '</div>'; // cal-month-grid
+    html += '</div></div>'; // cal-month-grid + cal-scroll-wrap
 
-    // ---- بطاقات الملخص (بدل الجدول) ----
+    // ---- بطاقات الملخص ----
     html += '<div class="cal-summary-cards">';
     ['a','b','c','d'].forEach(function(sk) {
       var s     = summary[sk] || {};
       var color = colors[sk] || CONFIG.SHIFTS[sk].color;
-      var label = 'وردية ' + CONFIG.SHIFTS[sk].label;
       var total = (s.morning||0) + (s.evening||0);
-      html += '<div class="cal-sum-card" style="border-top:4px solid ' + color + '">' +
-        '<div class="csc-title" style="color:' + color + '">' + label + '</div>' +
+      html += '<div class="cal-sum-card" style="border-top: 4px solid ' + color + '">' +
+        '<div class="csc-title" style="color:' + color + '">وردية ' + CONFIG.SHIFTS[sk].label + '</div>' +
         '<div class="csc-rows">' +
-          '<div class="csc-row"><span class="csc-icon">☀</span><span class="csc-label">صباح</span><span class="csc-val">' + (s.morning||0) + '</span></div>' +
-          '<div class="csc-row"><span class="csc-icon">🌙</span><span class="csc-label">مساء</span><span class="csc-val">' + (s.evening||0) + '</span></div>' +
-          '<div class="csc-row"><span class="csc-icon">🏠</span><span class="csc-label">راحة</span><span class="csc-val">' + (s.off||0) + '</span></div>' +
+          '<div class="csc-row"><span class="csc-icon">☀</span><span class="csc-lbl">صباح</span><span class="csc-val">' + (s.morning||0) + '</span></div>' +
+          '<div class="csc-row"><span class="csc-icon">🌙</span><span class="csc-lbl">مساء</span><span class="csc-val">' + (s.evening||0) + '</span></div>' +
+          '<div class="csc-row"><span class="csc-icon">🏠</span><span class="csc-lbl">راحة</span><span class="csc-val">' + (s.off||0) + '</span></div>' +
         '</div>' +
-        '<div class="csc-total" style="color:' + color + '">' +
-          '<span>إجمالي دوام</span><span>' + total + ' يوم</span>' +
-        '</div>' +
+        '<div class="csc-total" style="color:' + color + '">' + total + ' يوم دوام</div>' +
       '</div>';
     });
-    html += '</div>'; // cal-summary-cards
+    html += '</div>';
 
     return html;
   }
@@ -143,8 +158,8 @@ var Calendar = (function () {
     var prev = _el.querySelector('#cal-prev');
     var next = _el.querySelector('#cal-next');
     var tod  = _el.querySelector('#cal-today-btn');
-    if (prev) prev.onclick = function() { _month--; if (_month<1){_month=12;_year--;} _render(); };
-    if (next) next.onclick = function() { _month++; if (_month>12){_month=1;_year++;} _render(); };
+    if (prev) prev.onclick = function() { _month--; if(_month<1){_month=12;_year--;} _render(); };
+    if (next) next.onclick = function() { _month++; if(_month>12){_month=1;_year++;} _render(); };
     if (tod)  tod.onclick  = function() { var n=new Date(); _year=n.getFullYear(); _month=n.getMonth()+1; _render(); };
   }
 
@@ -152,34 +167,75 @@ var Calendar = (function () {
     setTimeout(function() {
       var cell = document.getElementById('cal-today-cell');
       if (cell) cell.scrollIntoView({ behavior:'smooth', block:'center' });
-    }, 150);
+    }, 200);
   }
 
   // ============================================================
-  // تقويم مصغر لنموذج الإجازة
+  // التقويم المصغر لنموذج الإجازة — تصميم محسّن
   // ============================================================
   function renderMini(containerId, startDate, endDate, shift) {
     var el = document.getElementById(containerId);
-    if (!el || !startDate || !endDate) { if (el) el.innerHTML = ''; return; }
+    if (!el) { return; }
+    if (!startDate || !endDate) { el.innerHTML = ''; return; }
+
     var start = new Date(startDate);
     var end   = new Date(endDate);
     if (isNaN(start) || isNaN(end) || start > end) { el.innerHTML = ''; return; }
 
-    var html = '<div class="mini-cal-title">حالة الوردية خلال فترة الإجازة</div>';
-    html += '<div class="mini-cal-grid">';
-    var d = new Date(start);
+    var days  = [];
+    var d     = new Date(start);
     while (d <= end) {
       var ds  = d.getFullYear() + '-' + CONFIG._p(d.getMonth()+1) + '-' + CONFIG._p(d.getDate());
       var st  = CONFIG.getShiftStatus(shift, ds);
       var stc = CONFIG.STATUS[st.en] || CONFIG.STATUS.off;
-      html += '<div class="mini-cal-day" style="background:' + stc.bg + ';color:' + stc.text + '">' +
-        '<div class="mcd-date">' + d.getDate() + '</div>' +
-        '<div class="mcd-status">' + stc.icon + '</div>' +
-        '<div class="mcd-label">' + stc.label + '</div>' +
-      '</div>';
+      days.push({ num: d.getDate(), dow: d.getDay(), stc: stc, ds: ds });
       d.setDate(d.getDate() + 1);
     }
+
+    // تقسيم إلى أسابيع
+    var weeks = [];
+    var week  = [];
+    // ابدأ بإدراج أيام فارغة قبل أول يوم
+    var firstDow = days[0].dow;
+    for (var i = 0; i < firstDow; i++) week.push(null);
+    days.forEach(function(day) {
+      week.push(day);
+      if (week.length === 7) { weeks.push(week); week = []; }
+    });
+    if (week.length > 0) {
+      while (week.length < 7) week.push(null);
+      weeks.push(week);
+    }
+
+    var html = '<div class="mini-cal-wrap">' +
+      '<div class="mini-cal-title">📅 حالة الوردية خلال فترة الإجازة</div>';
+
+    // رأس أيام الأسبوع
+    html += '<div class="mini-cal-table">';
+    html += '<div class="mini-cal-head">';
+    ['أ','ث','ث','أ','خ','ج','س'].forEach(function(d) {
+      html += '<div class="mini-head-cell">' + d + '</div>';
+    });
     html += '</div>';
+
+    // صفوف الأسابيع
+    weeks.forEach(function(wk) {
+      html += '<div class="mini-cal-row">';
+      wk.forEach(function(day) {
+        if (!day) {
+          html += '<div class="mini-day-cell mini-day-empty"></div>';
+        } else {
+          html += '<div class="mini-day-cell" style="background:' + day.stc.bg + ';color:' + day.stc.text + ';border-color:' + day.stc.badge + '">' +
+            '<span class="mdc-num">' + day.num + '</span>' +
+            '<span class="mdc-icon">' + day.stc.icon + '</span>' +
+            '<span class="mdc-lbl">' + day.stc.label + '</span>' +
+          '</div>';
+        }
+      });
+      html += '</div>';
+    });
+
+    html += '</div></div>'; // mini-cal-table + mini-cal-wrap
     el.innerHTML = html;
   }
 
