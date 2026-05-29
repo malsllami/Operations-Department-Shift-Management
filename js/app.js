@@ -379,8 +379,16 @@ var App = (function () {
   }
 
   function _toggleMode() {
-    // كلا الاتجاهين (موظف↔مشرف/مدير) يتطلبان إدخال الرمز
-    _elevateModal();
+    if (Auth.isAdminMode()) {
+      // من مشرف/مدير/اداري → موظف: لا يحتاج رمز
+      Auth.deactivateElevatedRole();
+      _buildShell();
+      navigate('dashboard');
+      toast('تم التبديل لوضع الموظف ✓', 'info');
+    } else {
+      // من موظف → مشرف/مدير/اداري: يحتاج رمز شخصي
+      _elevateModal();
+    }
   }
 
   function _elevateModal() {
