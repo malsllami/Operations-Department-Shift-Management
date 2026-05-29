@@ -56,6 +56,9 @@ var Employees = (function () {
       html += '<button class="btn-add" onclick="App.navigate(\'employee-form\')">+ إضافة موظف</button>';
     }
     html += '</div>';
+    // شريط التصدير: المشرف يصدّر وردييته فقط، المدير/الإداري كل الورديات مجمّعة
+    var expShift = Auth.isSupervisor() ? Auth.getShift() : '';
+    html += Export.inlineBar('employees', expShift);
     return html;
   }
 
