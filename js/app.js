@@ -570,6 +570,47 @@ var App = (function () {
 // ---- تشغيل التطبيق ----
 document.addEventListener('DOMContentLoaded', function() { App.init(); });
 
+// ---- قائمة الجوال ----
+(function() {
+  function _openMenu() {
+    var sidebar  = document.getElementById('sidebar');
+    var overlay  = document.getElementById('sidebar-overlay');
+    var menuBtn  = document.getElementById('menu-toggle');
+    if (sidebar) sidebar.classList.add('open');
+    if (overlay) overlay.classList.add('show');
+    if (menuBtn) menuBtn.classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function _closeMenu() {
+    var sidebar  = document.getElementById('sidebar');
+    var overlay  = document.getElementById('sidebar-overlay');
+    var menuBtn  = document.getElementById('menu-toggle');
+    if (sidebar) sidebar.classList.remove('open');
+    if (overlay) overlay.classList.remove('show');
+    if (menuBtn) menuBtn.classList.remove('is-open');
+    document.body.style.overflow = '';
+  }
+
+  document.addEventListener('click', function(e) {
+    var btn = document.getElementById('menu-toggle');
+    if (btn && (btn === e.target || btn.contains(e.target))) {
+      var isOpen = document.getElementById('sidebar').classList.contains('open');
+      if (isOpen) _closeMenu(); else _openMenu();
+      return;
+    }
+
+    // إغلاق عند الضغط على الـ overlay
+    var overlay = document.getElementById('sidebar-overlay');
+    if (overlay && e.target === overlay) { _closeMenu(); return; }
+
+    // إغلاق عند الضغط على عنصر نافيجيشن داخل السايدبار
+    if (e.target.closest && e.target.closest('.nav-item')) {
+      if (window.innerWidth <= 768) _closeMenu();
+    }
+  });
+})();
+
 // ---- تحويل الأرقام العربية/الفارسية تلقائياً في جميع حقول الإدخال ----
 document.addEventListener('input', function(e) {
   var el = e.target;
