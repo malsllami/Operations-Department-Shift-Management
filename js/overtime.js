@@ -278,11 +278,11 @@ var Overtime = (function () {
 
       _submitting = true;
       var btn = document.getElementById('otf-submit');
-      btn.disabled = true; btn.textContent = 'جارٍ الإرسال...';
+      App.btnLoad(btn);
 
       API.submitOvertime(data).then(function(res) {
         _submitting = false;
-        btn.disabled = false; btn.textContent = 'إرسال الطلب';
+        App.btnDone(btn);
         if (res.ok) {
           App.toast('تم إرسال الطلب: ' + res.no, 'success');
           App.navigate('overtime');
