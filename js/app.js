@@ -250,8 +250,9 @@ var App = (function () {
       { id:'transfers',    icon:'🔀', label:'التنقلات',            show: role==='مدير'||role==='مشرف' },
       { id:'export',       icon:'📊', label:'التصدير',             show: role==='مدير'||role==='اداري' },
       { id:'notifications',icon:'🔔', label:'الإشعارات',          show: true },
-      { id:'profile',      icon:'👤', label:'ملفي الشخصي',         show: true },
-      { id:'settings',     icon:'⚙️', label:'الإعدادات',           show: role==='مدير' }
+      { id:'profile',       icon:'👤', label:'ملفي الشخصي',          show: true },
+      { id:'employee-card', icon:'🪪', label:'بطاقة الموظف الشاملة', show: true },
+      { id:'settings',      icon:'⚙️', label:'الإعدادات',            show: role==='مدير' }
     ];
 
     nav.innerHTML = items.filter(function(i) { return i.show; }).map(function(item) {
@@ -355,7 +356,7 @@ var App = (function () {
     var role   = Auth.getEffectiveRole();
     var titles = {
       dashboard:'الرئيسية', calendar:'تقويم الورديات',
-      employees:'الموظفون', 'employee-form':'بيانات الموظف', 'employee-view':'ملف الموظف',
+      employees:'الموظفون', 'employee-form':'بيانات الموظف', 'employee-view':'ملف الموظف', 'employee-card':'بطاقة الموظف الشاملة',
       leaves:'طلبات الإجازات', 'leave-form':'طلب إجازة',
       overtime:'العمل الإضافي', 'overtime-form':'طلب عمل إضافي',
       transfers:'التنقلات بين الورديات', notifications:'الإشعارات',
@@ -371,6 +372,7 @@ var App = (function () {
       case 'employees':      Employees.renderList('view-content', params && params.filterShift); break;
       case 'employee-form':  Employees.renderForm('view-content', params || {}, !!(params && (params.emp || params.empId))); break;
       case 'employee-view':  Employees.renderProfile('view-content', params && params.empId); break;
+      case 'employee-card':  Employees.renderFullCard('view-content', params && params.empId); break;
       case 'leaves':         Leaves.renderList('view-content'); break;
       case 'leave-form':     Leaves.renderForm('view-content'); break;
       case 'overtime':       Overtime.renderList('view-content'); break;
