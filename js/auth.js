@@ -83,27 +83,13 @@ var Auth = (function () {
   // ============================================================
 
   function activateElevatedRole(code) {
-    return API.getSettings().then(function(res) {
-      if (!res.ok) return { ok: false, error: 'forbidden' };
-      var cfg = res.data;
-
-      var targetRole = null;
-      var storedCode = null;
-
-      if (_user.role === 'مدير')       { storedCode = cfg.admin_code;      targetRole = 'مدير'; }
-      else if (_user.role === 'مشرف')  { storedCode = cfg.supervisor_code; targetRole = 'مشرف'; }
-      else if (_user.role === 'اداري') { storedCode = cfg.viewer_code;     targetRole = 'اداري'; }
-
-      if (!storedCode || !targetRole)
-        return { ok: false, error: 'no_elevated_role' };
-      if (String(code) !== String(storedCode))
-        return { ok: false, error: 'invalid_code' };
-
+    return API.verifyRoleCode(code).then(function(res) {
+      if (!res.ok) return res;
       _adminMode  = true;
-      _activeRole = targetRole;
+      _activeRole = res.role;
       sessionStorage.setItem('sm_mode', 'admin');
       _save();
-      return { ok: true, role: targetRole };
+      return { ok: true, role: res.role };
     });
   }
 
