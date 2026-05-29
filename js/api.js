@@ -196,10 +196,16 @@ var API = (function () {
     return _call({ action:'buildComprehensiveView' });
   }
 
+  // ---- التحقق من رمز الصلاحية ----
+  function verifyRoleCode(code) {
+    return _call({ action:'verifyRoleCode', code: code });
+  }
+
   return {
     login, changePassword,
     getSchedule,
     getSettings, updateSettings,
+    verifyRoleCode,
     getEmployees, getEmployee, addEmployee, updateEmployee,
     getRegions, updateRegion,
     getEquipment, updateEquipment,
