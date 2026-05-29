@@ -269,9 +269,14 @@ var App = (function () {
   }
 
   function _updateModeBtn(btn) {
-    var active = Auth.isAdminMode();
-    btn.textContent = active ? '👤 وضع الموظف' : '🛡️ وضع الإدارة';
-    btn.title = active ? 'الانتقال لواجهة الموظف' : 'تفعيل لوحة الإدارة';
+    var active    = Auth.isAdminMode();
+    var baseRole  = Auth.getBaseRole();
+    var roleLabels = { 'مدير':'المدير', 'مشرف':'المشرف', 'اداري':'الإداري' };
+    var label = roleLabels[baseRole] || 'الإدارة';
+    btn.innerHTML = active
+      ? '<span>👤</span> وضع الموظف'
+      : '<span>🛡️</span> لوحة ' + label;
+    btn.title = active ? 'الانتقال لواجهة الموظف' : ('تفعيل لوحة ' + label);
   }
 
   function _toggleMode() {
@@ -281,18 +286,21 @@ var App = (function () {
       navigate('dashboard');
       toast('تم التبديل لوضع الموظف', 'info');
     } else {
-      // طلب الرمز الثانوي
       _elevateModal();
     }
   }
 
   function _elevateModal() {
+    var baseRole   = Auth.getBaseRole();
+    var roleLabels = { 'مدير':'المدير', 'مشرف':'المشرف', 'اداري':'الإداري' };
+    var label = roleLabels[baseRole] || 'الإدارة';
+
     var modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = '<div class="modal-box">' +
-      '<h3>🛡️ تفعيل لوحة الإدارة</h3>' +
-      '<p>أدخل رمز الصلاحية الخاص بك</p>' +
-      '<div class="pw-wrap"><input type="password" id="elev-code" class="form-input" placeholder="رمز الصلاحية">' +
+      '<h3>🛡️ تفعيل لوحة ' + label + '</h3>' +
+      '<p>أدخل رمز الصلاحية الخاص بـ' + label + '</p>' +
+      '<div class="pw-wrap"><input type="password" id="elev-code" class="form-input" placeholder="رمز الصلاحية" autocomplete="off">' +
         '<button type="button" class="pw-eye" onclick="App.togglePw(\'elev-code\',this)">👁</button>' +
       '</div>' +
       '<div id="elev-err" class="form-error" style="display:none"></div>' +
@@ -303,10 +311,17 @@ var App = (function () {
     '</div>';
     document.body.appendChild(modal);
 
+    // تفعيل إرسال بـ Enter
+    modal.querySelector('#elev-code').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') modal.querySelector('#elev-ok').click();
+    });
+    setTimeout(function() { var el = modal.querySelector('#elev-code'); if (el) el.focus(); }, 50);
+
     modal.querySelector('#elev-ok').onclick = function() {
       var code  = modal.querySelector('#elev-code').value;
       var errEl = modal.querySelector('#elev-err');
       var btn   = this;
+      if (!code) { errEl.textContent = 'يرجى إدخال الرمز'; errEl.style.display = 'block'; return; }
       btn.disabled = true; btn.textContent = 'جارٍ التحقق...';
       errEl.style.display = 'none';
 
@@ -316,10 +331,13 @@ var App = (function () {
           modal.remove();
           _buildShell();
           navigate('dashboard');
-          toast('تم تفعيل لوحة ' + res.role, 'success');
+          toast('تم تفعيل لوحة ' + label + ' ✓', 'success');
         } else {
-          errEl.textContent = res.error === 'invalid_code' ? 'الرمز غير صحيح' : 'تعذّر التحقق';
+          var errs = { invalid_code: 'الرمز غير صحيح', no_elevated_role: 'لا توجد صلاحيات مرفوعة' };
+          errEl.textContent = errs[res.error] || 'تعذّر التحقق';
           errEl.style.display = 'block';
+          modal.querySelector('#elev-code').value = '';
+          modal.querySelector('#elev-code').focus();
         }
       });
     };
