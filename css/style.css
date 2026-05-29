@@ -1478,3 +1478,17 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 .cal-nav-btn:active  { animation: btn-press 0.18s ease-out !important; }
 .cal-today-btn:active{ animation: btn-press 0.18s ease-out !important; }
 .ot-period-tab:active{ animation: btn-press 0.18s ease-out !important; }
+
+/* شارات حالة الإشعارات */
+.notif-title-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px; }
+.notif-status-pill {
+  font-size:0.72rem; font-weight:700; padding:2px 10px; border-radius:50px;
+  flex-shrink:0; white-space:nowrap;
+}
+.notif-unread-dot {
+  width:8px; height:8px; border-radius:50%; background:#EF4444;
+  flex-shrink:0; display:inline-block;
+}
+.notif-meta { display:flex; gap:12px; margin-top:4px; }
+.notif-date { font-size:0.78rem; color:var(--text-muted); }
+.notif-ref  { font-size:0.78rem; color:var(--primary); font-weight:600; }
