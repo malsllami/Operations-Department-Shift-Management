@@ -40,6 +40,11 @@ var Dashboard = (function () {
       var lvReqs = results[4].ok ? results[4].data   : [];
       var otReqs = results[5].ok ? results[5].data   : [];
 
+      // إذا كان المشرف/المدير في وضع الموظف، أظهر بياناته فقط
+      var myId = String(user.empId);
+      lvReqs = lvReqs.filter(function(r) { return String(r.empId) === myId; });
+      otReqs = otReqs.filter(function(r) { return String(r.empId) === myId; });
+
       // هل الموظف في إجازة اليوم؟
       var onLeave = lvReqs.some(function(r) {
         return r.status === 'approved' && r.startDate <= today && r.endDate >= today;
