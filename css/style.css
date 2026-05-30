@@ -1453,6 +1453,68 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 }
 
 /* ============================================================
+   بطاقة حالة الدوام في نموذج الأوفرتايم
+   ============================================================ */
+.ot-duty-card {
+  margin: 0 0 16px;
+}
+.ot-duty-inner {
+  display: flex;
+  align-items: stretch;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 3px 14px rgba(0,0,0,0.09);
+  border: 1.5px solid rgba(0,0,0,0.06);
+  transition: box-shadow 0.2s;
+}
+.ot-duty-shift {
+  min-width: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 10px;
+  writing-mode: initial;
+}
+.ot-duty-shift-name {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #fff;
+}
+.ot-duty-info {
+  flex: 1;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: center;
+}
+.ot-duty-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.ot-duty-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 14px;
+  border-radius: 50px;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+.ot-duty-date {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.ot-duty-desc {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* ============================================================
    بطاقة الموظف الشاملة — تبويبات الفترة والعمل الإضافي
    ============================================================ */
 .ot-card-section { grid-column: 1 / -1; }
@@ -1558,9 +1620,28 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 /* بطاقات الورديات القابلة للنقر */
 .ssc-clickable { cursor:pointer; transition:transform 0.18s, box-shadow 0.18s !important; }
 .ssc-clickable:hover { transform:translateY(-4px) !important; box-shadow:0 10px 28px rgba(0,0,0,0.18) !important; }
-.ssc-total { border-right:1px solid rgba(255,255,255,0.2); padding-right:12px !important; }
-.ssc-num-total { color:var(--primary) !important; font-size:1.8rem !important; }
 .ssc-footer { padding:6px 10px; font-size:0.8rem; font-weight:700; text-align:center; border-top:1px solid rgba(255,255,255,0.15); }
+
+/* تفصيل المناطق داخل بطاقة الوردية */
+.ssc-regions { padding: 6px 10px 4px; border-top: 1px solid rgba(0,0,0,0.07); }
+.ssc-reg-row { display: flex; justify-content: space-between; align-items: center; padding: 2px 0; font-size: 0.78rem; }
+.ssc-reg-name { color: var(--text-muted); }
+.ssc-reg-count { font-weight: 700; color: var(--primary); font-size: 0.85rem; }
+
+/* بطاقة التصدير السريع في لوحة المدير */
+.dash-export-card { border: 2px dashed var(--primary) !important; background: var(--bg-card); }
+.dash-export-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-top: 10px; }
+.dash-exp-section { background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+.dash-exp-comp { grid-column: span 1; border: 1.5px solid var(--primary); border-radius: 10px; }
+.dash-exp-label { font-size: 0.83rem; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; }
+.dash-exp-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+
+@media (max-width: 900px) {
+  .dash-export-grid { grid-template-columns: repeat(2,1fr); }
+}
+@media (max-width: 560px) {
+  .dash-export-grid { grid-template-columns: 1fr; }
+}
 
 /* شارة حالة الدوام في جدول المناطق */
 .duty-pill { display:inline-block; padding:2px 10px; border-radius:50px; font-size:0.78rem; font-weight:700; white-space:nowrap; }
