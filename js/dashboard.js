@@ -302,7 +302,58 @@ var Dashboard = (function () {
         return r.status==='created'||r.status==='sent_to_coordinator';
       }).length;
 
+      // تجميع عدد الموظفين حسب المنطقة لكل وردية (من rgList)
+      var shiftRegions = { a:{}, b:{}, c:{}, d:{} };
+      var shiftMap = { 'أ':'a','ب':'b','ج':'c','د':'d' };
+      rgList.forEach(function(r) {
+        if (!r.region) return;
+        var sk2 = shiftMap[r.shift] || 'a';
+        shiftRegions[sk2][r.region] = (shiftRegions[sk2][r.region] || 0) + 1;
+      });
+
       var html = '<div class="dashboard-grid">';
+
+      // ============================================================
+      // 0. بطاقة التصدير السريع — أول عنصر لدى المدير والإداري
+      // ============================================================
+      if (role === 'مدير' || role === 'اداري') {
+        html += '<div class="dash-card dash-card-wide dash-export-card">' +
+          '<h3 class="dash-card-title">📤 تصدير البيانات السريع</h3>' +
+          '<div class="dash-export-grid">' +
+            '<div class="dash-exp-section">' +
+              '<div class="dash-exp-label">الموظفون</div>' +
+              '<div class="dash-exp-btns">' +
+                '<button class="btn-exp-sm btn-exp-xl" onclick="Export.quickExport(\'employees\',\'\',\'excel\')">📊 Excel</button>' +
+                '<button class="btn-exp-sm btn-exp-pr"  onclick="Export.quickExport(\'employees\',\'\',\'print\')">🖨️ طباعة</button>' +
+              '</div>' +
+            '</div>' +
+            '<div class="dash-exp-section">' +
+              '<div class="dash-exp-label">طلبات الإجازات</div>' +
+              '<div class="dash-exp-btns">' +
+                '<button class="btn-exp-sm btn-exp-xl" onclick="Export.quickExport(\'leaves\',\'\',\'excel\')">📊 Excel</button>' +
+                '<button class="btn-exp-sm btn-exp-pr"  onclick="Export.quickExport(\'leaves\',\'\',\'print\')">🖨️ طباعة</button>' +
+              '</div>' +
+            '</div>' +
+            '<div class="dash-exp-section">' +
+              '<div class="dash-exp-label">العمل الإضافي</div>' +
+              '<div class="dash-exp-btns">' +
+                '<button class="btn-exp-sm btn-exp-xl" onclick="Export.quickExport(\'overtime\',\'\',\'excel\')">📊 Excel</button>' +
+                '<button class="btn-exp-sm btn-exp-pr"  onclick="Export.quickExport(\'overtime\',\'\',\'print\')">🖨️ طباعة</button>' +
+              '</div>' +
+            '</div>' +
+            '<div class="dash-exp-section dash-exp-comp">' +
+              '<div class="dash-exp-label">تصدير شامل (4 جداول)</div>' +
+              '<div class="dash-exp-btns">' +
+                '<button class="btn-exp-sm btn-exp-xl" onclick="Dashboard.quickComprehensive(\'excel\')">📊 Excel شامل</button>' +
+                '<button class="btn-exp-sm btn-exp-pr"  onclick="Dashboard.quickComprehensive(\'print\')">🖨️ طباعة</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div style="text-align:left;margin-top:8px">' +
+            '<button class="btn-outline" style="font-size:0.8rem;padding:4px 14px" onclick="App.navigate(\'export\')">⚙️ خيارات التصدير المتقدمة</button>' +
+          '</div>' +
+        '</div>';
+      }
 
       // ============================================================
       // 1. بطاقات الورديات — قابلة للنقر لفتح جدول الوردية
@@ -316,7 +367,16 @@ var Dashboard = (function () {
         var st2    = todayShifts[sk] || {};
         var stc2   = CONFIG.STATUS[st2.en] || CONFIG.STATUS.off;
         var stat   = shiftStats[sk] || {};
-        var total  = (stat.emp||0) + (stat.sup||0);
+
+        // تفصيل المناطق لهذه الوردية
+        var regData = shiftRegions[sk] || {};
+        var regKeys = Object.keys(regData);
+        var regHtml = regKeys.length
+          ? '<div class="ssc-regions">' + regKeys.map(function(reg) {
+              return '<div class="ssc-reg-row"><span class="ssc-reg-name">📍 ' + reg + '</span><span class="ssc-reg-count">' + regData[reg] + '</span></div>';
+            }).join('') + '</div>'
+          : '';
+
         html += '<div class="shift-status-card ssc-clickable" style="border-color:' + color + '" ' +
           'onclick="App.navigate(\'employees\',{filterShift:\'' + label + '\'})" title="اضغط لعرض موظفي وردية ' + label + '">' +
           '<div class="ssc-header" style="background:' + color + '">' +
@@ -326,8 +386,8 @@ var Dashboard = (function () {
           '<div class="ssc-body">' +
             '<div class="ssc-stat"><span class="ssc-num">' + (stat.emp||0) + '</span><span>موظف</span></div>' +
             '<div class="ssc-stat"><span class="ssc-num">' + (stat.sup||0) + '</span><span>مشرف</span></div>' +
-            '<div class="ssc-stat ssc-total"><span class="ssc-num ssc-num-total">' + total + '</span><span>الإجمالي</span></div>' +
           '</div>' +
+          regHtml +
           '<div class="ssc-footer" style="background:' + stc2.bg + ';color:' + stc2.text + '">' +
             stc2.icon + ' ' + (st2.ar||'راحة') + ' اليوم' +
           '</div>' +
@@ -549,5 +609,68 @@ var Dashboard = (function () {
     });
   }
 
-  return { render: render };
+  function quickComprehensive(format) {
+    var today = CONFIG.todayStr();
+    var d = new Date();
+    var monthStart = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-01';
+    // تصدير شامل لجميع الورديات بدون تصفية تاريخية
+    Promise.all([
+      API.getEmployees(), API.getRegions(), API.getEquipment(), API.getLeaves(),
+      API.getLeaveReqs({ from: '', to: '' }),
+      API.getOvertimeReqs({ from: '', to: '' })
+    ]).then(function(r) {
+      var empList = r[0].ok ? r[0].data : [];
+      var rgMap = {}; if (r[1].ok) r[1].data.forEach(function(x){ rgMap[x.empId]=x; });
+      var eqMap = {}; if (r[2].ok) r[2].data.forEach(function(x){ eqMap[x.empId]=x; });
+      var lvMap = {}; if (r[3].ok) r[3].data.forEach(function(x){ lvMap[x.empId]=x; });
+      var lrList = r[4].ok ? r[4].data : [];
+      var otList = r[5].ok ? r[5].data : [];
+      var u = Auth.getUser();
+      var fileName = ((u && u.name) ? u.name : 'تصدير') + '_' + today;
+
+      var shiftOrder = ['أ','ب','ج','د'];
+      var shiftMap2  = {};
+      ['a','b','c','d'].forEach(function(k,i){ shiftMap2[shiftOrder[i]] = k; });
+      function buildGroups(list, toRow) {
+        var groups = {};
+        list.forEach(function(item){ var s=item.shift; (groups[s]=groups[s]||[]).push(item); });
+        return shiftOrder.filter(function(s){ return groups[s]&&groups[s].length; }).map(function(s){
+          var sk=shiftMap2[s]||'a';
+          return { shift:s, label:CONFIG.SHIFTS[sk].label, color:CONFIG.SHIFTS[sk].color, bg:CONFIG.SHIFTS[sk].bg, rows:groups[s].map(toRow) };
+        });
+      }
+
+      var empToRow = function(e){
+        var rg=rgMap[e.empId]||{};var eq=eqMap[e.empId]||{};
+        return [e.empId,e.name,e.phone?'+966 '+e.phone:'',e.shift,e.role,
+          CONFIG.fmtDate(e.workExpDate),e.workDaysLeft||'',CONFIG.fmtDate(e.srcExpDate),e.srcDaysLeft||'',
+          rg.region||'',rg.center||'',rg.car||'',eq.cat2Shirt||'',eq.cat2Pants||'',eq.shoes||'',eq.cat4||'',eq.bravo||'',eq.major||'',eq.other||''];
+      };
+      var lvToRow = function(e){
+        var lv=lvMap[e.empId]||{};
+        return [e.empId,e.name,e.shift,lv.annBal||0,lv.annUsed||0,lv.annRem||0,lv.schedBal||0,lv.schedUsed||0,lv.schedRem||0,
+          lv.sick||'',lv.birth||'',lv.death||'',lv.marriage||'',lv.exam||'',lv.workCourse||'',lv.longService||'',lv.otherTypes||''];
+      };
+      var lrToRow = function(x){
+        var T={annual:'سنوية',scheduled:'مجدولة',sick:'مرضية',birth:'مولود',death:'وفاة',marriage:'زواج',exam:'اختبار',work_course:'دورة',long_service:'خدمة'};
+        var S={pending_review:'قيد المراجعة',approved:'معتمد',rejected:'مرفوض'};
+        return [x.no,x.empId,x.name,x.shift,T[x.type]||x.type,CONFIG.fmtDate(x.startDate),CONFIG.fmtDate(x.endDate),x.days,S[x.status]||x.status,x.empNotes||'',x.reviewerName||''];
+      };
+      var otToRow = function(x){
+        return [x.no,x.empId,x.name,x.shift,CONFIG.fmtDate(x.date),x.day,x.hours,x.reason,CONFIG.otStatusInfo(x.status).label,CONFIG.fmtDate(x.createdDate)];
+      };
+
+      var compData = {
+        comprehensive: true, fileName: fileName,
+        employees:    { title:'الموظفون',       headers:['الرقم الوظيفي','الاسم','الجوال','الوردية','الصلاحية','انتهاء بطاقة العمل','أيام','انتهاء المصدر','أيام','المنطقة','المركز','السيارة','CAT2 قميص','CAT2 بنطلون','شوز','CAT4','برافو','ميجر','أخرى'], rows:empList.map(empToRow), grouped:true, shiftGroups:buildGroups(empList,empToRow) },
+        leaveBalance: { title:'أرصدة الإجازات', headers:['الرقم الوظيفي','الاسم','الوردية','رصيد سنوية','مستخدم','متبقي','رصيد مجدولة','مستخدم مجدولة','متبقي مجدولة','مرضية','مولود','وفاة','زواج','اختبارات','دورة عمل','خدمة طويلة','أخرى'], rows:empList.map(lvToRow), grouped:true, shiftGroups:buildGroups(empList,lvToRow) },
+        leaveReqs:    { title:'طلبات الإجازات', headers:['رقم الطلب','الرقم الوظيفي','الاسم','الوردية','نوع الإجازة','من تاريخ','إلى تاريخ','الأيام','الحالة','ملاحظات','المراجع'], rows:lrList.map(lrToRow), grouped:true, shiftGroups:buildGroups(lrList,lrToRow) },
+        overtime:     { title:'العمل الإضافي',  headers:['رقم الطلب','الرقم الوظيفي','الاسم','الوردية','التاريخ','اليوم','الساعات','السبب','الحالة','تاريخ الإنشاء'], rows:otList.map(otToRow), grouped:true, shiftGroups:buildGroups(otList,otToRow) }
+      };
+
+      Export.exportDirect(compData, format);
+    });
+  }
+
+  return { render: render, quickComprehensive: quickComprehensive };
 })();
