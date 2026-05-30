@@ -347,7 +347,7 @@ var App = (function () {
       { id:'leaves',       icon:'🏖️', label:'طلبات الإجازات',     show: true },
       { id:'overtime',     icon:'⏱️', label:'العمل الإضافي',       show: true },
       { id:'transfers',    icon:'🔀', label:'التنقلات',            show: role==='مدير'||role==='مشرف' },
-      { id:'export',       icon:'📊', label:'التصدير',             show: role==='مدير'||role==='اداري' },
+      { id:'export',       icon:'📊', label:'التصدير',             show: role==='مدير'||role==='اداري'||role==='مشرف' },
       { id:'notifications',icon:'🔔', label:'الإشعارات',          show: true },
       { id:'profile',       icon:'👤', label:'ملفي الشخصي',          show: true },
       { id:'employee-card', icon:'🪪', label:'بطاقة الموظف الشاملة', show: true },
