@@ -122,6 +122,14 @@ var Export = (function () {
 
         compRow +
 
+        (isAdmin
+          ? '<div class="export-sheets-row">' +
+              '<span class="sheets-label">أوراق Excel:</span>' +
+              '<label class="radio-opt"><input type="radio" name="exp-sheets" value="combined" checked onchange="Export.updateFileName()"> كل الورديات في ورقة واحدة</label>' +
+              '<label class="radio-opt"><input type="radio" name="exp-sheets" value="per_shift" onchange="Export.updateFileName()"> ورقة مستقلة لكل وردية</label>' +
+            '</div>'
+          : '') +
+
         '<div class="export-filename-row">' +
           '<span class="filename-label">اسم الملف:</span>' +
           '<span id="exp-filename-preview" class="filename-preview"></span>' +
@@ -483,60 +491,143 @@ var Export = (function () {
     });
   }
 
-  // ============================================================
-  // تصدير Excel — عادي (ورقة واحدة)
-  // ============================================================
-  function _doExcel(data) {
-    if (data.comprehensive) { _doExcelComprehensive(data); return; }
-    if (typeof XLSX === 'undefined') { alert('مكتبة SheetJS غير محملة'); return; }
-    var wb = XLSX.utils.book_new();
-    var wsData = [data.headers];
+  // قراءة وضع الأوراق (مدمج / ورقة لكل وردية)
+  function _getSheetsMode() {
+    var el = document.querySelector('input[name="exp-sheets"]:checked');
+    return el ? el.value : 'combined';
+  }
 
-    if (data.grouped && data.shiftGroups && data.shiftGroups.length) {
-      data.shiftGroups.forEach(function(g) {
-        wsData.push(['═══ وردية ' + g.label + ' ═══']);
+  // إضافة لون التبويب للورقة في workbook
+  function _setTabColor(wb, sheetIndex, hexColor) {
+    wb.Workbook = wb.Workbook || { Sheets: [] };
+    while (wb.Workbook.Sheets.length <= sheetIndex) wb.Workbook.Sheets.push({});
+    wb.Workbook.Sheets[sheetIndex].TabColor = { rgb: 'FF' + hexColor.replace('#','') };
+  }
+
+  // بناء worksheet موحّدة (مساعدة)
+  function _buildWs(headers, groups, allRows) {
+    var wsData = [headers];
+    if (groups && groups.length) {
+      groups.forEach(function(g) {
+        wsData.push(['══ وردية ' + g.label + ' ══']);
         g.rows.forEach(function(r) { wsData.push(r); });
         wsData.push([]);
       });
     } else {
-      data.rows.forEach(function(r) { wsData.push(r); });
+      (allRows || []).forEach(function(r) { wsData.push(r); });
     }
-
     var ws = XLSX.utils.aoa_to_sheet(wsData);
-    ws['!cols'] = data.headers.map(function() { return { wch: 20 }; });
-    XLSX.utils.book_append_sheet(wb, ws, data.title);
+    ws['!cols'] = headers.map(function() { return { wch: 20 }; });
+    return ws;
+  }
+
+  // ============================================================
+  // تصدير Excel — عادي
+  // ============================================================
+  function _doExcel(data) {
+    if (data.comprehensive) {
+      _getSheetsMode() === 'per_shift' ? _doExcelComprehensivePerShift(data) : _doExcelComprehensive(data);
+      return;
+    }
+    if (typeof XLSX === 'undefined') { alert('مكتبة SheetJS غير محملة'); return; }
+    var mode = _getSheetsMode();
     var fileName = (data.fileName || data.title + '_' + CONFIG.todayStr()) + '.xlsx';
-    XLSX.writeFile(wb, fileName);
+
+    if (mode === 'per_shift' && data.shiftGroups && data.shiftGroups.length) {
+      // ورقة مستقلة لكل وردية
+      var wb = XLSX.utils.book_new();
+      data.shiftGroups.forEach(function(g, idx) {
+        var wsData = [data.headers];
+        g.rows.forEach(function(r) { wsData.push(r); });
+        var ws = XLSX.utils.aoa_to_sheet(wsData);
+        ws['!cols'] = data.headers.map(function() { return { wch: 20 }; });
+        XLSX.utils.book_append_sheet(wb, ws, 'وردية ' + g.label);
+        _setTabColor(wb, idx, g.color);
+      });
+      XLSX.writeFile(wb, fileName);
+    } else {
+      // ورقة واحدة مدمجة
+      var wb2 = XLSX.utils.book_new();
+      var ws2 = _buildWs(data.headers, data.grouped ? data.shiftGroups : null, data.rows);
+      XLSX.utils.book_append_sheet(wb2, ws2, data.title);
+      XLSX.writeFile(wb2, fileName);
+    }
   }
 
   function toExcel() { _getData(_doExcel); }
 
   // ============================================================
-  // تصدير Excel — شامل (4 أوراق)
+  // تصدير Excel — شامل (ورقة لكل نوع بيانات — مدمج)
   // ============================================================
   function _doExcelComprehensive(compData) {
     if (typeof XLSX === 'undefined') { alert('مكتبة SheetJS غير محملة'); return; }
     var wb = XLSX.utils.book_new();
     var sections = [compData.employees, compData.leaveBalance, compData.leaveReqs, compData.overtime];
-
     sections.forEach(function(sec) {
-      var wsData = [sec.headers];
-      if (sec.grouped && sec.shiftGroups && sec.shiftGroups.length) {
-        sec.shiftGroups.forEach(function(g) {
-          wsData.push(['══ وردية ' + g.label + ' ══']);
-          g.rows.forEach(function(r) { wsData.push(r); });
-          wsData.push([]);
-        });
-      } else {
-        sec.rows.forEach(function(r) { wsData.push(r); });
-      }
-      var ws = XLSX.utils.aoa_to_sheet(wsData);
-      ws['!cols'] = sec.headers.map(function() { return { wch: 20 }; });
+      var ws = _buildWs(sec.headers, sec.grouped ? sec.shiftGroups : null, sec.rows);
       XLSX.utils.book_append_sheet(wb, ws, sec.title);
     });
+    XLSX.writeFile(wb, (compData.fileName || 'تصدير_شامل_' + CONFIG.todayStr()) + '.xlsx');
+  }
 
-    var fileName = (compData.fileName || 'تصدير_شامل_' + CONFIG.todayStr()) + '.xlsx';
-    XLSX.writeFile(wb, fileName);
+  // ============================================================
+  // تصدير Excel — شامل (ورقة مستقلة لكل وردية — للمدير/الإداري فقط)
+  // ============================================================
+  function _doExcelComprehensivePerShift(compData) {
+    if (typeof XLSX === 'undefined') { alert('مكتبة SheetJS غير محملة'); return; }
+    var wb = XLSX.utils.book_new();
+    var sections = [compData.employees, compData.leaveBalance, compData.leaveReqs, compData.overtime];
+
+    // اجمع الورديات المتاحة من أي قسم
+    var shiftOrder = ['أ','ب','ج','د'];
+    var availableShifts = [];
+    shiftOrder.forEach(function(s) {
+      var found = false;
+      sections.forEach(function(sec) {
+        if (sec.shiftGroups) {
+          sec.shiftGroups.forEach(function(g) { if (g.shift === s) found = true; });
+        }
+      });
+      if (found) availableShifts.push(s);
+    });
+
+    if (!availableShifts.length) {
+      // لا يوجد تجميع حسب ورديات → نتراجع للأسلوب المدمج
+      _doExcelComprehensive(compData); return;
+    }
+
+    availableShifts.forEach(function(s, sheetIdx) {
+      var sk = CONFIG.shiftKey(s);
+      var sc = CONFIG.SHIFTS[sk] || CONFIG.SHIFTS.a;
+      var wsData = [];
+
+      sections.forEach(function(sec) {
+        // عنوان القسم
+        wsData.push([sec.title]);
+
+        // رؤوس الأعمدة
+        wsData.push(sec.headers);
+
+        // بيانات هذه الوردية فقط
+        var shiftRows = [];
+        if (sec.shiftGroups) {
+          sec.shiftGroups.forEach(function(g) {
+            if (g.shift === s) shiftRows = g.rows;
+          });
+        }
+        shiftRows.forEach(function(r) { wsData.push(r); });
+        wsData.push([]); // فاصل فارغ
+      });
+
+      var ws = XLSX.utils.aoa_to_sheet(wsData);
+      // عرض الأعمدة بناءً على أطول قسم
+      var maxCols = sections.reduce(function(m, sec) { return Math.max(m, sec.headers.length); }, 0);
+      ws['!cols'] = Array(maxCols).fill({ wch: 20 });
+      XLSX.utils.book_append_sheet(wb, ws, 'وردية ' + sc.label);
+      _setTabColor(wb, sheetIdx, sc.color);
+    });
+
+    XLSX.writeFile(wb, (compData.fileName || 'تصدير_شامل_' + CONFIG.todayStr()) + '.xlsx');
   }
 
   // ============================================================
@@ -709,8 +800,13 @@ var Export = (function () {
   }
 
   function exportDirect(compData, format) {
-    if (format === 'excel') _doExcelComprehensive(compData);
-    else _doPrintComprehensive(compData);
+    if (format === 'excel') {
+      _getSheetsMode() === 'per_shift'
+        ? _doExcelComprehensivePerShift(compData)
+        : _doExcelComprehensive(compData);
+    } else {
+      _doPrintComprehensive(compData);
+    }
   }
 
   // واجهة عامة لجلب البيانات الشاملة (تُستخدم من dashboard.js وغيره)
