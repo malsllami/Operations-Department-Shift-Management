@@ -417,9 +417,10 @@ var Dashboard = (function () {
       }
     });
 
-    // تجميع حسب المنطقة
+    // تجميع حسب المنطقة — يُستبعد من ليس له منطقة ومركز
+    var assignedList = rgList.filter(function(r) { return r.region || r.center; });
     var byRegion = {};
-    rgList.forEach(function(r) {
+    assignedList.forEach(function(r) {
       var reg = r.region || 'غير محدد';
       if (!byRegion[reg]) byRegion[reg] = [];
       byRegion[reg].push(r);
@@ -427,7 +428,7 @@ var Dashboard = (function () {
 
     var regionCount = Object.keys(byRegion).length;
     var centerSet   = {};
-    rgList.forEach(function(r) { if (r.center) centerSet[r.center] = true; });
+    assignedList.forEach(function(r) { if (r.center) centerSet[r.center] = true; });
     var centerCount = Object.keys(centerSet).length;
 
     var html = '<div class="dash-card regions-card dash-card-wide">' +
@@ -435,7 +436,7 @@ var Dashboard = (function () {
       '<div class="rsc-grid rsc-grid-4">' +
         '<div class="rsc-box rsc-box-total"><span class="rsc-box-num">' + regionCount + '</span><span class="rsc-box-label">منطقة</span></div>' +
         '<div class="rsc-box rsc-box-pending"><span class="rsc-box-num">' + centerCount + '</span><span class="rsc-box-label">مركز</span></div>' +
-        '<div class="rsc-box rsc-box-done"><span class="rsc-box-num">' + rgList.length + '</span><span class="rsc-box-label">موظف</span></div>' +
+        '<div class="rsc-box rsc-box-done"><span class="rsc-box-num">' + assignedList.length + '</span><span class="rsc-box-label">موظف</span></div>' +
         '<div class="rsc-box rsc-box-leave"><span class="rsc-box-num">' + Object.keys(onLeaveIds).length + '</span><span class="rsc-box-label">في إجازة</span></div>' +
       '</div>' +
       '<button class="btn-outline rsc-link-btn" id="btn-show-regions" style="width:100%;margin-top:12px;text-align:center">عرض التفاصيل ▼</button>' +
