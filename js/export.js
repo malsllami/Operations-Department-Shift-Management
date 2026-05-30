@@ -1012,6 +1012,63 @@ var Export = (function () {
     _getComprehensiveData(shift || '', from || '', to || '', cb);
   }
 
+  // ============================================================
+  // تصدير الموظف — 3 ورقات: أرصدة الإجازات + طلبات الإجازات + العمل الإضافي
+  // ============================================================
+  function exportEmployee() {
+    var user = Auth.getUser();
+    if (!user) return;
+    var empName  = user.name || 'موظف';
+    var fileName = empName + '_' + CONFIG.todayStr();
+
+    var T_LV  = { annual:'سنوية',scheduled:'مجدولة',sick:'مرضية',birth:'مولود',death:'وفاة',marriage:'زواج',exam:'اختبار',work_course:'دورة',long_service:'خدمة' };
+    var T_ST  = { pending_review:'قيد المراجعة', approved:'معتمد', rejected:'مرفوض' };
+
+    Promise.all([
+      API.getLeaves(),
+      API.getLeaveReqs({ from:'', to:'' }),
+      API.getOvertimeReqs({ from:'', to:'' })
+    ]).then(function(r) {
+      var lvList = (r[0].ok && r[0].data.length) ? [r[0].data[0]] : [];
+      var lrList = r[1].ok ? r[1].data : [];
+      var otList = r[2].ok ? r[2].data : [];
+
+      // ورقة 1 — أرصدة الإجازات
+      var lvHeaders = ['الرقم الوظيفي','الاسم','الوردية',
+                       'رصيد سنوية','مستخدم','متبقي',
+                       'رصيد مجدولة','مستخدم مجدولة','متبقي مجدولة',
+                       'مرضية','مولود','وفاة','زواج','اختبارات','دورة عمل','خدمة طويلة','أخرى'];
+      var lvRows = lvList.map(function(lv) {
+        return [lv.empId, lv.name, lv.shift,
+                lv.annBal||0, lv.annUsed||0, lv.annRem||0,
+                lv.schedBal||0, lv.schedUsed||0, lv.schedRem||0,
+                lv.sick||'', lv.birth||'', lv.death||'', lv.marriage||'',
+                lv.exam||'', lv.workCourse||'', lv.longService||'', lv.otherTypes||''];
+      });
+
+      // ورقة 2 — طلبات الإجازات
+      var lrHeaders = ['رقم الطلب','نوع الإجازة','من تاريخ','إلى تاريخ','الأيام','الحالة','ملاحظاتي','المراجع'];
+      var lrRows = lrList.map(function(x) {
+        return [x.no, T_LV[x.type]||x.type,
+                CONFIG.fmtDate(x.startDate), CONFIG.fmtDate(x.endDate), x.days,
+                T_ST[x.status]||x.status, x.empNotes||'', x.reviewerName||''];
+      });
+
+      // ورقة 3 — العمل الإضافي (مع جميع المراحل)
+      var otRows = otList.map(_otFullRow);
+
+      var sheets = [
+        { name: 'أرصدة الإجازات',   tabColor: '00838F',
+          sections: [{ key:'lv', title:'أرصدة الإجازات',   headers:lvHeaders, rows:lvRows, shiftGroups:null }] },
+        { name: 'طلبات الإجازات',   tabColor: '2E7D32',
+          sections: [{ key:'lr', title:'طلبات الإجازات',   headers:lrHeaders, rows:lrRows, shiftGroups:null }] },
+        { name: 'العمل الإضافي',    tabColor: '6A1B9A',
+          sections: [{ key:'ot', title:'العمل الإضافي',    headers:OT_FULL_HEADERS, rows:otRows, shiftGroups:null }] }
+      ];
+      _smlDownload(sheets, fileName);
+    });
+  }
+
   return {
     renderExportPanel,
     inlineBar,
@@ -1025,6 +1082,7 @@ var Export = (function () {
     updateFileName,
     exportDirect,
     getComprehensiveData,
+    exportEmployee,
     OT_FULL_HEADERS: OT_FULL_HEADERS,
     otFullRow: _otFullRow
   };
