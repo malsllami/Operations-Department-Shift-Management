@@ -163,7 +163,21 @@ var Dashboard = (function () {
         '', 'عرض طلبات العمل الإضافي'
       );
 
-      // ---- 5. بطاقة المراكز والمناطق ----
+      // ---- 5. بطاقة تصدير بيانات الموظف ----
+      html += '<div class="dash-card emp-export-card">' +
+        '<div class="rsc-header"><span class="rsc-icon-wrap">📤</span><span class="rsc-title">تصدير بياناتي</span></div>' +
+        '<p class="emp-exp-desc">تصدير ملف Excel يحتوي 3 ورقات:</p>' +
+        '<ul class="emp-exp-list">' +
+          '<li><span class="emp-exp-dot" style="background:#00838F"></span>أرصدة الإجازات</li>' +
+          '<li><span class="emp-exp-dot" style="background:#2E7D32"></span>طلبات الإجازات</li>' +
+          '<li><span class="emp-exp-dot" style="background:#6A1B9A"></span>العمل الإضافي</li>' +
+        '</ul>' +
+        '<button class="btn-primary emp-exp-btn" onclick="Export.exportEmployee()">' +
+          '📊 تصدير Excel' +
+        '</button>' +
+      '</div>';
+
+      // ---- 6. بطاقة المراكز والمناطق ----
       html += _buildRegionsCard(rgList, results[2], results[3]);
 
       html += '</div>'; // dashboard-grid
