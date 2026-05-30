@@ -200,7 +200,7 @@ var Overtime = (function () {
       html += _staticField('الاسم', user.name);
       html += _staticField('الوردية', 'وردية ' + user.shift);
     } else {
-      html += '<div class="form-field"><label>الوردية</label><select id="otf-shift" class="form-select" onchange="Overtime._loadShiftEmps(this.value)">' +
+      html += '<div class="form-field"><label>الوردية</label><select id="otf-shift" class="form-select" onchange="Overtime._loadShiftEmps(this.value);Overtime._updateDutyStatus()">' +
         ['أ','ب','ج','د'].map(function(s) {
           var sk = CONFIG.shiftKey(s);
           return '<option value="' + s + '" ' + (role==='مشرف' && s!==user.shift ? 'disabled':'') + '>وردية ' + CONFIG.SHIFTS[sk].label + '</option>';
@@ -213,6 +213,13 @@ var Overtime = (function () {
     var today = CONFIG.todayStr();
     html += '<div class="form-field"><label>التاريخ <span class="req">*</span></label><input type="date" id="otf-date" class="form-input" value="' + today + '" required onchange="Overtime._updateDay(this)"></div>';
     html += '<div class="form-field"><label>اليوم</label><div class="form-static" id="otf-day">' + CONFIG.DAYS_AR[new Date().getDay()] + '</div></div>';
+
+    html += '</div>'; // form-grid مؤقت
+
+    // ---- بطاقة حالة الدوام ----
+    html += '<div id="otf-status-card" class="ot-duty-card"></div>';
+
+    html += '<div class="form-grid">'; // استئناف form-grid
 
     // عدد الساعات
     html += '<div class="form-field"><label>عدد ساعات العمل الإضافي <span class="req">*</span></label>' +
@@ -240,6 +247,9 @@ var Overtime = (function () {
       var shEl = document.getElementById('otf-shift');
       if (shEl) { shEl.value = defShift; Overtime._loadShiftEmps(defShift); }
     }
+
+    // عرض حالة الدوام بمجرد فتح النموذج
+    _updateDutyStatus();
   }
 
   var _submitting = false;
@@ -322,6 +332,46 @@ var Overtime = (function () {
     if (!dayEl || !input.value) return;
     var d = new Date(input.value);
     dayEl.textContent = CONFIG.DAYS_AR[d.getDay()] || '—';
+    _updateDutyStatus();
+  }
+
+  function _updateDutyStatus() {
+    var card = document.getElementById('otf-status-card');
+    if (!card) return;
+
+    var dateEl  = document.getElementById('otf-date');
+    var shiftEl = document.getElementById('otf-shift');
+    var user    = Auth.getUser();
+
+    var date  = dateEl  ? dateEl.value  : CONFIG.todayStr();
+    var shift = shiftEl ? shiftEl.value : (user ? user.shift : '');
+    if (!shift || !date) { card.innerHTML = ''; return; }
+
+    var sk    = CONFIG.shiftKey(shift);
+    var sc    = CONFIG.SHIFTS[sk] || CONFIG.SHIFTS.a;
+    var st    = CONFIG.getShiftStatus(shift, date);
+    var stc   = CONFIG.STATUS[st.en] || CONFIG.STATUS.off;
+
+    // اسم اليوم من التاريخ
+    var d     = new Date(date);
+    var dayAr = CONFIG.DAYS_AR[d.getDay()] || '';
+    var fDate = CONFIG.fmtDate(date);
+
+    card.innerHTML =
+      '<div class="ot-duty-inner" style="border-right: 4px solid ' + sc.color + '; background: linear-gradient(135deg,' + sc.color + '11 0%,' + sc.color + '06 100%)">' +
+        '<div class="ot-duty-shift" style="background:' + sc.color + ';color:#fff">' +
+          '<span class="ot-duty-shift-name">وردية ' + sc.label + '</span>' +
+        '</div>' +
+        '<div class="ot-duty-info">' +
+          '<div class="ot-duty-row">' +
+            '<span class="ot-duty-badge" style="background:' + stc.bg + ';color:' + stc.text + '">' +
+              stc.icon + ' ' + stc.label +
+            '</span>' +
+            '<span class="ot-duty-date">' + dayAr + ' ' + fDate + '</span>' +
+          '</div>' +
+          '<div class="ot-duty-desc">حالة الوردية في يوم تقديم الطلب</div>' +
+        '</div>' +
+      '</div>';
   }
 
   function _normalizeHours(input) {
@@ -361,6 +411,6 @@ var Overtime = (function () {
     renderList, renderForm,
     _supervisorApprove, _supervisorReject, _sendToCoord,
     _coordSendSystem, _coordReturn, _confirmReceipt,
-    _loadShiftEmps, _updateDay, _normalizeHours
+    _loadShiftEmps, _updateDay, _normalizeHours, _updateDutyStatus
   };
 })();
