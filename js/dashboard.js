@@ -612,62 +612,11 @@ var Dashboard = (function () {
   }
 
   function quickComprehensive(format) {
-    var today = CONFIG.todayStr();
-    var d = new Date();
-    var monthStart = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-01';
-    // تصدير شامل لجميع الورديات بدون تصفية تاريخية
-    Promise.all([
-      API.getEmployees(), API.getRegions(), API.getEquipment(), API.getLeaves(),
-      API.getLeaveReqs({ from: '', to: '' }),
-      API.getOvertimeReqs({ from: '', to: '' })
-    ]).then(function(r) {
-      var empList = r[0].ok ? r[0].data : [];
-      var rgMap = {}; if (r[1].ok) r[1].data.forEach(function(x){ rgMap[x.empId]=x; });
-      var eqMap = {}; if (r[2].ok) r[2].data.forEach(function(x){ eqMap[x.empId]=x; });
-      var lvMap = {}; if (r[3].ok) r[3].data.forEach(function(x){ lvMap[x.empId]=x; });
-      var lrList = r[4].ok ? r[4].data : [];
-      var otList = r[5].ok ? r[5].data : [];
-      var u = Auth.getUser();
-      var fileName = ((u && u.name) ? u.name : 'تصدير') + '_' + today;
-
-      var shiftOrder = ['أ','ب','ج','د'];
-      var shiftMap2  = {};
-      ['a','b','c','d'].forEach(function(k,i){ shiftMap2[shiftOrder[i]] = k; });
-      function buildGroups(list, toRow) {
-        var groups = {};
-        list.forEach(function(item){ var s=item.shift; (groups[s]=groups[s]||[]).push(item); });
-        return shiftOrder.filter(function(s){ return groups[s]&&groups[s].length; }).map(function(s){
-          var sk=shiftMap2[s]||'a';
-          return { shift:s, label:CONFIG.SHIFTS[sk].label, color:CONFIG.SHIFTS[sk].color, bg:CONFIG.SHIFTS[sk].bg, rows:groups[s].map(toRow) };
-        });
-      }
-
-      var empToRow = function(e){
-        var rg=rgMap[e.empId]||{};var eq=eqMap[e.empId]||{};
-        return [e.empId,e.name,e.phone?'+966 '+e.phone:'',e.shift,e.role,
-          CONFIG.fmtDate(e.workExpDate),e.workDaysLeft||'',CONFIG.fmtDate(e.srcExpDate),e.srcDaysLeft||'',
-          rg.region||'',rg.center||'',rg.car||'',eq.cat2Shirt||'',eq.cat2Pants||'',eq.shoes||'',eq.cat4||'',eq.bravo||'',eq.major||'',eq.other||''];
-      };
-      var lvToRow = function(e){
-        var lv=lvMap[e.empId]||{};
-        return [e.empId,e.name,e.shift,lv.annBal||0,lv.annUsed||0,lv.annRem||0,lv.schedBal||0,lv.schedUsed||0,lv.schedRem||0,
-          lv.sick||'',lv.birth||'',lv.death||'',lv.marriage||'',lv.exam||'',lv.workCourse||'',lv.longService||'',lv.otherTypes||''];
-      };
-      var lrToRow = function(x){
-        var T={annual:'سنوية',scheduled:'مجدولة',sick:'مرضية',birth:'مولود',death:'وفاة',marriage:'زواج',exam:'اختبار',work_course:'دورة',long_service:'خدمة'};
-        var S={pending_review:'قيد المراجعة',approved:'معتمد',rejected:'مرفوض'};
-        return [x.no,x.empId,x.name,x.shift,T[x.type]||x.type,CONFIG.fmtDate(x.startDate),CONFIG.fmtDate(x.endDate),x.days,S[x.status]||x.status,x.empNotes||'',x.reviewerName||''];
-      };
-      var otToRow = Export.otFullRow;
-
-      var compData = {
-        comprehensive: true, fileName: fileName,
-        employees:    { title:'الموظفون',       headers:['الرقم الوظيفي','الاسم','الجوال','الوردية','الصلاحية','انتهاء بطاقة العمل','أيام','انتهاء المصدر','أيام','المنطقة','المركز','السيارة','CAT2 قميص','CAT2 بنطلون','شوز','CAT4','برافو','ميجر','أخرى'], rows:empList.map(empToRow), grouped:true, shiftGroups:buildGroups(empList,empToRow) },
-        leaveBalance: { title:'أرصدة الإجازات', headers:['الرقم الوظيفي','الاسم','الوردية','رصيد سنوية','مستخدم','متبقي','رصيد مجدولة','مستخدم مجدولة','متبقي مجدولة','مرضية','مولود','وفاة','زواج','اختبارات','دورة عمل','خدمة طويلة','أخرى'], rows:empList.map(lvToRow), grouped:true, shiftGroups:buildGroups(empList,lvToRow) },
-        leaveReqs:    { title:'طلبات الإجازات', headers:['رقم الطلب','الرقم الوظيفي','الاسم','الوردية','نوع الإجازة','من تاريخ','إلى تاريخ','الأيام','الحالة','ملاحظات','المراجع'], rows:lrList.map(lrToRow), grouped:true, shiftGroups:buildGroups(lrList,lrToRow) },
-        overtime:     { title:'العمل الإضافي',  headers:Export.OT_FULL_HEADERS, rows:otList.map(otToRow), grouped:true, shiftGroups:buildGroups(otList,otToRow) }
-      };
-
+    // يستخدم مباشرة _getComprehensiveData من Export لضمان توحيد منطق البيانات
+    var role    = Auth.getEffectiveRole();
+    var isSup   = role === 'مشرف';
+    var shift   = isSup ? (Auth.getShift ? Auth.getShift() : '') : '';
+    Export.getComprehensiveData(shift, '', '', function(compData) {
       Export.exportDirect(compData, format);
     });
   }
