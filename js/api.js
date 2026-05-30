@@ -151,8 +151,8 @@ var API = (function () {
     return _call({ action:'sendToCoordinator', no:no });
   }
 
-  function coordinatorAction(no, action, notes) {
-    return _call({ action:'coordinatorAction', no:no, action:action, notes: notes||'' });
+  function coordinatorAction(no, coordAction, notes) {
+    return _call({ action:'coordinatorAction', no:no, coordAction:coordAction, notes: notes||'' });
   }
 
   function confirmReceipt(no, received) {
