@@ -250,6 +250,83 @@ var Employees = (function () {
   }
 
   // ============================================================
+  // ملف الإداري/المشرف/المدير — بيانات أساسية فقط بدون بطاقات الموظف
+  // ============================================================
+
+  function renderAdminProfile(containerId, empId) {
+    var el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+
+    var targetId = empId || (Auth.getUser() ? String(Auth.getUser().empId) : null);
+    var role     = Auth.getBaseRole();
+    var roleLabels = { 'مدير':'🛡️ مدير', 'مشرف':'🧑‍💼 مشرف وردية', 'اداري':'📋 تنسيق إداري' };
+    var roleLabel = roleLabels[role] || role;
+
+    Promise.all([API.getEmployee(targetId), API.getRegions(targetId)]).then(function(results) {
+      var emp = results[0].ok ? results[0].data : {};
+      var rg  = results[1].ok && results[1].data.length ? results[1].data[0] : {};
+      var sk  = CONFIG.shiftKey(emp.shift || '');
+      var sc  = CONFIG.SHIFTS[sk] || CONFIG.SHIFTS.a;
+
+      var html = '<div class="profile-card admin-profile-card">' +
+
+        // رأس إداري
+        '<div class="profile-header" style="background:' + sc.color + '">' +
+          '<div class="ph-avatar">' + ((emp.name || '?')[0]) + '</div>' +
+          '<div class="ph-info">' +
+            '<h2>' + (emp.name || '—') + '</h2>' +
+            '<p class="ph-sub">' + (emp.empId || '') + ' — <span class="admin-role-badge">' + roleLabel + '</span></p>' +
+            '<span class="ph-today-status" style="background:rgba(255,255,255,0.2);color:#fff">وردية ' + (emp.shift || '—') + '</span>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="admin-profile-body">' +
+
+          // بطاقة: معلومات أساسية
+          '<div class="admin-info-section">' +
+            '<h3 class="admin-section-title">👤 البيانات الأساسية</h3>' +
+            '<div class="admin-fields">' +
+              _adminField('الرقم الوظيفي', emp.empId || '—') +
+              _adminField('الاسم', emp.name || '—') +
+              _adminField('الجوال', emp.phone ? '+966 ' + emp.phone : '—') +
+              _adminField('الصلاحية', roleLabel) +
+              _adminField('الوردية', 'وردية ' + (emp.shift || '—')) +
+            '</div>' +
+          '</div>' +
+
+          // بطاقة: الموقع
+          '<div class="admin-info-section">' +
+            '<h3 class="admin-section-title">📍 المنطقة والمركز</h3>' +
+            '<div class="admin-fields">' +
+              _adminField('المنطقة', rg.region || '—') +
+              _adminField('المركز', rg.center || '—') +
+              _adminField('السيارة', rg.car || '—') +
+            '</div>' +
+          '</div>' +
+
+          // تغيير كلمة المرور
+          '<div class="admin-info-section">' +
+            '<h3 class="admin-section-title">🔐 كلمة المرور</h3>' +
+            '<div class="admin-fields">' +
+              '<div class="admin-field-row"><button class="btn-outline" onclick="App.navigate(\'profile-pw\')" style="width:100%">تغيير كلمة المرور</button></div>' +
+            '</div>' +
+          '</div>' +
+
+        '</div></div>';
+
+      el.innerHTML = html;
+    });
+  }
+
+  function _adminField(label, value) {
+    return '<div class="admin-field-row">' +
+      '<span class="admin-field-label">' + label + '</span>' +
+      '<span class="admin-field-val">' + value + '</span>' +
+    '</div>';
+  }
+
+  // ============================================================
   // بطاقة الموظف الشاملة (مع الأوفرتايم حسب الفترة)
   // ============================================================
 
@@ -979,7 +1056,8 @@ var Employees = (function () {
   }
 
   return {
-    renderList, renderProfile, renderFullCard, viewProfile, editEmployee, renderForm,
+    renderList, renderProfile, renderAdminProfile, renderFullCard,
+    viewProfile, editEmployee, renderForm,
     transferDialog, _roleChange,
     getCache: function() { return _cache; }
   };
