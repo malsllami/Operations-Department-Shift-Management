@@ -497,137 +497,335 @@ var Export = (function () {
     return el ? el.value : 'combined';
   }
 
-  // إضافة لون التبويب للورقة في workbook
-  function _setTabColor(wb, sheetIndex, hexColor) {
-    wb.Workbook = wb.Workbook || { Sheets: [] };
-    while (wb.Workbook.Sheets.length <= sheetIndex) wb.Workbook.Sheets.push({});
-    wb.Workbook.Sheets[sheetIndex].TabColor = { rgb: 'FF' + hexColor.replace('#','') };
+  // ============================================================
+  // SpreadsheetML — مولّد Excel منسّق (ألوان + حدود + توسيط)
+  // ============================================================
+
+  // الألوان الخاصة بكل قسم
+  var _SEC = {
+    emp: { bg:'1565C0', fg:'FFFFFF', light:'DBEAFE', lightFg:'1E3A8A' },
+    lv:  { bg:'00838F', fg:'FFFFFF', light:'CCFBF1', lightFg:'134E4A' },
+    lr:  { bg:'2E7D32', fg:'FFFFFF', light:'DCFCE7', lightFg:'14532D' },
+    ot:  { bg:'6A1B9A', fg:'FFFFFF', light:'F3E8FF', lightFg:'581C87' }
+  };
+
+  // ألوان الورديات (بدون #)
+  var _SHIFT_HEX = { 'أ':'1565C0','ب':'00838F','ج':'2E7D32','د':'6A1B9A' };
+  var _SHIFT_SK  = { 'أ':'a','ب':'b','ج':'c','د':'d' };
+
+  function _smlEsc(s) {
+    return String(s === null || s === undefined ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
   }
 
-  // بناء worksheet موحّدة (مساعدة)
-  function _buildWs(headers, groups, allRows) {
-    var wsData = [headers];
-    if (groups && groups.length) {
-      groups.forEach(function(g) {
-        wsData.push(['══ وردية ' + g.label + ' ══']);
-        g.rows.forEach(function(r) { wsData.push(r); });
-        wsData.push([]);
-      });
-    } else {
-      (allRows || []).forEach(function(r) { wsData.push(r); });
+  function _smlStyles() {
+    // تعريف الأنماط: [id, bgHex, fgHex, bold, border, fontSize]
+    var defs = [
+      ['Default', '',       '000000', false, false, 10],
+      ['data',    'FFFFFF', '000000', false, true,  10],
+      ['data-alt','F5F5F5', '212121', false, true,  10],
+      ['sep',     'FFFFFF', 'FFFFFF', false, false, 6 ],
+      // عناوين الأقسام
+      ['hdr-emp', _SEC.emp.bg, _SEC.emp.fg, true, true, 12],
+      ['hdr-lv',  _SEC.lv.bg,  _SEC.lv.fg,  true, true, 12],
+      ['hdr-lr',  _SEC.lr.bg,  _SEC.lr.fg,  true, true, 12],
+      ['hdr-ot',  _SEC.ot.bg,  _SEC.ot.fg,  true, true, 12],
+      // رؤوس الأعمدة
+      ['col-emp', _SEC.emp.light, _SEC.emp.lightFg, true, true, 10],
+      ['col-lv',  _SEC.lv.light,  _SEC.lv.lightFg,  true, true, 10],
+      ['col-lr',  _SEC.lr.light,  _SEC.lr.lightFg,  true, true, 10],
+      ['col-ot',  _SEC.ot.light,  _SEC.ot.lightFg,  true, true, 10],
+      // رؤوس الورديات داخل القسم
+      ['shift-a', '1565C0','FFFFFF', true, true, 11],
+      ['shift-b', '00838F','FFFFFF', true, true, 11],
+      ['shift-c', '2E7D32','FFFFFF', true, true, 11],
+      ['shift-d', '6A1B9A','FFFFFF', true, true, 11]
+    ];
+
+    var xml = '<Styles>\n';
+    defs.forEach(function(d) {
+      var id=d[0], bg=d[1], fg=d[2], bold=d[3], border=d[4], fs=d[5];
+      xml += '<Style ss:ID="' + id + '">\n';
+      xml += ' <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:ReadingOrder="RightToLeft"/>\n';
+      xml += ' <Font ss:FontName="Arial" ss:Size="' + fs + '"' +
+             (bold ? ' ss:Bold="1"' : '') + ' ss:Color="#' + fg + '"/>\n';
+      if (bg) xml += ' <Interior ss:Color="#' + bg + '" ss:Pattern="Solid"/>\n';
+      if (border) {
+        xml += ' <Borders>\n';
+        ['Left','Right','Top','Bottom'].forEach(function(p) {
+          xml += '  <Border ss:Position="' + p + '" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#BDBDBD"/>\n';
+        });
+        xml += ' </Borders>\n';
+      }
+      xml += '</Style>\n';
+    });
+    xml += '</Styles>\n';
+    return xml;
+  }
+
+  function _smlDataRow(cells, styleId, maxCols) {
+    var xml = '<Row ss:Height="18">\n';
+    var n = cells.length;
+    for (var i = 0; i < Math.max(n, maxCols || n); i++) {
+      var v  = i < n ? cells[i] : '';
+      var tp = (typeof v === 'number' && v !== '' && !isNaN(v)) ? 'Number' : 'String';
+      xml += '<Cell ss:StyleID="' + styleId + '"><Data ss:Type="' + tp + '">' +
+             _smlEsc(v) + '</Data></Cell>\n';
     }
-    var ws = XLSX.utils.aoa_to_sheet(wsData);
-    ws['!cols'] = headers.map(function() { return { wch: 20 }; });
-    return ws;
+    xml += '</Row>\n';
+    return xml;
+  }
+
+  function _smlMergedRow(label, numCols, styleId, height) {
+    return '<Row ss:Height="' + (height||22) + '">\n' +
+      '<Cell ss:StyleID="' + styleId + '" ss:MergeAcross="' + (numCols-1) + '">' +
+      '<Data ss:Type="String">' + _smlEsc(label) + '</Data></Cell>\n</Row>\n';
+  }
+
+  function _smlSepRow(numCols) {
+    var xml = '<Row ss:Height="8">\n';
+    for (var i = 0; i < numCols; i++) xml += '<Cell ss:StyleID="sep"><Data ss:Type="String"></Data></Cell>\n';
+    xml += '</Row>\n';
+    return xml;
+  }
+
+  function _sectionKey(title) {
+    if (!title) return 'emp';
+    if (title.indexOf('أرصدة') >= 0 || title.indexOf('رصيد') >= 0) return 'lv';
+    if (title.indexOf('إجازات') >= 0 || title.indexOf('اجازات') >= 0) return 'lr';
+    if (title.indexOf('إضافي') >= 0 || title.indexOf('اضافي') >= 0) return 'ot';
+    return 'emp';
+  }
+
+  // بناء XML ورقة عمل لمجموعة من الأقسام
+  function _smlSheet(sheetName, sections, tabColor) {
+    var maxCols = sections.reduce(function(m, s) { return Math.max(m, s.headers.length); }, 1);
+
+    var xml = '<Worksheet ss:Name="' + _smlEsc(sheetName) + '">\n';
+    xml += ' <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">\n';
+    if (tabColor) xml += '  <TabColorIndex>0</TabColorIndex>\n';
+    xml += '  <Unsynced/>\n </WorksheetOptions>\n';
+    xml += '<Table ss:DefaultColumnWidth="100" ss:DefaultRowHeight="18">\n';
+    for (var c = 0; c < maxCols; c++) xml += '<Column ss:Width="110"/>\n';
+
+    sections.forEach(function(sec, si) {
+      var key    = sec.key || _sectionKey(sec.title);
+      var hdrSty = 'hdr-' + key;
+      var colSty = 'col-' + key;
+
+      // صف عنوان القسم (مدمج)
+      xml += _smlMergedRow(sec.title, maxCols, hdrSty, 24);
+      // رؤوس الأعمدة
+      xml += _smlDataRow(sec.headers, colSty, maxCols);
+
+      if (sec.shiftGroups && sec.shiftGroups.length) {
+        sec.shiftGroups.forEach(function(g) {
+          var sk   = _SHIFT_SK[g.shift] || 'a';
+          var shSty = 'shift-' + sk;
+          xml += _smlMergedRow('وردية ' + g.label, maxCols, shSty, 20);
+          g.rows.forEach(function(r, ri) {
+            xml += _smlDataRow(r, ri % 2 === 0 ? 'data' : 'data-alt', maxCols);
+          });
+        });
+      } else {
+        (sec.rows || []).forEach(function(r, ri) {
+          xml += _smlDataRow(r, ri % 2 === 0 ? 'data' : 'data-alt', maxCols);
+        });
+      }
+
+      if (si < sections.length - 1) {
+        xml += _smlSepRow(maxCols);
+        xml += _smlSepRow(maxCols);
+      }
+    });
+
+    xml += '</Table>\n</Worksheet>\n';
+    return xml;
+  }
+
+  // توليد الملف الكامل وتنزيله
+  function _smlDownload(sheets, fileName) {
+    var xml = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+      '<?mso-application progid="Excel.Sheet"?>\n' +
+      '<Workbook\n' +
+      ' xmlns="urn:schemas-microsoft-com:office:spreadsheet"\n' +
+      ' xmlns:o="urn:schemas-microsoft-com:office:office"\n' +
+      ' xmlns:x="urn:schemas-microsoft-com:office:excel"\n' +
+      ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"\n' +
+      ' xmlns:html="http://www.w3.org/TR/REC-html40">\n' +
+      '<ExcelWorkbook xmlns="urn:schemas-microsoft-com:office:excel">\n' +
+      '<WindowHeight>12000</WindowHeight><WindowWidth>28000</WindowWidth>\n' +
+      '</ExcelWorkbook>\n';
+
+    xml += _smlStyles();
+    sheets.forEach(function(ws) {
+      xml += _smlSheet(ws.name, ws.sections, ws.tabColor);
+    });
+    xml += '</Workbook>';
+
+    var blob = new Blob(['﻿' + xml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    a.href = url; a.download = fileName + '.xls';
+    document.body.appendChild(a); a.click();
+    setTimeout(function() { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
   }
 
   // ============================================================
-  // تصدير Excel — عادي
+  // تصدير Excel — عادي (مع تنسيقات كاملة)
   // ============================================================
   function _doExcel(data) {
     if (data.comprehensive) {
-      _getSheetsMode() === 'per_shift' ? _doExcelComprehensivePerShift(data) : _doExcelComprehensive(data);
+      _getSheetsMode() === 'per_shift'
+        ? _doExcelComprehensivePerShift(data)
+        : _doExcelComprehensive(data);
       return;
     }
-    if (typeof XLSX === 'undefined') { alert('مكتبة SheetJS غير محملة'); return; }
-    var mode = _getSheetsMode();
-    var fileName = (data.fileName || data.title + '_' + CONFIG.todayStr()) + '.xlsx';
+    var mode     = _getSheetsMode();
+    var key      = _sectionKey(data.title);
+    var fileName = data.fileName || data.title + '_' + CONFIG.todayStr();
+    var sec      = { key: key, title: data.title, headers: data.headers,
+                     rows: data.rows, shiftGroups: data.shiftGroups };
 
     if (mode === 'per_shift' && data.shiftGroups && data.shiftGroups.length) {
-      // ورقة مستقلة لكل وردية
-      var wb = XLSX.utils.book_new();
-      data.shiftGroups.forEach(function(g, idx) {
-        var wsData = [data.headers];
-        g.rows.forEach(function(r) { wsData.push(r); });
-        var ws = XLSX.utils.aoa_to_sheet(wsData);
-        ws['!cols'] = data.headers.map(function() { return { wch: 20 }; });
-        XLSX.utils.book_append_sheet(wb, ws, 'وردية ' + g.label);
-        _setTabColor(wb, idx, g.color);
+      var sheets = data.shiftGroups.map(function(g) {
+        var sk = _SHIFT_SK[g.shift] || 'a';
+        return {
+          name: 'وردية ' + g.label,
+          tabColor: _SHIFT_HEX[g.shift],
+          sections: [{ key: key, title: data.title, headers: data.headers, rows: g.rows, shiftGroups: null }]
+        };
       });
-      XLSX.writeFile(wb, fileName);
+      _smlDownload(sheets, fileName);
     } else {
-      // ورقة واحدة مدمجة
-      var wb2 = XLSX.utils.book_new();
-      var ws2 = _buildWs(data.headers, data.grouped ? data.shiftGroups : null, data.rows);
-      XLSX.utils.book_append_sheet(wb2, ws2, data.title);
-      XLSX.writeFile(wb2, fileName);
+      _smlDownload([{ name: data.title, sections: [sec] }], fileName);
     }
   }
 
   function toExcel() { _getData(_doExcel); }
 
   // ============================================================
-  // تصدير Excel — شامل (ورقة لكل نوع بيانات — مدمج)
+  // تصدير Excel — شامل / ورقة لكل نوع (مدمج)
   // ============================================================
   function _doExcelComprehensive(compData) {
-    if (typeof XLSX === 'undefined') { alert('مكتبة SheetJS غير محملة'); return; }
-    var wb = XLSX.utils.book_new();
-    var sections = [compData.employees, compData.leaveBalance, compData.leaveReqs, compData.overtime];
-    sections.forEach(function(sec) {
-      var ws = _buildWs(sec.headers, sec.grouped ? sec.shiftGroups : null, sec.rows);
-      XLSX.utils.book_append_sheet(wb, ws, sec.title);
-    });
-    XLSX.writeFile(wb, (compData.fileName || 'تصدير_شامل_' + CONFIG.todayStr()) + '.xlsx');
+    var fileName = compData.fileName || 'تصدير_شامل_' + CONFIG.todayStr();
+    var sheets = [
+      { name: compData.employees.title,    sections: [Object.assign({ key:'emp' }, compData.employees)]    },
+      { name: compData.leaveBalance.title, sections: [Object.assign({ key:'lv'  }, compData.leaveBalance)] },
+      { name: compData.leaveReqs.title,    sections: [Object.assign({ key:'lr'  }, compData.leaveReqs)]    },
+      { name: compData.overtime.title,     sections: [Object.assign({ key:'ot'  }, compData.overtime)]     }
+    ];
+    _smlDownload(sheets, fileName);
   }
 
   // ============================================================
-  // تصدير Excel — شامل (ورقة مستقلة لكل وردية — للمدير/الإداري فقط)
+  // تصدير Excel — شامل / ورقات منفصلة لكل وردية ولكل نوع بيانات
+  //
+  // مدير/اداري (كل الورديات): 12 ورقة
+  //   وردية أ - الموظفون | وردية أ - طلبات الإجازات | وردية أ - العمل الإضافي
+  //   وردية ب - ...  (×3 لكل وردية)
+  //
+  // مشرف (وردييته فقط): 3 ورقات
+  //
+  // موظف: ورقتان (طلبات إجازاته / ساعاته الإضافية)
   // ============================================================
   function _doExcelComprehensivePerShift(compData) {
-    if (typeof XLSX === 'undefined') { alert('مكتبة SheetJS غير محملة'); return; }
-    var wb = XLSX.utils.book_new();
-    var sections = [compData.employees, compData.leaveBalance, compData.leaveReqs, compData.overtime];
+    var fileName = compData.fileName || 'تصدير_شامل_' + CONFIG.todayStr();
+    var role     = Auth.getEffectiveRole();
+    var isAdmin  = role === 'مدير' || role === 'اداري';
+    var isSup    = role === 'مشرف';
 
-    // اجمع الورديات المتاحة من أي قسم
-    var shiftOrder = ['أ','ب','ج','د'];
-    var availableShifts = [];
-    shiftOrder.forEach(function(s) {
-      var found = false;
-      sections.forEach(function(sec) {
-        if (sec.shiftGroups) {
-          sec.shiftGroups.forEach(function(g) { if (g.shift === s) found = true; });
-        }
-      });
-      if (found) availableShifts.push(s);
-    });
-
-    if (!availableShifts.length) {
-      // لا يوجد تجميع حسب ورديات → نتراجع للأسلوب المدمج
-      _doExcelComprehensive(compData); return;
+    // ======= موظف: ورقتان فقط =======
+    if (!isAdmin && !isSup) {
+      var sheets = [
+        { name: 'طلبات الإجازات', tabColor: '2E7D32',
+          sections: [Object.assign({ key:'lr' }, compData.leaveReqs)] },
+        { name: 'العمل الإضافي',  tabColor: '6A1B9A',
+          sections: [Object.assign({ key:'ot' }, compData.overtime)] }
+      ];
+      _smlDownload(sheets, fileName);
+      return;
     }
 
-    availableShifts.forEach(function(s, sheetIdx) {
-      var sk = CONFIG.shiftKey(s);
-      var sc = CONFIG.SHIFTS[sk] || CONFIG.SHIFTS.a;
-      var wsData = [];
+    // الأقسام الأربعة
+    var empSec = Object.assign({ key:'emp' }, compData.employees);
+    var lvSec  = Object.assign({ key:'lv'  }, compData.leaveBalance);
+    var lrSec  = Object.assign({ key:'lr'  }, compData.leaveReqs);
+    var otSec  = Object.assign({ key:'ot'  }, compData.overtime);
 
-      sections.forEach(function(sec) {
-        // عنوان القسم
-        wsData.push([sec.title]);
-
-        // رؤوس الأعمدة
-        wsData.push(sec.headers);
-
-        // بيانات هذه الوردية فقط
-        var shiftRows = [];
-        if (sec.shiftGroups) {
-          sec.shiftGroups.forEach(function(g) {
-            if (g.shift === s) shiftRows = g.rows;
-          });
-        }
-        shiftRows.forEach(function(r) { wsData.push(r); });
-        wsData.push([]); // فاصل فارغ
+    // اجمع الورديات المتاحة
+    var shiftOrder = ['أ','ب','ج','د'];
+    var available  = shiftOrder.filter(function(s) {
+      return [empSec, lvSec, lrSec, otSec].some(function(sec) {
+        return sec.shiftGroups && sec.shiftGroups.some(function(g) { return g.shift === s; });
       });
-
-      var ws = XLSX.utils.aoa_to_sheet(wsData);
-      // عرض الأعمدة بناءً على أطول قسم
-      var maxCols = sections.reduce(function(m, sec) { return Math.max(m, sec.headers.length); }, 0);
-      ws['!cols'] = Array(maxCols).fill({ wch: 20 });
-      XLSX.utils.book_append_sheet(wb, ws, 'وردية ' + sc.label);
-      _setTabColor(wb, sheetIdx, sc.color);
     });
 
-    XLSX.writeFile(wb, (compData.fileName || 'تصدير_شامل_' + CONFIG.todayStr()) + '.xlsx');
+    // إذا لم يكن هناك تجميع بالورديات (مشرف أو وردية محددة بدون shiftGroups)
+    // نُنشئ 3 ورقات للبيانات المتاحة بدون تصنيف وردية
+    if (!available.length) {
+      var shiftLabel = isSup ? (Auth.getShift ? Auth.getShift() : '') : '';
+      var prefix     = shiftLabel ? 'وردية ' + shiftLabel + ' — ' : '';
+      var sk0        = shiftLabel ? CONFIG.shiftKey(shiftLabel) : 'a';
+      var tc0        = (CONFIG.SHIFTS[sk0] || CONFIG.SHIFTS.a).color.replace('#','');
+      var sheets0 = [
+        { name: prefix + 'الموظفون',        tabColor: tc0,
+          sections: [{ key:'emp', title: empSec.title, headers: empSec.headers, rows: empSec.rows, shiftGroups: null },
+                     { key:'lv',  title: lvSec.title,  headers: lvSec.headers,  rows: lvSec.rows,  shiftGroups: null }] },
+        { name: prefix + 'طلبات الإجازات',  tabColor: '2E7D32',
+          sections: [{ key:'lr', title: lrSec.title, headers: lrSec.headers, rows: lrSec.rows, shiftGroups: null }] },
+        { name: prefix + 'العمل الإضافي',   tabColor: '6A1B9A',
+          sections: [{ key:'ot', title: otSec.title, headers: otSec.headers, rows: otSec.rows, shiftGroups: null }] }
+      ];
+      _smlDownload(sheets0, fileName);
+      return;
+    }
+
+    // مدير/اداري: 3 ورقات لكل وردية → N×3 ورقات
+    function _shiftRows(sec, s) {
+      if (!sec.shiftGroups) return sec.rows || [];
+      var g = sec.shiftGroups.filter(function(g) { return g.shift === s; })[0];
+      return g ? g.rows : [];
+    }
+
+    var sheets = [];
+    available.forEach(function(s) {
+      var sk = CONFIG.shiftKey(s);
+      var sc = CONFIG.SHIFTS[sk] || CONFIG.SHIFTS.a;
+      var tc = sc.color.replace('#','');
+      var pr = 'وردية ' + sc.label + ' — ';
+
+      // ورقة 1: الموظفون + أرصدة الإجازات
+      sheets.push({
+        name: pr + 'الموظفون',
+        tabColor: tc,
+        sections: [
+          { key:'emp', title: empSec.title, headers: empSec.headers, rows: _shiftRows(empSec, s), shiftGroups: null },
+          { key:'lv',  title: lvSec.title,  headers: lvSec.headers,  rows: _shiftRows(lvSec, s),  shiftGroups: null }
+        ]
+      });
+
+      // ورقة 2: طلبات الإجازات
+      sheets.push({
+        name: pr + 'طلبات الإجازات',
+        tabColor: '2E7D32',
+        sections: [
+          { key:'lr', title: lrSec.title, headers: lrSec.headers, rows: _shiftRows(lrSec, s), shiftGroups: null }
+        ]
+      });
+
+      // ورقة 3: العمل الإضافي
+      sheets.push({
+        name: pr + 'العمل الإضافي',
+        tabColor: '6A1B9A',
+        sections: [
+          { key:'ot', title: otSec.title, headers: otSec.headers, rows: _shiftRows(otSec, s), shiftGroups: null }
+        ]
+      });
+    });
+
+    _smlDownload(sheets, fileName);
   }
 
   // ============================================================
