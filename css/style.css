@@ -947,6 +947,14 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 .filename-preview { color: var(--primary); font-weight: 700; font-family: monospace; }
 .exp-shift-locked { padding: 10px 18px !important; font-size: 0.95rem; letter-spacing: 0.3px; }
 
+/* بطاقة تصدير الموظف في لوحة التحكم */
+.emp-export-card { display: flex; flex-direction: column; gap: 10px; }
+.emp-exp-desc    { font-size: 0.85rem; color: var(--text-muted); margin: 0; }
+.emp-exp-list    { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.emp-exp-list li { display: flex; align-items: center; gap: 8px; font-size: 0.88rem; }
+.emp-exp-dot     { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.emp-exp-btn     { width: 100%; margin-top: 4px; padding: 10px; font-size: 0.9rem; }
+
 /* ============================================================
    طلبات (قوائم)
    ============================================================ */
