@@ -25,38 +25,85 @@ var Export = (function () {
     if (!el) return;
     var role    = Auth.getEffectiveRole();
     var isAdmin = role === 'مدير' || role === 'اداري';
-    var shiftOpts = '';
+    var isSup   = role === 'مشرف';
+
+    // حقل الوردية حسب الدور
+    var shiftField = '';
     if (isAdmin) {
-      shiftOpts = '<option value="">كل الورديات</option>' +
+      var shiftOpts = '<option value="">كل الورديات</option>' +
         ['أ','ب','ج','د'].map(function(s) {
           var sk = CONFIG.shiftKey(s);
           return '<option value="' + s + '">وردية ' + CONFIG.SHIFTS[sk].label + '</option>';
         }).join('');
-    } else {
+      shiftField =
+        '<div class="form-field"><label>الوردية</label>' +
+          '<select id="exp-shift" class="form-select" onchange="Export.updateFileName()">' +
+            shiftOpts +
+          '</select>' +
+        '</div>';
+    } else if (isSup) {
       var myShift = Auth.getShift ? Auth.getShift() : '';
       var mySk    = myShift ? CONFIG.shiftKey(myShift) : '';
-      shiftOpts   = mySk ? '<option value="' + myShift + '">وردية ' + CONFIG.SHIFTS[mySk].label + '</option>' : '';
+      var myColor = (mySk && CONFIG.SHIFTS[mySk]) ? CONFIG.SHIFTS[mySk].color : 'var(--primary)';
+      var myLabel = (mySk && CONFIG.SHIFTS[mySk]) ? CONFIG.SHIFTS[mySk].label : myShift;
+      shiftField =
+        '<input type="hidden" id="exp-shift" value="' + myShift + '">' +
+        '<div class="form-field"><label>الوردية</label>' +
+          '<div class="form-static exp-shift-locked" style="background:' + myColor + ';color:#fff;border-radius:50px;text-align:center;font-weight:700">' +
+            'وردية ' + myLabel + ' 🔒' +
+          '</div>' +
+        '</div>';
+    } else {
+      // موظف — لا يصل للوحة التصدير عادةً، لكن احتياطاً
+      shiftField = '<input type="hidden" id="exp-shift" value="">';
     }
+
+    // أنواع البيانات حسب الدور
+    var typeOptions = '';
+    if (isAdmin) {
+      typeOptions =
+        '<option value="employees">الموظفون</option>' +
+        '<option value="leaves">طلبات الإجازات</option>' +
+        '<option value="overtime">العمل الإضافي</option>';
+    } else if (isSup) {
+      typeOptions =
+        '<option value="employees">موظفو وردييتي</option>' +
+        '<option value="leaves">إجازات وردييتي</option>' +
+        '<option value="overtime">عمل إضافي وردييتي</option>';
+    } else {
+      typeOptions = '<option value="overtime">طلبات العمل الإضافي الخاصة بي</option>';
+    }
+
+    // التصدير الشامل — للمدير والإداري فقط
+    var compRow = isAdmin
+      ? '<div class="export-comprehensive-row">' +
+          '<label class="checkbox-label">' +
+            '<input type="checkbox" id="exp-comprehensive" onchange="Export.updateFileName()"> ' +
+            'تصدير شامل (4 جداول: الموظفون + أرصدة الإجازات + طلبات الإجازات + العمل الإضافي)' +
+          '</label>' +
+        '</div>'
+      : (isSup
+          ? '<div class="export-comprehensive-row">' +
+              '<label class="checkbox-label">' +
+                '<input type="checkbox" id="exp-comprehensive" onchange="Export.updateFileName()"> ' +
+                'تصدير شامل وردييتي (الموظفون + الإجازات + العمل الإضافي)' +
+              '</label>' +
+            '</div>'
+          : '');
 
     var html =
       '<div class="export-panel card">' +
-        '<h3 class="section-title">تصدير البيانات</h3>' +
+        '<h3 class="section-title">تصدير البيانات' +
+          (isSup ? ' — <span style="font-size:0.85rem;color:var(--text-muted)">وردييتي فقط</span>' : '') +
+        '</h3>' +
 
         '<div class="form-grid">' +
           '<div class="form-field"><label>نوع البيانات</label>' +
             '<select id="exp-type" class="form-select" onchange="Export.onTypeChange()">' +
-              '<option value="employees">الموظفون</option>' +
-              '<option value="leaves">طلبات الإجازات</option>' +
-              '<option value="overtime">العمل الإضافي</option>' +
+              typeOptions +
             '</select>' +
           '</div>' +
-          (isAdmin
-            ? '<div class="form-field"><label>الوردية</label>' +
-                '<select id="exp-shift" class="form-select" onchange="Export.updateFileName()">' +
-                  shiftOpts +
-                '</select>' +
-              '</div>'
-            : '<input type="hidden" id="exp-shift" value="' + (Auth.getShift ? Auth.getShift() : '') + '">') +
+          shiftField +
           '<div class="form-field"><label>من تاريخ</label>' +
             '<input type="date" id="exp-from" class="form-input" onchange="Export.updateFileName()">' +
           '</div>' +
@@ -73,12 +120,7 @@ var Export = (function () {
           '<button class="btn-period" onclick="Export.clearDates()">كل التواريخ</button>' +
         '</div>' +
 
-        '<div class="export-comprehensive-row">' +
-          '<label class="checkbox-label">' +
-            '<input type="checkbox" id="exp-comprehensive" onchange="Export.updateFileName()"> ' +
-            'تصدير شامل (4 جداول: الموظفون + أرصدة الإجازات + طلبات الإجازات + العمل الإضافي)' +
-          '</label>' +
-        '</div>' +
+        compRow +
 
         '<div class="export-filename-row">' +
           '<span class="filename-label">اسم الملف:</span>' +
@@ -277,17 +319,11 @@ var Export = (function () {
       API.getOvertimeReqs({ from: from||'', to: to||'' }).then(function(r) {
         var list = r.ok ? r.data : [];
         if (shift) list = list.filter(function(x) { return x.shift === shift; });
-        var headers = ['رقم الطلب','الرقم الوظيفي','الاسم','الوردية','التاريخ','اليوم',
-                       'الساعات','السبب','الحالة','تاريخ الإنشاء'];
-        var toRow = function(x) {
-          return [x.no, x.empId, x.name, x.shift, CONFIG.fmtDate(x.date), x.day,
-                  x.hours, x.reason, CONFIG.otStatusInfo(x.status).label, CONFIG.fmtDate(x.createdDate)];
-        };
-        var rows = list.map(toRow);
+        var rows = list.map(_otFullRow);
         cb({
-          headers: headers, rows: rows, title: 'طلبات العمل الإضافي',
+          headers: OT_FULL_HEADERS, rows: rows, title: 'طلبات العمل الإضافي',
           grouped: groupByShift,
-          shiftGroups: groupByShift ? _buildShiftGroups(list, toRow) : null,
+          shiftGroups: groupByShift ? _buildShiftGroups(list, _otFullRow) : null,
           fileName: _buildFileName(shift)
         });
       });
@@ -362,13 +398,8 @@ var Export = (function () {
                 _statusLabel(x.status), x.empNotes||'', x.reviewerName||''];
       };
 
-      // — العمل الإضافي —
-      var otHeaders = ['رقم الطلب','الرقم الوظيفي','الاسم','الوردية','التاريخ','اليوم',
-                       'الساعات','السبب','الحالة','تاريخ الإنشاء'];
-      var otToRow = function(x) {
-        return [x.no, x.empId, x.name, x.shift, CONFIG.fmtDate(x.date), x.day,
-                x.hours, x.reason, CONFIG.otStatusInfo(x.status).label, CONFIG.fmtDate(x.createdDate)];
-      };
+      // — العمل الإضافي (جميع المراحل) —
+      var otToRow = _otFullRow;
 
       cb({
         comprehensive: true,
@@ -376,9 +407,64 @@ var Export = (function () {
         employees:    { title:'الموظفون',       headers:empHeaders, rows:empList.map(empToRow), grouped:groupByShift, shiftGroups:groupByShift?_buildShiftGroups(empList,empToRow):null },
         leaveBalance: { title:'أرصدة الإجازات', headers:lvHeaders,  rows:empList.map(lvToRow),  grouped:groupByShift, shiftGroups:groupByShift?_buildShiftGroups(empList,lvToRow):null  },
         leaveReqs:    { title:'طلبات الإجازات', headers:lrHeaders,  rows:lrList.map(lrToRow),   grouped:groupByShift, shiftGroups:groupByShift?_buildShiftGroups(lrList,lrToRow):null   },
-        overtime:     { title:'العمل الإضافي',  headers:otHeaders,  rows:otList.map(otToRow),   grouped:groupByShift, shiftGroups:groupByShift?_buildShiftGroups(otList,otToRow):null   }
+        overtime:     { title:'العمل الإضافي',  headers:OT_FULL_HEADERS, rows:otList.map(otToRow), grouped:groupByShift, shiftGroups:groupByShift?_buildShiftGroups(otList,otToRow):null }
       });
     });
+  }
+
+  // ============================================================
+  // رؤوس وصفوف الأوفرتايم الكاملة (جميع مراحل الطلب)
+  // ============================================================
+  var OT_FULL_HEADERS = [
+    'رقم الطلب','الرقم الوظيفي','الاسم','الوردية',
+    'تاريخ العمل الإضافي','اليوم','الساعات','السبب','الحالة الحالية',
+    // الإنشاء
+    'تاريخ الإنشاء',
+    // مراجعة المشرف
+    'تاريخ مراجعة المشرف','اسم المشرف','قرار المشرف','ملاحظات المشرف',
+    // التنسيق الإداري
+    'تاريخ وصول التنسيق الإداري','إجراء التنسيق الإداري','ملاحظات التنسيق',
+    // الإرسال في النظام
+    'تاريخ الإرسال في النظام',
+    // الاستلام
+    'حالة الاستلام','تاريخ الاستلام'
+  ];
+
+  var _COORD_ACTION = { send_system: 'إرسال للنظام', return_supervisor: 'إعادة للمشرف' };
+
+  function _otFullRow(x) {
+    // قرار المشرف: إذا كان هناك تاريخ مراجعة
+    //   - رفض: status=rejected وCoordSentDate فارغ (أي الرفض كان في مرحلة المشرف)
+    //   - اعتماد: خلاف ذلك
+    var supDecision = x.supRevDate
+      ? (x.status === 'rejected' && !x.coordSentDate ? 'رفض' : 'اعتماد')
+      : 'لم يتم الإجراء';
+
+    var coordActionLabel = x.coordSentDate
+      ? (_COORD_ACTION[x.coordAction] || x.coordAction || '—')
+      : 'لم يصل بعد';
+
+    return [
+      x.no, x.empId, x.name, x.shift,
+      CONFIG.fmtDate(x.date), x.day, x.hours, x.reason,
+      CONFIG.otStatusInfo(x.status).label,
+      // إنشاء
+      CONFIG.fmtDate(x.createdDate) || '—',
+      // مشرف
+      x.supRevDate   || 'لم يتم',
+      x.supReviewerName || '—',
+      supDecision,
+      x.supNotes     || '—',
+      // تنسيق
+      x.coordSentDate  || 'لم يصل',
+      coordActionLabel,
+      x.coordNotes   || '—',
+      // نظام
+      x.systemSentDate || 'لم يتم',
+      // استلام
+      x.receiptStatus  || '—',
+      x.receiptDate    || '—'
+    ];
   }
 
   // بناء مجموعات الورديات للتصدير المجمّع
@@ -638,6 +724,8 @@ var Export = (function () {
     clearDates,
     onTypeChange,
     updateFileName,
-    exportDirect
+    exportDirect,
+    OT_FULL_HEADERS: OT_FULL_HEADERS,
+    otFullRow: _otFullRow
   };
 })();
