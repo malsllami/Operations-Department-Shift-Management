@@ -900,6 +900,38 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 .export-status.loading { color: var(--primary); }
 .export-status.error   { color: #EF4444; }
 
+/* اختصارات الفترة الزمنية */
+.export-period-btns {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 12px 0 4px;
+}
+.period-label { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
+.btn-period {
+  background: var(--bg); border: 1.5px solid var(--border);
+  border-radius: 20px; padding: 4px 14px;
+  font-size: 0.82rem; color: var(--text); cursor: pointer;
+  transition: background 0.18s, border-color 0.18s;
+}
+.btn-period:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* صف التصدير الشامل */
+.export-comprehensive-row {
+  margin: 10px 0; padding: 10px 14px;
+  background: var(--bg); border-radius: 10px;
+  border: 1.5px dashed var(--border);
+}
+.checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer; }
+.checkbox-label input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary); }
+
+/* معاينة اسم الملف */
+.export-filename-row {
+  display: flex; align-items: center; gap: 8px;
+  margin: 8px 0; padding: 6px 10px;
+  background: var(--bg); border-radius: 8px; font-size: 0.85rem;
+}
+.filename-label { color: var(--text-muted); font-weight: 600; }
+.filename-preview { color: var(--primary); font-weight: 700; font-family: monospace; }
+
 /* ============================================================
    طلبات (قوائم)
    ============================================================ */
