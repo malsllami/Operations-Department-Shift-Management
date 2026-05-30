@@ -458,7 +458,7 @@ var Export = (function () {
   // ============================================================
   function _doPDF(data) {
     if (data.comprehensive) { _doPrintComprehensive(data); return; }
-    if (typeof jsPDF === 'undefined') { alert('مكتبة jsPDF غير محملة'); return; }
+    if (typeof jsPDF === 'undefined') { _doPrint(data); return; }
     var doc  = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
     doc.setFontSize(14);
     doc.text(data.title + ' — ' + CONFIG.todayStr(), 10, 15);
@@ -622,6 +622,11 @@ var Export = (function () {
     return { pending_review:'قيد المراجعة', approved:'معتمد', rejected:'مرفوض' }[s] || s;
   }
 
+  function exportDirect(compData, format) {
+    if (format === 'excel') _doExcelComprehensive(compData);
+    else _doPrintComprehensive(compData);
+  }
+
   return {
     renderExportPanel,
     inlineBar,
@@ -632,6 +637,7 @@ var Export = (function () {
     setDateRange,
     clearDates,
     onTypeChange,
-    updateFileName
+    updateFileName,
+    exportDirect
   };
 })();
