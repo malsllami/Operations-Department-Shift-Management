@@ -900,6 +900,20 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 .export-status.loading { color: var(--primary); }
 .export-status.error   { color: #EF4444; }
 
+/* وضع أوراق Excel */
+.export-sheets-row {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  margin: 10px 0 4px; padding: 10px 14px;
+  background: var(--bg); border-radius: 10px;
+  border: 1.5px solid var(--border);
+}
+.sheets-label { font-size: 0.85rem; font-weight: 700; color: var(--text-muted); white-space: nowrap; }
+.radio-opt {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.88rem; cursor: pointer; color: var(--text);
+}
+.radio-opt input[type="radio"] { accent-color: var(--primary); width: 15px; height: 15px; cursor: pointer; }
+
 /* اختصارات الفترة الزمنية */
 .export-period-btns {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
