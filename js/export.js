@@ -713,6 +713,11 @@ var Export = (function () {
     else _doPrintComprehensive(compData);
   }
 
+  // واجهة عامة لجلب البيانات الشاملة (تُستخدم من dashboard.js وغيره)
+  function getComprehensiveData(shift, from, to, cb) {
+    _getComprehensiveData(shift || '', from || '', to || '', cb);
+  }
+
   return {
     renderExportPanel,
     inlineBar,
@@ -725,6 +730,7 @@ var Export = (function () {
     onTypeChange,
     updateFileName,
     exportDirect,
+    getComprehensiveData,
     OT_FULL_HEADERS: OT_FULL_HEADERS,
     otFullRow: _otFullRow
   };
