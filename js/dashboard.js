@@ -658,16 +658,14 @@ var Dashboard = (function () {
         var S={pending_review:'قيد المراجعة',approved:'معتمد',rejected:'مرفوض'};
         return [x.no,x.empId,x.name,x.shift,T[x.type]||x.type,CONFIG.fmtDate(x.startDate),CONFIG.fmtDate(x.endDate),x.days,S[x.status]||x.status,x.empNotes||'',x.reviewerName||''];
       };
-      var otToRow = function(x){
-        return [x.no,x.empId,x.name,x.shift,CONFIG.fmtDate(x.date),x.day,x.hours,x.reason,CONFIG.otStatusInfo(x.status).label,CONFIG.fmtDate(x.createdDate)];
-      };
+      var otToRow = Export.otFullRow;
 
       var compData = {
         comprehensive: true, fileName: fileName,
         employees:    { title:'الموظفون',       headers:['الرقم الوظيفي','الاسم','الجوال','الوردية','الصلاحية','انتهاء بطاقة العمل','أيام','انتهاء المصدر','أيام','المنطقة','المركز','السيارة','CAT2 قميص','CAT2 بنطلون','شوز','CAT4','برافو','ميجر','أخرى'], rows:empList.map(empToRow), grouped:true, shiftGroups:buildGroups(empList,empToRow) },
         leaveBalance: { title:'أرصدة الإجازات', headers:['الرقم الوظيفي','الاسم','الوردية','رصيد سنوية','مستخدم','متبقي','رصيد مجدولة','مستخدم مجدولة','متبقي مجدولة','مرضية','مولود','وفاة','زواج','اختبارات','دورة عمل','خدمة طويلة','أخرى'], rows:empList.map(lvToRow), grouped:true, shiftGroups:buildGroups(empList,lvToRow) },
         leaveReqs:    { title:'طلبات الإجازات', headers:['رقم الطلب','الرقم الوظيفي','الاسم','الوردية','نوع الإجازة','من تاريخ','إلى تاريخ','الأيام','الحالة','ملاحظات','المراجع'], rows:lrList.map(lrToRow), grouped:true, shiftGroups:buildGroups(lrList,lrToRow) },
-        overtime:     { title:'العمل الإضافي',  headers:['رقم الطلب','الرقم الوظيفي','الاسم','الوردية','التاريخ','اليوم','الساعات','السبب','الحالة','تاريخ الإنشاء'], rows:otList.map(otToRow), grouped:true, shiftGroups:buildGroups(otList,otToRow) }
+        overtime:     { title:'العمل الإضافي',  headers:Export.OT_FULL_HEADERS, rows:otList.map(otToRow), grouped:true, shiftGroups:buildGroups(otList,otToRow) }
       };
 
       Export.exportDirect(compData, format);
