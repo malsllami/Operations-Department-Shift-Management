@@ -931,6 +931,7 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 }
 .filename-label { color: var(--text-muted); font-weight: 600; }
 .filename-preview { color: var(--primary); font-weight: 700; font-family: monospace; }
+.exp-shift-locked { padding: 10px 18px !important; font-size: 0.95rem; letter-spacing: 0.3px; }
 
 /* ============================================================
    طلبات (قوائم)
@@ -1636,11 +1637,52 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 .dash-exp-label { font-size: 0.83rem; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; }
 .dash-exp-btns { display: flex; gap: 6px; flex-wrap: wrap; }
 
-@media (max-width: 900px) {
-  .dash-export-grid { grid-template-columns: repeat(2,1fr); }
+/* ============================================================
+   تجاوب بطاقة الاستهلاك + بطاقة التصدير
+   ============================================================ */
+
+/* --- لابتوب / تابلت كبير (≤1280px) --- */
+@media (max-width: 1280px) {
+  .adc-bar { height: 50px; }
+  .api-gauge-zones span { font-size: 0.72rem; }
 }
-@media (max-width: 560px) {
-  .dash-export-grid { grid-template-columns: 1fr; }
+
+/* --- تابلت (≤1024px) --- */
+@media (max-width: 1024px) {
+  .dash-export-grid     { grid-template-columns: repeat(2, 1fr); }
+  .api-week-cards       { flex-wrap: wrap; justify-content: center; gap: 6px; }
+  .api-day-card         { min-width: 48px; flex: 0 0 calc(14% - 6px); }
+  .adc-bar              { width: 28px; height: 48px; }
+  .api-gauge-zones      { flex-wrap: wrap; gap: 4px 10px; font-size: 0.74rem; }
+}
+
+/* --- جوال كبير (≤768px) --- */
+@media (max-width: 768px) {
+  .dash-export-grid     { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .dash-exp-section     { padding: 8px 10px; }
+  .dash-exp-label       { font-size: 0.78rem; margin-bottom: 6px; }
+  .dash-exp-comp        { grid-column: 1 / -1; }
+
+  .api-week-cards       { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; padding-bottom: 4px; gap: 6px; justify-content: flex-start; }
+  .api-day-card         { flex: 0 0 52px; min-width: 52px; }
+  .adc-bar              { width: 30px; height: 52px; }
+  .api-gauge-labels     { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .api-gauge-zones      { font-size: 0.7rem; gap: 2px 8px; }
+}
+
+/* --- جوال صغير (≤480px) --- */
+@media (max-width: 480px) {
+  .dash-export-grid     { grid-template-columns: 1fr; }
+  .dash-exp-comp        { grid-column: 1; }
+  .dash-export-card     { padding: 14px 12px !important; }
+
+  .api-week-cards       { gap: 4px; }
+  .api-day-card         { flex: 0 0 44px; min-width: 44px; }
+  .adc-day              { font-size: 0.68rem; }
+  .adc-date             { font-size: 0.78rem; }
+  .adc-count            { font-size: 0.68rem; }
+  .adc-bar              { width: 26px; height: 44px; }
+  .api-gauge-zones      { display: none; }
 }
 
 /* شارة حالة الدوام في جدول المناطق */
