@@ -535,7 +535,13 @@ var App = (function () {
       case 'settings':       _renderSettings('view-content'); break;
       case 'profile':
         var _me = Auth.getUser();
-        Employees.renderForm('view-content', { empId: _me ? String(_me.empId) : '' }, true);
+        if (Auth.isAdminMode()) {
+          // في وضع الإدارة: عرض البيانات الأساسية فقط بدون بطاقات الموظف
+          Employees.renderAdminProfile('view-content', _me ? String(_me.empId) : '');
+        } else {
+          // في وضع الموظف: عرض الملف الكامل
+          Employees.renderForm('view-content', { empId: _me ? String(_me.empId) : '' }, true);
+        }
         break;
     }
   }
