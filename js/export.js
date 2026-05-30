@@ -23,40 +23,150 @@ var Export = (function () {
   function renderExportPanel(containerId) {
     var el = document.getElementById(containerId);
     if (!el) return;
-    var html = '<div class="export-panel card">' +
-      '<h3 class="section-title">تصدير البيانات</h3>' +
-      '<div class="form-grid">' +
-        '<div class="form-field"><label>نوع البيانات</label>' +
-          '<select id="exp-type" class="form-select">' +
-            '<option value="employees">الموظفون</option>' +
-            '<option value="leaves">الإجازات</option>' +
-            '<option value="overtime">العمل الإضافي</option>' +
-          '</select>' +
+    var role    = Auth.getEffectiveRole();
+    var isAdmin = role === 'مدير' || role === 'اداري';
+    var shiftOpts = '';
+    if (isAdmin) {
+      shiftOpts = '<option value="">كل الورديات</option>' +
+        ['أ','ب','ج','د'].map(function(s) {
+          var sk = CONFIG.shiftKey(s);
+          return '<option value="' + s + '">وردية ' + CONFIG.SHIFTS[sk].label + '</option>';
+        }).join('');
+    } else {
+      var myShift = Auth.getShift ? Auth.getShift() : '';
+      var mySk    = myShift ? CONFIG.shiftKey(myShift) : '';
+      shiftOpts   = mySk ? '<option value="' + myShift + '">وردية ' + CONFIG.SHIFTS[mySk].label + '</option>' : '';
+    }
+
+    var html =
+      '<div class="export-panel card">' +
+        '<h3 class="section-title">تصدير البيانات</h3>' +
+
+        '<div class="form-grid">' +
+          '<div class="form-field"><label>نوع البيانات</label>' +
+            '<select id="exp-type" class="form-select" onchange="Export.onTypeChange()">' +
+              '<option value="employees">الموظفون</option>' +
+              '<option value="leaves">طلبات الإجازات</option>' +
+              '<option value="overtime">العمل الإضافي</option>' +
+            '</select>' +
+          '</div>' +
+          (isAdmin
+            ? '<div class="form-field"><label>الوردية</label>' +
+                '<select id="exp-shift" class="form-select" onchange="Export.updateFileName()">' +
+                  shiftOpts +
+                '</select>' +
+              '</div>'
+            : '<input type="hidden" id="exp-shift" value="' + (Auth.getShift ? Auth.getShift() : '') + '">') +
+          '<div class="form-field"><label>من تاريخ</label>' +
+            '<input type="date" id="exp-from" class="form-input" onchange="Export.updateFileName()">' +
+          '</div>' +
+          '<div class="form-field"><label>إلى تاريخ</label>' +
+            '<input type="date" id="exp-to" class="form-input" onchange="Export.updateFileName()">' +
+          '</div>' +
         '</div>' +
-        '<div class="form-field"><label>الوردية</label>' +
-          '<select id="exp-shift" class="form-select">' +
-            '<option value="">كل الورديات</option>' +
-            ['أ','ب','ج','د'].map(function(s) {
-              var sk = CONFIG.shiftKey(s);
-              return '<option value="' + s + '">وردية ' + CONFIG.SHIFTS[sk].label + '</option>';
-            }).join('') +
-          '</select>' +
+
+        '<div class="export-period-btns">' +
+          '<span class="period-label">الفترة:</span>' +
+          '<button class="btn-period" onclick="Export.setDateRange(\'month\')">هذا الشهر</button>' +
+          '<button class="btn-period" onclick="Export.setDateRange(\'half\')">6 أشهر</button>' +
+          '<button class="btn-period" onclick="Export.setDateRange(\'year\')">سنة كاملة</button>' +
+          '<button class="btn-period" onclick="Export.clearDates()">كل التواريخ</button>' +
         '</div>' +
-        '<div class="form-field"><label>من تاريخ</label>' +
-          '<input type="date" id="exp-from" class="form-input">' +
+
+        '<div class="export-comprehensive-row">' +
+          '<label class="checkbox-label">' +
+            '<input type="checkbox" id="exp-comprehensive" onchange="Export.updateFileName()"> ' +
+            'تصدير شامل (4 جداول: الموظفون + أرصدة الإجازات + طلبات الإجازات + العمل الإضافي)' +
+          '</label>' +
         '</div>' +
-        '<div class="form-field"><label>إلى تاريخ</label>' +
-          '<input type="date" id="exp-to" class="form-input">' +
+
+        '<div class="export-filename-row">' +
+          '<span class="filename-label">اسم الملف:</span>' +
+          '<span id="exp-filename-preview" class="filename-preview"></span>' +
         '</div>' +
-      '</div>' +
-      '<div class="export-buttons">' +
-        '<button class="btn-export btn-excel" onclick="Export.toExcel()">📊 تصدير Excel</button>' +
-        '<button class="btn-export btn-pdf"   onclick="Export.toPDF()">📄 تصدير PDF</button>' +
-        '<button class="btn-export btn-print" onclick="Export.print()">🖨️ طباعة</button>' +
-      '</div>' +
-      '<div id="exp-status" class="export-status"></div>' +
-    '</div>';
+
+        '<div class="export-buttons">' +
+          '<button class="btn-export btn-excel" onclick="Export.toExcel()">📊 تصدير Excel</button>' +
+          '<button class="btn-export btn-pdf"   onclick="Export.toPDF()">📄 تصدير PDF</button>' +
+          '<button class="btn-export btn-print" onclick="Export.print()">🖨️ طباعة</button>' +
+        '</div>' +
+        '<div id="exp-status" class="export-status"></div>' +
+      '</div>';
+
     el.innerHTML = html;
+    updateFileName();
+  }
+
+  // ============================================================
+  // اختصارات الفترات الزمنية
+  // ============================================================
+  function setDateRange(period) {
+    var today = new Date();
+    var from, to = _dateStr(today);
+    if (period === 'month') {
+      from = _dateStr(new Date(today.getFullYear(), today.getMonth(), 1));
+    } else if (period === 'half') {
+      var d = new Date(today);
+      d.setMonth(d.getMonth() - 6);
+      from = _dateStr(d);
+    } else if (period === 'year') {
+      var d2 = new Date(today);
+      d2.setFullYear(d2.getFullYear() - 1);
+      from = _dateStr(d2);
+    }
+    var fromEl = document.getElementById('exp-from');
+    var toEl   = document.getElementById('exp-to');
+    if (fromEl) fromEl.value = from || '';
+    if (toEl)   toEl.value   = to   || '';
+    updateFileName();
+  }
+
+  function clearDates() {
+    var fromEl = document.getElementById('exp-from');
+    var toEl   = document.getElementById('exp-to');
+    if (fromEl) fromEl.value = '';
+    if (toEl)   toEl.value   = '';
+    updateFileName();
+  }
+
+  function onTypeChange() {
+    updateFileName();
+  }
+
+  function _dateStr(d) {
+    return d.getFullYear() + '-' +
+           String(d.getMonth() + 1).padStart(2, '0') + '-' +
+           String(d.getDate()).padStart(2, '0');
+  }
+
+  // ============================================================
+  // تسمية الملف تلقائياً
+  // ============================================================
+  function _buildFileName(shift) {
+    var role    = Auth.getEffectiveRole();
+    var isAdmin = role === 'مدير' || role === 'اداري';
+    var date    = CONFIG.todayStr();
+    if (!isAdmin) {
+      var myShift = (shift || (Auth.getShift ? Auth.getShift() : '')) || '';
+      if (myShift) {
+        var sk = CONFIG.shiftKey(myShift);
+        if (sk && CONFIG.SHIFTS[sk]) return 'وردية_' + CONFIG.SHIFTS[sk].label + '_' + date;
+      }
+      return 'تصدير_' + date;
+    }
+    if (shift) {
+      var sk2 = CONFIG.shiftKey(shift);
+      if (sk2 && CONFIG.SHIFTS[sk2]) return 'وردية_' + CONFIG.SHIFTS[sk2].label + '_' + date;
+    }
+    var u = Auth.getUser();
+    return ((u && u.name) ? u.name : 'تصدير') + '_' + date;
+  }
+
+  function updateFileName() {
+    var el = document.getElementById('exp-filename-preview');
+    if (!el) return;
+    var shift = _val('exp-shift') || '';
+    el.textContent = _buildFileName(shift) + '.xlsx';
   }
 
   // ============================================================
@@ -74,17 +184,27 @@ var Export = (function () {
   // جلب البيانات — من عناصر UI
   // ============================================================
   function _getData(cb) {
-    var type  = _val('exp-type')  || 'employees';
-    var shift = _val('exp-shift') || '';
-    var from  = _val('exp-from')  || '';
-    var to    = _val('exp-to')    || '';
-    var status = document.getElementById('exp-status');
-    if (status) { status.textContent = 'جارٍ تجميع البيانات...'; status.className = 'export-status loading'; }
-    _quickGetData(type, shift, function(data) {
-      data.from = from; data.to = to;
-      if (status) { status.textContent = ''; status.className = 'export-status'; }
-      cb(data);
-    }, from, to);
+    var compEl  = document.getElementById('exp-comprehensive');
+    var isComp  = compEl && compEl.checked;
+    var type    = _val('exp-type')  || 'employees';
+    var shift   = _val('exp-shift') || '';
+    var from    = _val('exp-from')  || '';
+    var to      = _val('exp-to')    || '';
+    var statusEl = document.getElementById('exp-status');
+    if (statusEl) { statusEl.textContent = 'جارٍ تجميع البيانات...'; statusEl.className = 'export-status loading'; }
+
+    if (isComp) {
+      _getComprehensiveData(shift, from, to, function(data) {
+        if (statusEl) { statusEl.textContent = ''; statusEl.className = 'export-status'; }
+        cb(data);
+      });
+    } else {
+      _quickGetData(type, shift, function(data) {
+        data.from = from; data.to = to;
+        if (statusEl) { statusEl.textContent = ''; statusEl.className = 'export-status'; }
+        cb(data);
+      }, from, to);
+    }
   }
 
   // ============================================================
@@ -92,8 +212,8 @@ var Export = (function () {
   // ============================================================
   function _quickGetData(type, shift, cb, from, to) {
     var role    = Auth.getEffectiveRole();
-    var isAdmin = role === 'مدير' || role === 'اداري';  // يرى كل الورديات
-    var groupByShift = isAdmin && !shift;               // تجميع حسب الوردية للمدير فقط
+    var isAdmin = role === 'مدير' || role === 'اداري';
+    var groupByShift = isAdmin && !shift;
 
     if (type === 'employees') {
       Promise.all([API.getEmployees(), API.getRegions(), API.getEquipment(), API.getLeaves()])
@@ -109,7 +229,7 @@ var Export = (function () {
                          'انتهاء بطاقة العمل','أيام متبقية','انتهاء بطاقة المصدر','أيام متبقية',
                          'المنطقة','المركز','السيارة',
                          'CAT2 قميص','CAT2 بنطلون','شوز','CAT4','برافو','ميجر','أخرى',
-                         'رصيد السنوية','المتبقي','رصيد المجدولة','مرضية','مولود','وفاة','زواج','اختبارات'];
+                         'رصيد السنوية','المستخدم','المتبقي','رصيد المجدولة','مرضية','مولود','وفاة','زواج','اختبارات'];
 
           var toRow = function(e) {
             var rg = rgMap[e.empId]||{}; var eq = eqMap[e.empId]||{}; var lv = lvMap[e.empId]||{};
@@ -119,14 +239,17 @@ var Export = (function () {
                     CONFIG.fmtDate(e.srcExpDate),  e.srcDaysLeft||'',
                     rg.region||'', rg.center||'', rg.car||'',
                     eq.cat2Shirt||'', eq.cat2Pants||'', eq.shoes||'', eq.cat4||'', eq.bravo||'', eq.major||'', eq.other||'',
-                    lv.annBal||'', lv.annRem||'', lv.schedBal||'', lv.sick||'', lv.birth||'', lv.death||'', lv.marriage||'', lv.exam||''];
+                    lv.annBal||0, lv.annUsed||0, lv.annRem||0,
+                    lv.schedBal||0,
+                    lv.sick||'', lv.birth||'', lv.death||'', lv.marriage||'', lv.exam||''];
           };
 
           var rows = empList.map(toRow);
           cb({
             headers: headers, rows: rows, title: 'الموظفون',
             grouped: groupByShift,
-            shiftGroups: groupByShift ? _buildShiftGroups(empList, toRow) : null
+            shiftGroups: groupByShift ? _buildShiftGroups(empList, toRow) : null,
+            fileName: _buildFileName(shift)
           });
         });
 
@@ -145,7 +268,8 @@ var Export = (function () {
         cb({
           headers: headers, rows: rows, title: 'طلبات الإجازات',
           grouped: groupByShift,
-          shiftGroups: groupByShift ? _buildShiftGroups(list, toRow) : null
+          shiftGroups: groupByShift ? _buildShiftGroups(list, toRow) : null,
+          fileName: _buildFileName(shift)
         });
       });
 
@@ -163,10 +287,98 @@ var Export = (function () {
         cb({
           headers: headers, rows: rows, title: 'طلبات العمل الإضافي',
           grouped: groupByShift,
-          shiftGroups: groupByShift ? _buildShiftGroups(list, toRow) : null
+          shiftGroups: groupByShift ? _buildShiftGroups(list, toRow) : null,
+          fileName: _buildFileName(shift)
         });
       });
     }
+  }
+
+  // ============================================================
+  // جلب البيانات الشاملة (4 جداول)
+  // ============================================================
+  function _getComprehensiveData(shift, from, to, cb) {
+    var role    = Auth.getEffectiveRole();
+    var isAdmin = role === 'مدير' || role === 'اداري';
+    var groupByShift = isAdmin && !shift;
+    var fileName = _buildFileName(shift);
+
+    Promise.all([
+      API.getEmployees(),
+      API.getRegions(),
+      API.getEquipment(),
+      API.getLeaves(),
+      API.getLeaveReqs({ from: from||'', to: to||'' }),
+      API.getOvertimeReqs({ from: from||'', to: to||'' })
+    ]).then(function(r) {
+      var empList = r[0].ok ? r[0].data : [];
+      var rgMap = {}; if (r[1].ok) r[1].data.forEach(function(x) { rgMap[x.empId] = x; });
+      var eqMap = {}; if (r[2].ok) r[2].data.forEach(function(x) { eqMap[x.empId] = x; });
+      var lvMap = {}; if (r[3].ok) r[3].data.forEach(function(x) { lvMap[x.empId] = x; });
+      var lrList = r[4].ok ? r[4].data : [];
+      var otList = r[5].ok ? r[5].data : [];
+
+      if (shift) {
+        empList = empList.filter(function(e) { return e.shift === shift; });
+        lrList  = lrList.filter(function(x)  { return x.shift === shift; });
+        otList  = otList.filter(function(x)  { return x.shift === shift; });
+      }
+
+      // — الموظفون —
+      var empHeaders = ['الرقم الوظيفي','الاسم','الجوال','الوردية','الصلاحية',
+                        'انتهاء بطاقة العمل','أيام متبقية','انتهاء بطاقة المصدر','أيام متبقية',
+                        'المنطقة','المركز','السيارة',
+                        'CAT2 قميص','CAT2 بنطلون','شوز','CAT4','برافو','ميجر','أخرى'];
+      var empToRow = function(e) {
+        var rg = rgMap[e.empId]||{}; var eq = eqMap[e.empId]||{};
+        return [e.empId, e.name, e.phone ? '+966 '+e.phone : '',
+                e.shift, e.role,
+                CONFIG.fmtDate(e.workExpDate), e.workDaysLeft||'',
+                CONFIG.fmtDate(e.srcExpDate),  e.srcDaysLeft||'',
+                rg.region||'', rg.center||'', rg.car||'',
+                eq.cat2Shirt||'', eq.cat2Pants||'', eq.shoes||'', eq.cat4||'', eq.bravo||'', eq.major||'', eq.other||''];
+      };
+
+      // — أرصدة الإجازات —
+      var lvHeaders = ['الرقم الوظيفي','الاسم','الوردية',
+                       'رصيد سنوية','مستخدم سنوية','متبقي سنوية',
+                       'رصيد مجدولة','مستخدم مجدولة','متبقي مجدولة',
+                       'مرضية','مولود','وفاة','زواج','اختبارات','دورة عمل','خدمة طويلة','أخرى'];
+      var lvToRow = function(e) {
+        var lv = lvMap[e.empId]||{};
+        return [e.empId, e.name, e.shift,
+                lv.annBal||0, lv.annUsed||0, lv.annRem||0,
+                lv.schedBal||0, lv.schedUsed||0, lv.schedRem||0,
+                lv.sick||'', lv.birth||'', lv.death||'', lv.marriage||'', lv.exam||'',
+                lv.workCourse||'', lv.longService||'', lv.otherTypes||''];
+      };
+
+      // — طلبات الإجازات —
+      var lrHeaders = ['رقم الطلب','الرقم الوظيفي','الاسم','الوردية','نوع الإجازة',
+                       'من تاريخ','إلى تاريخ','الأيام','الحالة','ملاحظات الموظف','المراجع'];
+      var lrToRow = function(x) {
+        return [x.no, x.empId, x.name, x.shift, _leaveTypeLabel(x.type),
+                CONFIG.fmtDate(x.startDate), CONFIG.fmtDate(x.endDate), x.days,
+                _statusLabel(x.status), x.empNotes||'', x.reviewerName||''];
+      };
+
+      // — العمل الإضافي —
+      var otHeaders = ['رقم الطلب','الرقم الوظيفي','الاسم','الوردية','التاريخ','اليوم',
+                       'الساعات','السبب','الحالة','تاريخ الإنشاء'];
+      var otToRow = function(x) {
+        return [x.no, x.empId, x.name, x.shift, CONFIG.fmtDate(x.date), x.day,
+                x.hours, x.reason, CONFIG.otStatusInfo(x.status).label, CONFIG.fmtDate(x.createdDate)];
+      };
+
+      cb({
+        comprehensive: true,
+        fileName: fileName,
+        employees:    { title:'الموظفون',       headers:empHeaders, rows:empList.map(empToRow), grouped:groupByShift, shiftGroups:groupByShift?_buildShiftGroups(empList,empToRow):null },
+        leaveBalance: { title:'أرصدة الإجازات', headers:lvHeaders,  rows:empList.map(lvToRow),  grouped:groupByShift, shiftGroups:groupByShift?_buildShiftGroups(empList,lvToRow):null  },
+        leaveReqs:    { title:'طلبات الإجازات', headers:lrHeaders,  rows:lrList.map(lrToRow),   grouped:groupByShift, shiftGroups:groupByShift?_buildShiftGroups(lrList,lrToRow):null   },
+        overtime:     { title:'العمل الإضافي',  headers:otHeaders,  rows:otList.map(otToRow),   grouped:groupByShift, shiftGroups:groupByShift?_buildShiftGroups(otList,otToRow):null   }
+      });
+    });
   }
 
   // بناء مجموعات الورديات للتصدير المجمّع
@@ -177,7 +389,7 @@ var Export = (function () {
     return order.filter(function(s) { return groups[s] && groups[s].length; }).map(function(s) {
       var sk = CONFIG.shiftKey(s);
       return {
-        shift: s, label: 'وردية ' + CONFIG.SHIFTS[sk].label,
+        shift: s, label: CONFIG.SHIFTS[sk].label,
         color: CONFIG.SHIFTS[sk].color,
         bg: CONFIG.SHIFTS[sk].bg,
         rows: groups[s].map(toRow)
@@ -186,35 +398,66 @@ var Export = (function () {
   }
 
   // ============================================================
-  // تصدير Excel
+  // تصدير Excel — عادي (ورقة واحدة)
   // ============================================================
   function _doExcel(data) {
+    if (data.comprehensive) { _doExcelComprehensive(data); return; }
     if (typeof XLSX === 'undefined') { alert('مكتبة SheetJS غير محملة'); return; }
     var wb = XLSX.utils.book_new();
     var wsData = [data.headers];
 
     if (data.grouped && data.shiftGroups && data.shiftGroups.length) {
       data.shiftGroups.forEach(function(g) {
-        wsData.push(['═══ ' + g.label + ' ═══']);
+        wsData.push(['═══ وردية ' + g.label + ' ═══']);
         g.rows.forEach(function(r) { wsData.push(r); });
-        wsData.push([]);  // صف فاصل فارغ
+        wsData.push([]);
       });
     } else {
       data.rows.forEach(function(r) { wsData.push(r); });
     }
 
     var ws = XLSX.utils.aoa_to_sheet(wsData);
-    ws['!cols'] = data.headers.map(function() { return { wch: 18 }; });
+    ws['!cols'] = data.headers.map(function() { return { wch: 20 }; });
     XLSX.utils.book_append_sheet(wb, ws, data.title);
-    XLSX.writeFile(wb, data.title + '_' + CONFIG.todayStr() + '.xlsx');
+    var fileName = (data.fileName || data.title + '_' + CONFIG.todayStr()) + '.xlsx';
+    XLSX.writeFile(wb, fileName);
   }
 
   function toExcel() { _getData(_doExcel); }
 
   // ============================================================
+  // تصدير Excel — شامل (4 أوراق)
+  // ============================================================
+  function _doExcelComprehensive(compData) {
+    if (typeof XLSX === 'undefined') { alert('مكتبة SheetJS غير محملة'); return; }
+    var wb = XLSX.utils.book_new();
+    var sections = [compData.employees, compData.leaveBalance, compData.leaveReqs, compData.overtime];
+
+    sections.forEach(function(sec) {
+      var wsData = [sec.headers];
+      if (sec.grouped && sec.shiftGroups && sec.shiftGroups.length) {
+        sec.shiftGroups.forEach(function(g) {
+          wsData.push(['══ وردية ' + g.label + ' ══']);
+          g.rows.forEach(function(r) { wsData.push(r); });
+          wsData.push([]);
+        });
+      } else {
+        sec.rows.forEach(function(r) { wsData.push(r); });
+      }
+      var ws = XLSX.utils.aoa_to_sheet(wsData);
+      ws['!cols'] = sec.headers.map(function() { return { wch: 20 }; });
+      XLSX.utils.book_append_sheet(wb, ws, sec.title);
+    });
+
+    var fileName = (compData.fileName || 'تصدير_شامل_' + CONFIG.todayStr()) + '.xlsx';
+    XLSX.writeFile(wb, fileName);
+  }
+
+  // ============================================================
   // تصدير PDF
   // ============================================================
   function _doPDF(data) {
+    if (data.comprehensive) { _doPrintComprehensive(data); return; }
     if (typeof jsPDF === 'undefined') { alert('مكتبة jsPDF غير محملة'); return; }
     var doc  = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
     doc.setFontSize(14);
@@ -223,7 +466,7 @@ var Export = (function () {
     var allRows = [];
     if (data.grouped && data.shiftGroups && data.shiftGroups.length) {
       data.shiftGroups.forEach(function(g) {
-        allRows.push(['═══ ' + g.label + ' ═══']);
+        allRows.push(['═══ وردية ' + g.label + ' ═══']);
         g.rows.forEach(function(r) { allRows.push(r); });
         allRows.push([]);
       });
@@ -240,19 +483,21 @@ var Export = (function () {
         doc.text(row.slice(0,8).join(' | '), 10, y); y += 5;
       });
     }
-    doc.save(data.title + '_' + CONFIG.todayStr() + '.pdf');
+    var fileName = (data.fileName || data.title + '_' + CONFIG.todayStr()) + '.pdf';
+    doc.save(fileName);
   }
 
   function toPDF() { _getData(_doPDF); }
 
   // ============================================================
-  // طباعة — مع تلوين الورديات
+  // طباعة — عادية مع تلوين الورديات
   // ============================================================
   function _doPrint(data) {
+    if (data.comprehensive) { _doPrintComprehensive(data); return; }
     var win = window.open('', '_blank');
     var shifts = CONFIG.SHIFTS;
-    var shiftCss = ['a','b','c','d'].map(function(k) {
-      return '.shift-' + k + ' { background:' + shifts[k].color + ';color:#fff;font-weight:700;text-align:center;padding:8px; }';
+    var shiftCss = Object.keys(shifts).map(function(k) {
+      return '.shift-' + k + '{background:' + shifts[k].color + ';color:#fff;font-weight:700;text-align:center;padding:8px}';
     }).join('\n');
 
     var tableHtml = '';
@@ -260,7 +505,7 @@ var Export = (function () {
       data.shiftGroups.forEach(function(g) {
         var sk = CONFIG.shiftKey(g.shift);
         tableHtml +=
-          '<tr><td colspan="' + data.headers.length + '" class="shift-' + sk + '">' + g.label + '</td></tr>';
+          '<tr><td colspan="' + data.headers.length + '" class="shift-' + sk + '">وردية ' + g.label + '</td></tr>';
         g.rows.forEach(function(row) {
           tableHtml += '<tr>' + row.map(function(c) { return '<td>' + (c||'') + '</td>'; }).join('') + '</tr>';
         });
@@ -272,30 +517,96 @@ var Export = (function () {
       }).join('');
     }
 
+    win.document.write(_printHtml(data.title, data.headers, tableHtml, shiftCss));
+    win.document.close(); win.focus();
+  }
+
+  function print() { _getData(_doPrint); }
+
+  // ============================================================
+  // طباعة — شاملة (4 جداول)
+  // ============================================================
+  function _doPrintComprehensive(compData) {
+    var win = window.open('', '_blank');
+    var shifts   = CONFIG.SHIFTS;
+    var shiftCss = Object.keys(shifts).map(function(k) {
+      return '.shift-' + k + '{background:' + shifts[k].color + ';color:#fff;font-weight:700;text-align:center;padding:8px}';
+    }).join('\n');
+
+    var sections = [compData.employees, compData.leaveBalance, compData.leaveReqs, compData.overtime];
+    var allHtml  = '';
+
+    sections.forEach(function(sec, idx) {
+      if (idx > 0) allHtml += '<div class="section-sep"></div>';
+      allHtml += '<h2 class="section-title-print">' + sec.title + '</h2>';
+
+      var tableHtml = '';
+      if (sec.grouped && sec.shiftGroups && sec.shiftGroups.length) {
+        sec.shiftGroups.forEach(function(g) {
+          var sk = CONFIG.shiftKey(g.shift);
+          tableHtml +=
+            '<tr><td colspan="' + sec.headers.length + '" class="shift-' + sk + '">وردية ' + g.label + '</td></tr>';
+          g.rows.forEach(function(row) {
+            tableHtml += '<tr>' + row.map(function(c) { return '<td>' + (c||'') + '</td>'; }).join('') + '</tr>';
+          });
+          tableHtml += '<tr class="sep-row"><td colspan="' + sec.headers.length + '"></td></tr>';
+        });
+      } else {
+        tableHtml = sec.rows.map(function(row) {
+          return '<tr>' + row.map(function(c) { return '<td>' + (c||'') + '</td>'; }).join('') + '</tr>';
+        }).join('');
+      }
+
+      allHtml +=
+        '<table><thead><tr>' +
+          sec.headers.map(function(h) { return '<th>' + h + '</th>'; }).join('') +
+        '</tr></thead><tbody>' + tableHtml + '</tbody></table>';
+    });
+
+    var title = compData.fileName || 'تصدير شامل';
     var html = '<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8">' +
-      '<title>' + data.title + '</title><style>' +
+      '<title>' + title + '</title><style>' +
+      'body{font-family:Arial,sans-serif;font-size:11px;margin:16px}' +
+      'h2.section-title-print{color:#0066B3;margin:16px 0 4px}' +
+      'p.meta{color:#666;font-size:10px;margin-bottom:12px}' +
+      'table{border-collapse:collapse;width:100%;margin-bottom:8px}' +
+      'th{background:#0066B3;color:#fff;padding:6px;text-align:center;font-size:11px;border:1px solid #0055a0}' +
+      'td{border:1px solid #ccc;padding:4px;text-align:center;font-size:10px}' +
+      'tr:nth-child(even){background:#F9FAFB}' +
+      '.sep-row td{height:10px;border:none;background:#fff}' +
+      '.section-sep{height:24px}' +
+      shiftCss +
+      '@media print{button{display:none}.section-sep{page-break-before:always;height:0}}' +
+      '</style></head><body>' +
+      '<p class="meta">تاريخ التصدير: ' + CONFIG.todayStr() + '</p>' +
+      '<button onclick="window.print()" style="margin-bottom:12px;padding:6px 20px;background:#0066B3;color:#fff;border:none;border-radius:4px;cursor:pointer">🖨️ طباعة</button>' +
+      allHtml +
+      '</body></html>';
+
+    win.document.write(html);
+    win.document.close(); win.focus();
+  }
+
+  // مساعد بناء صفحة الطباعة العادية
+  function _printHtml(title, headers, tableHtml, shiftCss) {
+    return '<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8">' +
+      '<title>' + title + '</title><style>' +
       'body{font-family:Arial,sans-serif;font-size:11px;margin:16px}' +
       'h2{color:#0066B3;margin-bottom:4px}p.meta{color:#666;font-size:10px;margin-bottom:12px}' +
       'table{border-collapse:collapse;width:100%}' +
-      'th{background:#0066B3;color:#fff;padding:6px;text-align:center;font-size:11px}' +
+      'th{background:#0066B3;color:#fff;padding:6px;text-align:center;font-size:11px;border:1px solid #0055a0}' +
       'td{border:1px solid #ccc;padding:4px;text-align:center;font-size:10px}' +
       'tr:nth-child(even){background:#F9FAFB}.sep-row td{height:12px;border:none;background:#fff}' +
       shiftCss +
       '@media print{button{display:none}}</style></head><body>' +
-      '<h2>' + data.title + '</h2>' +
+      '<h2>' + title + '</h2>' +
       '<p class="meta">تاريخ التصدير: ' + CONFIG.todayStr() + '</p>' +
       '<button onclick="window.print()" style="margin-bottom:12px;padding:6px 20px;background:#0066B3;color:#fff;border:none;border-radius:4px;cursor:pointer">🖨️ طباعة</button>' +
       '<table><thead><tr>' +
-        data.headers.map(function(h) { return '<th>' + h + '</th>'; }).join('') +
+        headers.map(function(h) { return '<th>' + h + '</th>'; }).join('') +
       '</tr></thead><tbody>' + tableHtml + '</tbody></table>' +
       '</body></html>';
-
-    win.document.write(html);
-    win.document.close();
-    win.focus();
   }
-
-  function print() { _getData(_doPrint); }
 
   // ============================================================
   // مساعدات
@@ -311,5 +622,16 @@ var Export = (function () {
     return { pending_review:'قيد المراجعة', approved:'معتمد', rejected:'مرفوض' }[s] || s;
   }
 
-  return { renderExportPanel, inlineBar, quickExport, toExcel, toPDF, print };
+  return {
+    renderExportPanel,
+    inlineBar,
+    quickExport,
+    toExcel,
+    toPDF,
+    print,
+    setDateRange,
+    clearDates,
+    onTypeChange,
+    updateFileName
+  };
 })();
