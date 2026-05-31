@@ -18,6 +18,13 @@ var Leaves = (function () {
     API.getLeaveReqs().then(function(res) {
       if (!res.ok) { el.innerHTML = '<div class="empty-state">تعذّر التحميل</div>'; return; }
 
+      // الموظف يرى طلباته فقط
+      var data = res.data;
+      if (role === 'موظف') {
+        var myId = String(Auth.getUser() ? Auth.getUser().empId : '');
+        data = data.filter(function(req) { return String(req.empId) === myId; });
+      }
+
       var html = '<div class="list-filters">' +
         '<select id="leave-status-filter" class="filter-select">' +
           '<option value="">كل الحالات</option>' +
@@ -37,16 +44,16 @@ var Leaves = (function () {
         html += Export.inlineBar('leaves', expShift);
       }
 
-      if (!res.data.length) {
+      if (!data.length) {
         html += '<div class="empty-state">لا توجد طلبات إجازات</div>';
       } else {
         html += '<div class="req-list" id="leave-list">';
-        res.data.forEach(function(req) { html += _leaveCard(req, role); });
+        data.forEach(function(req) { html += _leaveCard(req, role); });
         html += '</div>';
       }
 
       el.innerHTML = html;
-      _bindLeaveFilter(res.data, role);
+      _bindLeaveFilter(data, role);
     });
   }
 
