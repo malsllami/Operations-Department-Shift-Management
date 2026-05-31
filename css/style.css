@@ -634,27 +634,44 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 .filter-select:focus { outline: none; border-color: var(--primary); }
 
 /* بطاقة الموظف */
-.emp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.emp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; align-items: stretch; }
 .emp-card {
-  border-radius: 18px; overflow: hidden;
+  border-radius: 18px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04);
-  border: 1px solid rgba(219,234,254,0.8);
+  border: 1.5px solid var(--border);
+  display: flex; flex-direction: column;
+  padding: 8px;
 }
-.emp-card-header { padding: 14px 16px; color: #fff; }
+.emp-card-header {
+  padding: 14px 16px; color: #fff;
+  border-radius: 12px;
+}
 .ech-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .ech-shift { font-size: 0.8rem; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 99px; }
 .ech-role  { font-size: 0.78rem; opacity: 0.85; }
 .ech-name  { font-size: 1rem; font-weight: 700; }
 .ech-id    { font-size: 0.82rem; opacity: 0.75; }
-.emp-card-body { padding: 12px 16px; }
+.emp-card-body { padding: 10px 8px; flex: 1; }
 .emp-field { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
 .ef-label  { color: var(--text-muted); }
 .ef-val    { font-weight: 500; }
-.emp-card-expiry { padding: 8px 16px; display: flex; flex-wrap: wrap; gap: 4px; }
+.emp-card-expiry { padding: 6px 8px; display: flex; flex-wrap: wrap; gap: 4px; min-height: 32px; }
 .expiry-badge {
   font-size: 0.78rem; padding: 3px 8px; border-radius: 99px; font-weight: 600;
 }
-.emp-card-footer { padding: 10px 16px; display: flex; gap: 6px; background: var(--bg); }
+.emp-card-footer {
+  display: flex; gap: 5px; flex-wrap: wrap;
+  margin-top: auto;
+  border-top: 1px solid var(--border);
+  padding: 10px 4px 4px;
+  border-radius: 0 0 10px 10px;
+}
+.emp-card-footer .btn-sm {
+  flex: 1; min-width: 0; text-align: center;
+  padding: 8px 4px; font-size: 0.79rem; font-weight: 700;
+  white-space: nowrap; border-radius: 12px !important;
+}
+.btn-card { background: linear-gradient(135deg, #7C3AED, #9F67FF); color: #fff; box-shadow: 0 2px 8px rgba(124,58,237,0.3); }
 
 /* ============================================================
    البروفايل
@@ -1052,7 +1069,8 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 }
 .req-card-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 16px; background: var(--bg); border-bottom: 1px solid var(--border);
+  padding: 11px 16px; background: var(--bg); border-bottom: 1px solid var(--border);
+  border-radius: 18px 18px 0 0;
 }
 .req-no { font-weight: 700; font-size: 0.9rem; color: var(--primary); }
 .req-status { font-size: 0.8rem; padding: 3px 10px; border-radius: 99px; font-weight: 600; }
@@ -1060,7 +1078,11 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 .req-row { display: flex; gap: 8px; padding: 5px 0; font-size: 0.88rem; border-bottom: 1px solid rgba(0,0,0,0.04); align-items: flex-start; }
 .rr-label { color: var(--text-muted); min-width: 110px; flex-shrink: 0; }
 .rr-date  { color: var(--text-muted); font-size: 0.82rem; }
-.req-actions { padding: 10px 16px; display: flex; gap: 8px; background: var(--bg); border-top: 1px solid var(--border); }
+.req-actions {
+  padding: 10px 16px; display: flex; gap: 8px;
+  background: var(--bg); border-top: 1px solid var(--border);
+  border-radius: 0 0 18px 18px;
+}
 
 /* ============================================================
    الإشعارات
@@ -2068,3 +2090,46 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 }
 .tnd-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 10px; color: var(--primary); }
 .tnd-opt   { font-weight: 400; font-size: 0.78rem; color: var(--text-muted); }
+
+/* ============================================================
+   حواف دائرية شاملة — كل الموقع
+   ============================================================ */
+/* جميع بطاقات الطلبات — حواف دائرية موحدة */
+.req-card, .ot-card       { border-radius: 18px !important; }
+
+/* شريط الجانب والهيدر */
+#sidebar                  { border-radius: 0 24px 24px 0; }
+[dir="rtl"] #sidebar      { border-radius: 24px 0 0 24px; }
+
+/* جداول البيانات — خلايا مستديرة */
+.regions-table,
+.eq-table                 { border-radius: 14px; overflow: hidden; }
+
+/* الـ dash-card والبطاقات العامة */
+.dash-card                { border-radius: 20px !important; }
+
+/* التقويم */
+.cal-day-cell             { border-radius: 10px !important; }
+
+/* حقول البحث والفلاتر */
+.search-input,
+.filter-select            { border-radius: 50px !important; }
+
+/* حقول النماذج */
+.form-input,
+.form-select              { border-radius: 50px !important; }
+
+/* المودال */
+.modal-box                { border-radius: 24px !important; }
+
+/* بطاقات الإشعارات */
+.notif-group-card         { border-radius: 16px !important; }
+
+/* بطاقات الأداء / API */
+.api-day-card             { border-radius: 12px !important; }
+
+/* شريط التصفية */
+.list-filters             { border-radius: 16px !important; }
+
+/* إطارات الـ inline export */
+.inline-export-bar        { border-radius: 14px !important; }
