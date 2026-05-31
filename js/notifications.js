@@ -273,6 +273,10 @@ var Notifications = (function () {
         data = data.filter(function(n) { return empTypes.indexOf(n.type) !== -1; });
       }
 
+      // أنواع لا تُحسب في العداد (تأكيدات الإرسال الذاتية)
+      var NO_BADGE = { 'leave_submitted': true, 'overtime_submitted': true };
+      data = data.filter(function(n) { return !NO_BADGE[n.type]; });
+
       // عدّ مجموعات بها unread (وليس إشعارات فردية)
       var groups = {};
       var unreadCount = 0;
