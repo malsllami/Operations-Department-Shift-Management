@@ -69,7 +69,7 @@ var Employees = (function () {
     var sc2  = CONFIG.expiryClass(emp.srcDaysLeft);
     var role = Auth.getEffectiveRole();
 
-    return '<div class="emp-card hover-lift" data-name="' + (emp.name||'').toLowerCase() + '" data-id="' + (emp.empId||'') + '" data-shift="' + (emp.shift||'') + '">' +
+    return '<div class="emp-card hover-lift" data-name="' + (emp.name||'').toLowerCase() + '" data-id="' + (emp.empId||'') + '" data-shift="' + (emp.shift||'') + '" style="border-color:' + sc.color + '">' +
       '<div class="emp-card-header" style="background:' + sc.color + '">' +
         '<div class="ech-row">' +
           '<span class="ech-shift">وردية ' + sc.label + '</span>' +
@@ -410,7 +410,7 @@ var Employees = (function () {
     el.dataset.eqJson   = JSON.stringify(eq);
     el.dataset.lvJson   = JSON.stringify(lv);
 
-    var html = '<div class="profile-card" id="full-profile-card">';
+    var html = '<div class="profile-card" id="full-profile-card" style="border-color:' + sc.color + '">';
 
     html += '<div class="profile-header" style="background:' + sc.color + '">' +
       '<div class="ph-avatar">' + ((emp.name || '?')[0]) + '</div>' +
