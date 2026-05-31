@@ -32,9 +32,11 @@ var Overtime = (function () {
       }
       html += '</div>';
 
-      // شريط التصدير — لجميع الأدوار (الموظف: بياناته فقط، المشرف: وردييته، المدير/الإداري: الكل)
-      var expShift = role === 'مشرف' ? Auth.getShift() : '';
-      html += Export.inlineBar('overtime', expShift);
+      // شريط التصدير — للمشرف والمدير والإداري فقط (الموظف يُصدِّر من لوحة التحكم)
+      if (role !== 'موظف') {
+        var expShift = role === 'مشرف' ? Auth.getShift() : '';
+        html += Export.inlineBar('overtime', expShift);
+      }
 
       if (!res.data.length) {
         html += '<div class="empty-state">لا توجد طلبات عمل إضافي</div>';
@@ -80,6 +82,12 @@ var Overtime = (function () {
           (received ? '✓ تم الاستلام' : 'تأكيد الاستلام') +
         '</button>' +
         (!received ? '<button class="btn-sm btn-outline" onclick="Overtime._confirmReceipt(\'' + req.no + '\',false)">لم يتم الاستلام</button>' : '') +
+      '</div>';
+    } else if (role === 'موظف' && req.status === 'created' && String(req.empId) === String(user.empId)) {
+      // الموظف يعدّل / يحذف طلبه المعلق فقط
+      actionsHtml = '<div class="req-actions">' +
+        '<button class="btn-sm btn-edit"   onclick="Overtime._editOtReq(\'' + req.no + '\',\'' + (req.hours||'') + '\',\'' + (req.reason||'').replace(/'/g,"\\'") + '\')">✏️ تعديل</button>' +
+        '<button class="btn-sm btn-danger" onclick="Overtime._cancelOtReq(\'' + req.no + '\')">🗑️ حذف</button>' +
       '</div>';
     }
 
@@ -296,7 +304,7 @@ var Overtime = (function () {
 
       API.submitOvertime(data).then(function(res) {
         _submitting = false;
-        App.btnDone(btn);
+        App.btnDone(btn, null, res.ok ? 'success' : 'error');
         if (res.ok) {
           App.toast('تم إرسال الطلب: ' + res.no, 'success');
           App.navigate('overtime');
@@ -378,6 +386,58 @@ var Overtime = (function () {
   }
 
   // ============================================================
+  // تعديل / حذف طلب الأوفرتايم (للموظف — قبل المراجعة)
+  // ============================================================
+
+  function _cancelOtReq(no) {
+    if (!confirm('هل تريد حذف الطلب ' + no + '؟')) return;
+    API.cancelOvertime(no).then(function(res) {
+      if (res.ok) { App.toast('تم حذف الطلب', 'success'); App.navigate('overtime'); }
+      else {
+        var em = { cannot_cancel_reviewed:'لا يمكن حذف طلب تمت مراجعته', not_found:'الطلب غير موجود' };
+        App.toast(em[res.error] || res.error, 'error');
+      }
+    });
+  }
+
+  function _editOtReq(no, hours, reason) {
+    var modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML =
+      '<div class="modal-box">' +
+        '<h3>تعديل الطلب ' + no + '</h3>' +
+        '<div class="form-field"><label>عدد الساعات</label>' +
+          '<input type="number" id="eot-hours" class="form-input" value="' + hours + '" min="0.5" step="0.5"></div>' +
+        '<div class="form-field"><label>السبب</label>' +
+          '<textarea id="eot-reason" class="form-textarea" rows="3">' + reason + '</textarea></div>' +
+        '<div id="eot-err" class="form-error" style="display:none"></div>' +
+        '<div class="form-actions">' +
+          '<button class="btn-primary" id="eot-save">💾 حفظ التعديل</button>' +
+          '<button class="btn-outline" onclick="this.closest(\'.modal-overlay\').remove()">إلغاء</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(modal);
+
+    modal.querySelector('#eot-save').onclick = function() {
+      var h = parseFloat(CONFIG.toLatinNums(modal.querySelector('#eot-hours').value)) || 0;
+      var r = modal.querySelector('#eot-reason').value.trim();
+      var errEl = modal.querySelector('#eot-err');
+      var btn = this;
+      if (h <= 0) { errEl.textContent = 'يرجى إدخال عدد ساعات صحيح'; errEl.style.display = 'block'; return; }
+      if (!r) { errEl.textContent = 'السبب مطلوب'; errEl.style.display = 'block'; return; }
+      App.btnLoad(btn);
+      API.editOvertime(no, { hours:String(h), reason:r }).then(function(res) {
+        App.btnDone(btn, null, res.ok ? 'success' : 'error');
+        if (res.ok) {
+          setTimeout(function() { modal.remove(); App.toast('تم تعديل الطلب ✓', 'success'); App.navigate('overtime'); }, 900);
+        } else {
+          errEl.textContent = res.error; errEl.style.display = 'block';
+        }
+      });
+    };
+  }
+
+  // ============================================================
   // مساعدات
   // ============================================================
 
@@ -409,6 +469,7 @@ var Overtime = (function () {
     renderList, renderForm,
     _supervisorApprove, _supervisorReject, _sendToCoord,
     _coordSendSystem, _coordReturn, _confirmReceipt,
-    _loadShiftEmps, _updateDay, _normalizeHours, _updateDutyStatus
+    _loadShiftEmps, _updateDay, _normalizeHours, _updateDutyStatus,
+    _cancelOtReq, _editOtReq
   };
 })();
