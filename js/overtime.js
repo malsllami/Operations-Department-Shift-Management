@@ -377,6 +377,8 @@ var Overtime = (function () {
     var d     = new Date(date);
     var dayAr = CONFIG.DAYS_AR[d.getDay()] || '';
     var fDate = CONFIG.fmtDate(date);
+    var hd    = Hijri.fromDate(d);
+    var hijriStr = hd.day + ' ' + CONFIG.HIJRI_MONTHS[hd.month - 1] + ' ' + hd.year + ' هـ';
 
     card.innerHTML =
       '<div class="ot-duty-inner" style="border-right: 4px solid ' + sc.color + '; background: linear-gradient(135deg,' + sc.color + '11 0%,' + sc.color + '06 100%)">' +
@@ -388,7 +390,10 @@ var Overtime = (function () {
             '<span class="ot-duty-badge" style="background:' + stc.bg + ';color:' + stc.text + '">' +
               stc.icon + ' ' + stc.label +
             '</span>' +
-            '<span class="ot-duty-date">' + dayAr + ' ' + fDate + '</span>' +
+            '<div class="ot-duty-dates">' +
+              '<span class="ot-duty-date">' + dayAr + ' ' + fDate + '</span>' +
+              '<span class="ot-duty-hijri">' + hijriStr + '</span>' +
+            '</div>' +
           '</div>' +
           '<div class="ot-duty-desc">حالة الوردية في يوم تقديم الطلب</div>' +
         '</div>' +
