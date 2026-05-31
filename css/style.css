@@ -1279,11 +1279,12 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 .mini-cal-head  { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; }
 .mini-head-cell { text-align: center; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); padding: 3px 0; }
 .mini-cal-row   { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; }
-.mini-day-cell  { border-radius: 8px; border: 1.5px solid; padding: 4px 2px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1px; min-height: 50px; }
+.mini-day-cell  { border-radius: 8px; border: 1.5px solid; padding: 4px 2px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1px; min-height: 62px; }
 .mini-day-empty { background: transparent !important; border-color: transparent !important; }
-.mdc-num  { font-size: 0.85rem; font-weight: 800; line-height: 1; }
-.mdc-icon { font-size: 0.9rem; }
-.mdc-lbl  { font-size: 0.58rem; font-weight: 600; }
+.mdc-num   { font-size: 0.85rem; font-weight: 800; line-height: 1; }
+.mdc-hijri { font-size: 0.52rem; font-weight: 600; opacity: 0.75; line-height: 1; }
+.mdc-icon  { font-size: 0.9rem; }
+.mdc-lbl   { font-size: 0.58rem; font-weight: 600; }
 
 /* رأس البطاقة */
 .rsc-header {
@@ -1522,8 +1523,9 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
   .cal-summary-cards { grid-template-columns: repeat(2,1fr); gap: 8px; }
 
   /* التقويم المصغر */
-  .mini-day-cell  { min-height: 42px; border-radius: 6px; }
+  .mini-day-cell  { min-height: 54px; border-radius: 6px; }
   .mdc-num        { font-size: 0.78rem; }
+  .mdc-hijri      { font-size: 0.48rem; }
   .mdc-icon       { font-size: 0.8rem; }
   .mdc-lbl        { font-size: 0.52rem; }
 
@@ -1644,10 +1646,19 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
   font-size: 0.92rem;
   font-weight: 700;
 }
+.ot-duty-dates {
+  display: flex; flex-direction: column; gap: 1px;
+}
 .ot-duty-date {
   font-size: 0.88rem;
   color: var(--text-muted);
   font-weight: 600;
+}
+.ot-duty-hijri {
+  font-size: 0.75rem;
+  color: var(--primary);
+  font-weight: 500;
+  opacity: 0.8;
 }
 .ot-duty-desc {
   font-size: 0.78rem;
@@ -2133,3 +2144,84 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 
 /* إطارات الـ inline export */
 .inline-export-bar        { border-radius: 14px !important; }
+
+/* ============================================================
+   الوضع الداكن — تكميلي للعناصر الجديدة
+   ============================================================ */
+
+/* --- بطاقات الموظفين --- */
+[data-theme="dark"] .emp-card-footer    { border-color: var(--border); }
+[data-theme="dark"] .emp-card-body .emp-field { border-color: rgba(255,255,255,0.07); }
+[data-theme="dark"] .expiry-badge       { background: #263245 !important; color: var(--text) !important; }
+
+/* --- حقل البحث --- */
+[data-theme="dark"] .search-input {
+  background: #263245; color: var(--text);
+  border-color: var(--border);
+}
+[data-theme="dark"] .search-input::placeholder { color: var(--text-muted); }
+
+/* --- شريط الفلاتر --- */
+[data-theme="dark"] .list-filters { background: var(--bg-card); border-color: var(--border); }
+
+/* --- بطاقات الطلبات (إجازة / أوفرتايم) --- */
+[data-theme="dark"] .req-card        { border-color: var(--border); }
+[data-theme="dark"] .req-card-header { background: rgba(255,255,255,0.04); border-color: var(--border); }
+[data-theme="dark"] .req-actions     { background: rgba(255,255,255,0.03); border-color: var(--border); }
+[data-theme="dark"] .req-row         { border-color: rgba(255,255,255,0.06); }
+[data-theme="dark"] .rr-label        { color: var(--text-muted); }
+
+/* --- بطاقة حالة الدوام (أوفرتايم) --- */
+[data-theme="dark"] .ot-duty-inner {
+  background: linear-gradient(135deg, rgba(30,41,59,0.95) 0%, rgba(15,23,42,0.9) 100%) !important;
+  border-color: var(--border) !important;
+}
+[data-theme="dark"] .ot-duty-date  { color: var(--text-muted); }
+[data-theme="dark"] .ot-duty-hijri { color: var(--primary); opacity: 0.9; }
+[data-theme="dark"] .ot-duty-desc  { color: var(--text-muted); }
+
+/* --- التقويم المصغر (نموذج الإجازة) --- */
+[data-theme="dark"] .mini-cal-title { color: var(--primary); }
+[data-theme="dark"] .mini-head-cell { color: var(--text-muted); }
+[data-theme="dark"] .mini-day-cell:not(.mini-day-empty) {
+  background: #1E293B !important;
+  color: var(--text) !important;
+  border-width: 2px !important;
+  border-color: rgba(255,255,255,0.12) !important;
+}
+[data-theme="dark"] .mdc-num   { color: var(--text); }
+[data-theme="dark"] .mdc-hijri { color: var(--primary) !important; opacity: 0.8; }
+[data-theme="dark"] .mdc-lbl   { color: var(--text-muted); }
+
+/* --- شريط أدوات الإشعارات --- */
+[data-theme="dark"] .notif-toolbar {
+  background: var(--bg-card); border-color: var(--border);
+}
+[data-theme="dark"] .notif-select-all-wrap { color: var(--text); }
+[data-theme="dark"] .notif-check-wrap input[type="checkbox"] { accent-color: var(--primary); }
+
+/* --- بطاقات الإشعارات المجمّعة --- */
+[data-theme="dark"] .notif-group-card         { background: var(--bg-card); border-color: var(--border); }
+[data-theme="dark"] .ngc-done                 { background: rgba(255,255,255,0.03) !important; border-color: var(--border) !important; }
+[data-theme="dark"] .ngc-done-badge           { background: rgba(16,185,129,0.18); color: #34D399; }
+[data-theme="dark"] .ngc-unread-dot           { background: #EF4444; }
+[data-theme="dark"] .stage-connector          { background: var(--border); }
+[data-theme="dark"] .stage-label              { color: var(--text); }
+[data-theme="dark"] .stage-pill               { opacity: 0.9; }
+
+/* --- البطاقة الشاملة للموظف --- */
+[data-theme="dark"] .profile-card             { border-color: rgba(255,255,255,0.12); }
+[data-theme="dark"] .profile-section          { background: rgba(255,255,255,0.04); }
+[data-theme="dark"] .profile-sections         { background: transparent; }
+
+/* --- بطاقة البروفايل في القائمة (ملفي الشخصي) --- */
+[data-theme="dark"] .pf-section-card          { background: var(--bg-card); border-color: var(--border); }
+[data-theme="dark"] .admin-info-section       { background: rgba(255,255,255,0.04); }
+[data-theme="dark"] .admin-section-title      { border-color: var(--border); }
+
+/* --- شريط الإشعارات في الهيدر --- */
+[data-theme="dark"] .header-notif-badge       { background: #EF4444; }
+
+/* --- أزرار عامة (الحالتين) --- */
+[data-theme="dark"] .btn-disabled             { background: #334155 !important; color: var(--text-muted) !important; }
+[data-theme="dark"] .btn-card                 { background: linear-gradient(135deg,#5B21B6,#7C3AED); }
