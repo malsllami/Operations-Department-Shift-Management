@@ -62,6 +62,7 @@ var Leaves = (function () {
 
     var canReview  = (role === 'مدير' || role === 'مشرف') && req.status === 'pending_review';
     var canModify  = role === 'موظف' && req.status === 'pending_review';
+    var canDelete  = role === 'موظف' && !canModify;
 
     return '<div class="req-card" data-status="' + req.status + '" style="border-right:4px solid ' + sc.color + '">' +
       '<div class="req-card-header">' +
@@ -82,7 +83,11 @@ var Leaves = (function () {
             '<button class="btn-sm btn-edit"   onclick="Leaves.editLeaveReq(\'' + req.no + '\',\'' + (req.startDate||'') + '\',\'' + (req.endDate||'') + '\',\'' + (req.empNotes||'') + '\')">✏️ تعديل</button>' +
             '<button class="btn-sm btn-danger" onclick="Leaves.cancelLeaveReq(\'' + req.no + '\')">🗑️ حذف</button>' +
           '</div>'
-        : '') +
+        : (canDelete
+            ? '<div class="req-actions">' +
+                '<button class="btn-sm btn-danger" onclick="Leaves.cancelLeaveReq(\'' + req.no + '\')">🗑️ حذف</button>' +
+              '</div>'
+            : '')) +
     '</div>';
   }
 
