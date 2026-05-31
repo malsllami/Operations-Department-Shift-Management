@@ -221,7 +221,7 @@ var Overtime = (function () {
       html += _staticField('الاسم', user.name);
       html += _staticField('الوردية', 'وردية ' + user.shift);
     } else {
-      html += '<div class="form-field"><label>الوردية</label><select id="otf-shift" class="form-select" onchange="Overtime._loadShiftEmps(this.value);Overtime._updateDutyStatus()">' +
+      html += '<div class="form-field"><label>الوردية</label><select id="otf-shift" class="form-select" onchange="Overtime._loadShiftEmps(this.value);Overtime._updateDutyStatus();Overtime._updateMiniCal()">' +
         ['أ','ب','ج','د'].map(function(s) {
           var sk = CONFIG.shiftKey(s);
           return '<option value="' + s + '" ' + (role==='مشرف' && s!==user.shift ? 'disabled':'') + '>وردية ' + CONFIG.SHIFTS[sk].label + '</option>';
@@ -239,6 +239,9 @@ var Overtime = (function () {
 
     // ---- بطاقة حالة الدوام ----
     html += '<div id="otf-status-card" class="ot-duty-card"></div>';
+
+    // ---- التقويم المصغر للوردية ----
+    html += '<div id="otf-mini-cal" class="mini-cal-container"></div>';
 
     html += '<div class="form-grid">'; // استئناف form-grid
 
@@ -269,8 +272,9 @@ var Overtime = (function () {
       if (shEl) { shEl.value = defShift; Overtime._loadShiftEmps(defShift); }
     }
 
-    // عرض حالة الدوام بمجرد فتح النموذج
+    // عرض حالة الدوام والتقويم المصغر بمجرد فتح النموذج
     _updateDutyStatus();
+    _updateMiniCal();
   }
 
   var _submitting = false;
@@ -354,6 +358,25 @@ var Overtime = (function () {
     var d = new Date(input.value);
     dayEl.textContent = CONFIG.DAYS_AR[d.getDay()] || '—';
     _updateDutyStatus();
+    _updateMiniCal();
+  }
+
+  function _updateMiniCal() {
+    var dateEl  = document.getElementById('otf-date');
+    var shiftEl = document.getElementById('otf-shift');
+    var user    = Auth.getUser();
+    var date    = dateEl  ? dateEl.value  : CONFIG.todayStr();
+    var shift   = shiftEl ? shiftEl.value : (user ? user.shift : '');
+    if (!shift || !date) return;
+
+    var d      = new Date(date);
+    var year   = d.getFullYear();
+    var month  = d.getMonth();
+    var start  = year + '-' + CONFIG._p(month + 1) + '-01';
+    var lastD  = new Date(year, month + 1, 0).getDate();
+    var end    = year + '-' + CONFIG._p(month + 1) + '-' + CONFIG._p(lastD);
+
+    Calendar.renderMini('otf-mini-cal', start, end, shift);
   }
 
   function _updateDutyStatus() {
@@ -489,7 +512,7 @@ var Overtime = (function () {
     renderList, renderForm,
     _supervisorApprove, _supervisorReject, _sendToCoord,
     _coordSendSystem, _coordReturn, _confirmReceipt,
-    _loadShiftEmps, _updateDay, _normalizeHours, _updateDutyStatus,
+    _loadShiftEmps, _updateDay, _normalizeHours, _updateDutyStatus, _updateMiniCal,
     _cancelOtReq, _editOtReq
   };
 })();
