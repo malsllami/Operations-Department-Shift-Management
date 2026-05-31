@@ -230,7 +230,7 @@ var Overtime = (function () {
       html += _staticField('الاسم', user.name);
       html += _staticField('الوردية', 'وردية ' + user.shift);
     } else {
-      html += '<div class="form-field"><label>الوردية</label><select id="otf-shift" class="form-select" onchange="Overtime._loadShiftEmps(this.value);Overtime._updateDutyStatus();Overtime._updateMiniCal()">' +
+      html += '<div class="form-field"><label>الوردية</label><select id="otf-shift" class="form-select" onchange="Overtime._loadShiftEmps(this.value);Overtime._updateDutyStatus()">' +
         ['أ','ب','ج','د'].map(function(s) {
           var sk = CONFIG.shiftKey(s);
           return '<option value="' + s + '" ' + (role==='مشرف' && s!==user.shift ? 'disabled':'') + '>وردية ' + CONFIG.SHIFTS[sk].label + '</option>';
@@ -246,11 +246,8 @@ var Overtime = (function () {
 
     html += '</div>'; // form-grid مؤقت
 
-    // ---- بطاقة حالة الدوام ----
+    // ---- بطاقة حالة الدوام ليوم الطلب ----
     html += '<div id="otf-status-card" class="ot-duty-card"></div>';
-
-    // ---- التقويم المصغر للوردية ----
-    html += '<div id="otf-mini-cal" class="mini-cal-container"></div>';
 
     html += '<div class="form-grid">'; // استئناف form-grid
 
@@ -283,9 +280,8 @@ var Overtime = (function () {
       if (shEl) { shEl.value = defShift; Overtime._loadShiftEmps(defShift); }
     }
 
-    // عرض حالة الدوام والتقويم المصغر بمجرد فتح النموذج
+    // عرض حالة الدوام بمجرد فتح النموذج
     _updateDutyStatus();
-    _updateMiniCal();
   }
 
   var _submitting = false;
@@ -379,7 +375,6 @@ var Overtime = (function () {
     var d = new Date(input.value);
     dayEl.textContent = CONFIG.DAYS_AR[d.getDay()] || '—';
     _updateDutyStatus();
-    _updateMiniCal();
   }
 
   function _updateMiniCal() {
