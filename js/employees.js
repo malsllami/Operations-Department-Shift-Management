@@ -422,7 +422,10 @@ var Employees = (function () {
         '</span>' +
       '</div>' +
       (canEdit
-        ? '<button class="btn-card-edit" id="card-edit-toggle" onclick="Employees.toggleCardEdit()" title="تعديل البيانات">✏️ تعديل</button>'
+        ? '<div class="card-edit-controls" id="card-edit-controls">' +
+            '<button class="btn-card-edit" id="card-edit-toggle" onclick="Employees.toggleCardEdit()">✏️ تعديل</button>' +
+            '<button class="btn-card-edit btn-card-save-all" id="card-save-all" onclick="Employees.saveAllSections()" style="display:none">💾 حفظ الكل</button>' +
+          '</div>'
         : '') +
     '</div>';
 
@@ -440,10 +443,11 @@ var Employees = (function () {
       { label:'تاريخ التسجيل',   val: CONFIG.fmtDate(emp.regDate), key:'regDate', type:'text', locked: true }
     ]);
 
+    var canEditRegion = role === 'مدير' || role === 'مشرف';
     html += _editableSection('المنطقة والمركز والسيارة', 'region', [
-      { label:'المنطقة',     val: rg.region || '', key:'region', type:'text', locked: false },
-      { label:'المركز',      val: rg.center || '', key:'center', type:'text', locked: false },
-      { label:'رقم السيارة', val: rg.car    || '', key:'car',    type:'text', locked: false }
+      { label:'المنطقة',     val: rg.region || '', key:'region', type:'text',   locked: !canEditRegion },
+      { label:'المركز',      val: rg.center || '', key:'center', type:'center', locked: !canEditRegion },
+      { label:'رقم السيارة', val: rg.car    || '', key:'car',    type:'text',   locked: !canEditRegion }
     ]);
 
     html += '<div class="profile-section"><h3 class="section-title">صلاحية البطاقات</h3>' +
@@ -463,34 +467,19 @@ var Employees = (function () {
     ]);
 
     // عرض الأرصدة (قراءة — المتبقي يُحسب ديناميكياً من الطلبات)
-    html += '<div class="profile-section" data-section="leaves"><h3 class="section-title">' +
-      'أرصدة الإجازة' +
-      '<button class="btn-sm btn-primary section-edit-btn" style="display:none;float:left" ' +
-        'onclick="Employees.saveCardSection(\'leaves\')">💾 حفظ</button>' +
-    '</h3>' +
+    html += '<div class="profile-section" data-section="leaves"><h3 class="section-title">أرصدة الإجازة</h3>' +
       '<div class="leave-grid" id="leaves-display">' +
-        _leaveBal('رصيد السنوية',    lv.annBal,     false) +
-        _leaveBal('المتبقي السنوية', lv.annRem,     true)  +
-        _leaveBal('رصيد المجدولة',   lv.schedBal,   false) +
-        _leaveBal('المتبقي المجدولة',lv.schedRem,   false) +
-        _leaveBal('مرضية',           lv.sick,        false) +
-        _leaveBal('مولود',           lv.birth,       false) +
-        _leaveBal('وفاة',            lv.death,       false) +
-        _leaveBal('زواج',            lv.marriage,    false) +
-        _leaveBal('اختبارات',        lv.exam,        false) +
-        _leaveBal('دورة عمل',        lv.workCourse,  false) +
-        _leaveBal('خدمة عمل طويلة', lv.longService, false) +
+        _leaveBal('رصيد السنوية',     lv.annBal,  false) +
+        _leaveBal('المتبقي السنوية',  lv.annRem,  true)  +
+        _leaveBal('رصيد المجدولة',    lv.schedBal,false) +
+        _leaveBal('المتبقي المجدولة', lv.schedRem,false) +
       '</div>' +
       '<div class="pf-edit-form" id="leaves-edit" style="display:none">' +
-        _numInput('رصيد السنوية',     'lv-annBal',    lv.annBal)    +
-        _numInput('رصيد المجدولة',    'lv-schedBal',  lv.schedBal)  +
-        _numInput('مرضية',            'lv-sick',       lv.sick)      +
-        _numInput('مولود',            'lv-birth',      lv.birth)     +
-        _numInput('وفاة',             'lv-death',      lv.death)     +
-        _numInput('زواج',             'lv-marriage',   lv.marriage)  +
-        _numInput('اختبارات',         'lv-exam',       lv.exam)      +
-        _numInput('دورة عمل',         'lv-workCourse', lv.workCourse)+
-        _numInput('خدمة عمل طويلة',  'lv-longService',lv.longService)+
+        _numInput('رصيد السنوية', 'lv-annBal', lv.annBal) +
+        (role === 'مدير' || role === 'مشرف'
+          ? _numInput('رصيد المجدولة', 'lv-schedBal', lv.schedBal) +
+            '<small class="field-hint" style="margin-top:-8px;display:block;color:var(--text-muted)">أيام خُصمت من السنوي وتم جدولتها مستقبلاً</small>'
+          : '<div class="pf-row"><span class="pf-label">رصيد المجدولة</span><span class="pf-val pf-locked">' + (lv.schedBal || 0) + ' يوم — يُدخله المشرف / المدير</span></div>') +
       '</div>' +
     '</div>';
 
@@ -588,10 +577,7 @@ var Employees = (function () {
     }).join('');
 
     return '<div class="profile-section" data-section="' + sectionKey + '">' +
-      '<h3 class="section-title">' + title +
-        '<button class="btn-sm btn-primary section-edit-btn" style="display:none;float:left" ' +
-          'onclick="Employees.saveCardSection(\'' + sectionKey + '\')">💾 حفظ القسم</button>' +
-      '</h3>' +
+      '<h3 class="section-title">' + title + '</h3>' +
       '<div class="profile-fields section-display">' + displayRows + '</div>' +
       '<div class="profile-fields section-edit-form" style="display:none">' + editInputs + '</div>' +
     '</div>';
@@ -1173,34 +1159,95 @@ var Employees = (function () {
   // تعديل البطاقة الشاملة مباشرة
   // ============================================================
 
-  function toggleCardEdit() {
-    var card = document.getElementById('full-profile-card');
+  function _setEditMode(on) {
+    var card    = document.getElementById('full-profile-card');
+    var toggle  = document.getElementById('card-edit-toggle');
+    var saveAll = document.getElementById('card-save-all');
     if (!card) return;
-    var isEditing = card.classList.contains('card-editing');
-    if (isEditing) {
-      // خروج من وضع التعديل
-      card.classList.remove('card-editing');
-      card.querySelectorAll('.section-display').forEach(function(d) { d.style.display = ''; });
-      card.querySelectorAll('.section-edit-form').forEach(function(f) { f.style.display = 'none'; });
-      card.querySelectorAll('.section-edit-btn').forEach(function(b) { b.style.display = 'none'; });
-      card.querySelectorAll('#leaves-display').forEach(function(d) { d.style.display = ''; });
-      card.querySelectorAll('#leaves-edit').forEach(function(f) { f.style.display = 'none'; });
-      var toggle = document.getElementById('card-edit-toggle');
-      if (toggle) { toggle.textContent = '✏️ تعديل'; toggle.classList.remove('btn-danger'); }
-    } else {
-      // دخول وضع التعديل
+
+    if (on) {
       card.classList.add('card-editing');
       card.querySelectorAll('.section-display').forEach(function(d) { d.style.display = 'none'; });
       card.querySelectorAll('.section-edit-form').forEach(function(f) { f.style.display = ''; });
-      card.querySelectorAll('.section-edit-btn').forEach(function(b) { b.style.display = ''; });
       var lvDisp = document.getElementById('leaves-display');
       var lvEdit = document.getElementById('leaves-edit');
       if (lvDisp) lvDisp.style.display = 'none';
       if (lvEdit) lvEdit.style.display = '';
-      card.querySelectorAll('[data-section="leaves"] .section-edit-btn').forEach(function(b) { b.style.display = ''; });
-      var toggle2 = document.getElementById('card-edit-toggle');
-      if (toggle2) { toggle2.textContent = '✕ إلغاء التعديل'; toggle2.classList.add('btn-danger'); }
+      if (toggle)  { toggle.textContent = '✕ إلغاء';  toggle.classList.add('btn-danger'); }
+      if (saveAll) saveAll.style.display = '';
+    } else {
+      card.classList.remove('card-editing');
+      card.querySelectorAll('.section-display').forEach(function(d) { d.style.display = ''; });
+      card.querySelectorAll('.section-edit-form').forEach(function(f) { f.style.display = 'none'; });
+      var lvD = document.getElementById('leaves-display');
+      var lvE = document.getElementById('leaves-edit');
+      if (lvD) lvD.style.display = '';
+      if (lvE) lvE.style.display = 'none';
+      if (toggle)  { toggle.textContent = '✏️ تعديل'; toggle.classList.remove('btn-danger'); }
+      if (saveAll) saveAll.style.display = 'none';
     }
+  }
+
+  function toggleCardEdit() {
+    var card = document.getElementById('full-profile-card');
+    if (!card) return;
+    _setEditMode(!card.classList.contains('card-editing'));
+  }
+
+  function saveAllSections() {
+    var el       = document.getElementById('view-content');
+    var targetId = el ? el.dataset.targetId : '';
+    if (!targetId) return;
+
+    var saveBtn = document.getElementById('card-save-all');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'جارٍ الحفظ...'; }
+
+    var _gv = function(id) {
+      var e = document.getElementById(id); return e ? e.value.trim() : '';
+    };
+    var role = Auth.getEffectiveRole();
+
+    var jobs = [
+      API.updateEmployee(targetId, {
+        name:        _gv('edit-personal-name'),
+        phone:       _gv('edit-personal-phone'),
+        role:        _gv('edit-personal-role'),
+        workExpDate: _gv('edit-personal-workExpDate'),
+        srcExpDate:  _gv('edit-personal-srcExpDate')
+      }),
+      API.updateRegion(targetId, {
+        region: _gv('edit-region-region'),
+        center: _gv('edit-region-center'),
+        car:    _gv('edit-region-car')
+      }),
+      API.updateEquipment(targetId, {
+        cat2Shirt: _gv('edit-equipment-cat2Shirt'),
+        cat2Pants: _gv('edit-equipment-cat2Pants'),
+        shoes:     _gv('edit-equipment-shoes'),
+        cat4:      _gv('edit-equipment-cat4'),
+        bravo:     _gv('edit-equipment-bravo'),
+        major:     _gv('edit-equipment-major'),
+        other:     _gv('edit-equipment-other')
+      }),
+      (function() {
+        var lbData = { annBal: _gv('lv-annBal') };
+        if (role === 'مدير' || role === 'مشرف') {
+          lbData.schedBal = _gv('lv-schedBal');
+        }
+        return API.updateLeaveBalance(targetId, lbData, role === 'موظف' ? '1' : '0');
+      })()
+    ];
+
+    Promise.all(jobs).then(function(results) {
+      var anyErr = results.some(function(r) { return !r.ok; });
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '💾 حفظ الكل'; }
+      if (anyErr) {
+        App.toast('بعض التغييرات لم تُحفظ — تحقق من البيانات', 'error');
+      } else {
+        App.toast('تم حفظ جميع التغييرات ✓', 'success');
+        if (el) Employees.renderFullCard('view-content', targetId);
+      }
+    });
   }
 
   function saveCardSection(section) {
@@ -1238,14 +1285,11 @@ var Employees = (function () {
       });
     } else if (section === 'leaves') {
       var role = Auth.getEffectiveRole();
-      var firstTime = (role === 'موظف') ? '1' : '0';
-      prom = API.updateLeaveBalance(targetId, {
-        annBal:     _gv('lv-annBal'),    schedBal:   _gv('lv-schedBal'),
-        sick:       _gv('lv-sick'),      birth:      _gv('lv-birth'),
-        death:      _gv('lv-death'),     marriage:   _gv('lv-marriage'),
-        exam:       _gv('lv-exam'),      workCourse: _gv('lv-workCourse'),
-        longService:_gv('lv-longService')
-      }, firstTime);
+      var lbData = { annBal: _gv('lv-annBal') };
+      if (role === 'مدير' || role === 'مشرف') {
+        lbData.schedBal = _gv('lv-schedBal');
+      }
+      prom = API.updateLeaveBalance(targetId, lbData, role === 'موظف' ? '1' : '0');
     } else { return; }
 
     prom.then(function(res) {
@@ -1264,7 +1308,7 @@ var Employees = (function () {
     renderList, renderProfile, renderAdminProfile, renderFullCard,
     viewProfile, editEmployee, renderForm,
     transferDialog, _roleChange,
-    toggleCardEdit, saveCardSection,
+    toggleCardEdit, saveCardSection, saveAllSections,
     getCache: function() { return _cache; }
   };
 })();
