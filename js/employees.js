@@ -400,8 +400,17 @@ var Employees = (function () {
     var sc  = CONFIG.SHIFTS[sk] || CONFIG.SHIFTS.a;
     var st  = CONFIG.getShiftStatus(emp.shift || '', CONFIG.todayStr());
     var stc = CONFIG.STATUS[st.en] || CONFIG.STATUS.off;
+    var role = Auth.getEffectiveRole();
+    var canEdit = role === 'مدير' || role === 'مشرف' || role === 'موظف';
 
-    var html = '<div class="profile-card">';
+    // تخزين البيانات للاستخدام عند التعديل
+    el.dataset.targetId = String(targetId);
+    el.dataset.empJson  = JSON.stringify(emp);
+    el.dataset.rgJson   = JSON.stringify(rg);
+    el.dataset.eqJson   = JSON.stringify(eq);
+    el.dataset.lvJson   = JSON.stringify(lv);
+
+    var html = '<div class="profile-card" id="full-profile-card">';
 
     html += '<div class="profile-header" style="background:' + sc.color + '">' +
       '<div class="ph-avatar">' + ((emp.name || '?')[0]) + '</div>' +
@@ -412,23 +421,29 @@ var Employees = (function () {
           stc.icon + ' ' + stc.label + ' اليوم' +
         '</span>' +
       '</div>' +
+      (canEdit
+        ? '<button class="btn-card-edit" id="card-edit-toggle" onclick="Employees.toggleCardEdit()" title="تعديل البيانات">✏️ تعديل</button>'
+        : '') +
     '</div>';
 
     html += '<div class="profile-sections">';
 
-    html += _section('البيانات الشخصية', [
-      ['الاسم',          emp.name    || '—'],
-      ['الرقم الوظيفي', emp.empId   || '—'],
-      ['رقم الجوال',     emp.phone ? '+966 ' + emp.phone : '—'],
-      ['الوردية',        'وردية ' + (emp.shift || '—')],
-      ['الصلاحية',       emp.role    || '—'],
-      ['تاريخ التسجيل',  CONFIG.fmtDate(emp.regDate)]
+    html += _editableSection('البيانات الشخصية', 'personal', [
+      { label:'الاسم',           val: emp.name    || '—', key:'name',     type:'text',   locked: false },
+      { label:'الرقم الوظيفي',  val: emp.empId   || '—', key:'empId',    type:'text',   locked: true  },
+      { label:'رقم الجوال',      val: emp.phone   || '',  key:'phone',    type:'text',   locked: false },
+      { label:'الوردية',         val: 'وردية ' + (emp.shift || '—'), key:'shift', type:'text', locked: true },
+      { label:'الصلاحية',        val: emp.role    || '—', key:'role',     type:'select', locked: role !== 'مدير',
+        opts: ['موظف','مشرف','اداري','مدير'] },
+      { label:'انتهاء بطاقة العمل', val: emp.workExpDate || '', key:'workExpDate', type:'date', locked: false },
+      { label:'انتهاء بطاقة المصدر',val: emp.srcExpDate  || '', key:'srcExpDate',  type:'date', locked: false },
+      { label:'تاريخ التسجيل',   val: CONFIG.fmtDate(emp.regDate), key:'regDate', type:'text', locked: true }
     ]);
 
-    html += _section('المنطقة والمركز والسيارة', [
-      ['المنطقة',    rg.region || '—'],
-      ['المركز',     rg.center || '—'],
-      ['رقم السيارة',rg.car    || '—']
+    html += _editableSection('المنطقة والمركز والسيارة', 'region', [
+      { label:'المنطقة',     val: rg.region || '', key:'region', type:'text', locked: false },
+      { label:'المركز',      val: rg.center || '', key:'center', type:'text', locked: false },
+      { label:'رقم السيارة', val: rg.car    || '', key:'car',    type:'text', locked: false }
     ]);
 
     html += '<div class="profile-section"><h3 class="section-title">صلاحية البطاقات</h3>' +
@@ -437,18 +452,23 @@ var Employees = (function () {
         _expiryRow('بطاقة مصدر/مستلم', emp.srcExpDate,  emp.srcDaysLeft) +
       '</div></div>';
 
-    html += _section('العدد والمقاسات', [
-      ['CAT 2 قميص',   eq.cat2Shirt || '—'],
-      ['CAT 2 بنطلون', eq.cat2Pants || '—'],
-      ['سيفتي شوز',    eq.shoes     || '—'],
-      ['CAT 4 بدلة',   eq.cat4      || '—'],
-      ['برافو',         eq.bravo     || '—'],
-      ['ميجر',          eq.major     || '—'],
-      ['عدد أخرى',      eq.other     || '—']
+    html += _editableSection('العدد والمقاسات', 'equipment', [
+      { label:'CAT 2 قميص',   val: eq.cat2Shirt || '', key:'cat2Shirt', type:'text', locked: false },
+      { label:'CAT 2 بنطلون', val: eq.cat2Pants || '', key:'cat2Pants', type:'text', locked: false },
+      { label:'سيفتي شوز',    val: eq.shoes     || '', key:'shoes',     type:'text', locked: false },
+      { label:'CAT 4 بدلة',   val: eq.cat4      || '', key:'cat4',      type:'text', locked: false },
+      { label:'برافو',         val: eq.bravo     || '', key:'bravo',     type:'text', locked: false },
+      { label:'ميجر',          val: eq.major     || '', key:'major',     type:'text', locked: false },
+      { label:'عدد أخرى',      val: eq.other     || '', key:'other',     type:'text', locked: false }
     ]);
 
-    html += '<div class="profile-section"><h3 class="section-title">أرصدة الإجازة</h3>' +
-      '<div class="leave-grid">' +
+    // عرض الأرصدة (قراءة — المتبقي يُحسب ديناميكياً من الطلبات)
+    html += '<div class="profile-section" data-section="leaves"><h3 class="section-title">' +
+      'أرصدة الإجازة' +
+      '<button class="btn-sm btn-primary section-edit-btn" style="display:none;float:left" ' +
+        'onclick="Employees.saveCardSection(\'leaves\')">💾 حفظ</button>' +
+    '</h3>' +
+      '<div class="leave-grid" id="leaves-display">' +
         _leaveBal('رصيد السنوية',    lv.annBal,     false) +
         _leaveBal('المتبقي السنوية', lv.annRem,     true)  +
         _leaveBal('رصيد المجدولة',   lv.schedBal,   false) +
@@ -460,7 +480,19 @@ var Employees = (function () {
         _leaveBal('اختبارات',        lv.exam,        false) +
         _leaveBal('دورة عمل',        lv.workCourse,  false) +
         _leaveBal('خدمة عمل طويلة', lv.longService, false) +
-      '</div></div>';
+      '</div>' +
+      '<div class="pf-edit-form" id="leaves-edit" style="display:none">' +
+        _numInput('رصيد السنوية',     'lv-annBal',    lv.annBal)    +
+        _numInput('رصيد المجدولة',    'lv-schedBal',  lv.schedBal)  +
+        _numInput('مرضية',            'lv-sick',       lv.sick)      +
+        _numInput('مولود',            'lv-birth',      lv.birth)     +
+        _numInput('وفاة',             'lv-death',      lv.death)     +
+        _numInput('زواج',             'lv-marriage',   lv.marriage)  +
+        _numInput('اختبارات',         'lv-exam',       lv.exam)      +
+        _numInput('دورة عمل',         'lv-workCourse', lv.workCourse)+
+        _numInput('خدمة عمل طويلة',  'lv-longService',lv.longService)+
+      '</div>' +
+    '</div>';
 
     var otHours = _calcOtHours(otData);
     html += '<div class="profile-section ot-card-section">' +
@@ -510,6 +542,52 @@ var Employees = (function () {
           return '<div class="pf-row"><span class="pf-label">' + r[0] + '</span><span class="pf-val">' + r[1] + '</span></div>';
         }).join('') +
       '</div></div>';
+  }
+
+  // قسم قابل للتعديل — يعرض حقول عرض + حقول تعديل مخفية
+  function _editableSection(title, sectionKey, fields) {
+    var displayRows = fields.map(function(f) {
+      return '<div class="pf-row">' +
+        '<span class="pf-label">' + f.label + '</span>' +
+        '<span class="pf-val">' + (f.val || '—') + '</span>' +
+      '</div>';
+    }).join('');
+
+    var editInputs = fields.map(function(f) {
+      if (f.locked) {
+        return '<div class="pf-row">' +
+          '<span class="pf-label">' + f.label + '</span>' +
+          '<span class="pf-val pf-locked">' + (f.val || '—') + '</span>' +
+        '</div>';
+      }
+      var inp = '';
+      if (f.type === 'select') {
+        inp = '<select class="pf-input form-select" id="edit-' + sectionKey + '-' + f.key + '">' +
+          (f.opts || []).map(function(o) {
+            return '<option value="' + o + '"' + (o === f.val ? ' selected' : '') + '>' + o + '</option>';
+          }).join('') +
+        '</select>';
+      } else {
+        inp = '<input type="' + (f.type || 'text') + '" class="pf-input form-input" ' +
+          'id="edit-' + sectionKey + '-' + f.key + '" value="' + (f.val || '') + '">';
+      }
+      return '<div class="pf-row"><span class="pf-label">' + f.label + '</span>' + inp + '</div>';
+    }).join('');
+
+    return '<div class="profile-section" data-section="' + sectionKey + '">' +
+      '<h3 class="section-title">' + title +
+        '<button class="btn-sm btn-primary section-edit-btn" style="display:none;float:left" ' +
+          'onclick="Employees.saveCardSection(\'' + sectionKey + '\')">💾 حفظ القسم</button>' +
+      '</h3>' +
+      '<div class="profile-fields section-display">' + displayRows + '</div>' +
+      '<div class="profile-fields section-edit-form" style="display:none">' + editInputs + '</div>' +
+    '</div>';
+  }
+
+  function _numInput(label, id, val) {
+    return '<div class="pf-row"><span class="pf-label">' + label + '</span>' +
+      '<input type="number" class="pf-input form-input" id="' + id + '" value="' + (val || 0) + '" min="0" step="0.5">' +
+    '</div>';
   }
 
   function _expiryRow(label, date, days) {
@@ -744,7 +822,7 @@ var Employees = (function () {
       if (newEl.value !== conEl.value) { errEl.textContent = 'كلمتا المرور غير متطابقتين'; errEl.style.display='block'; return; }
       App.btnLoad(btn);
       Auth.changePassword(newEl.value).then(function(res) {
-        App.btnDone(btn);
+        App.btnDone(btn, null, res.ok ? 'success' : 'error');
         if (res.ok) {
           App.toast('تم تغيير الرقم السري بنجاح ✓', 'success');
           newEl.value = ''; conEl.value = ''; _check();
@@ -790,7 +868,7 @@ var Employees = (function () {
         prom = API.addEmployee(data);
       }
       prom.then(function(res) {
-        App.btnDone(btn);
+        App.btnDone(btn, null, res.ok ? 'success' : 'error');
         if (res.ok) { App.toast(isEdit ? 'تم حفظ البيانات الأساسية ✓' : 'تمت إضافة الموظف ✓', 'success'); }
         else {
           var errs = { duplicate_id:'الرقم موجود مسبقاً', duplicate_phone:'الجوال موجود مسبقاً', invalid_role_code:'رمز الترقية غير صحيح' };
@@ -815,7 +893,7 @@ var Employees = (function () {
       };
       App.btnLoad(btn);
       API.updateRegion(empId, updates).then(function(res) {
-        App.btnDone(btn);
+        App.btnDone(btn, null, res.ok ? 'success' : 'error');
         if (res.ok) App.toast('تم حفظ المنطقة والمركز ✓', 'success');
         else { errEl.textContent = 'حدث خطأ: ' + res.error; errEl.style.display = 'block'; }
       });
@@ -838,7 +916,7 @@ var Employees = (function () {
       };
       App.btnLoad(btn);
       API.updateEquipment(empId, updates).then(function(res) {
-        App.btnDone(btn);
+        App.btnDone(btn, null, res.ok ? 'success' : 'error');
         if (res.ok) App.toast('تم حفظ العدد والمقاسات ✓', 'success');
         else { errEl.textContent = 'حدث خطأ: ' + res.error; errEl.style.display = 'block'; }
       });
@@ -862,7 +940,7 @@ var Employees = (function () {
       };
       App.btnLoad(btn);
       API.updateLeaveBalance(empId, updates, firstTime).then(function(res) {
-        App.btnDone(btn);
+        App.btnDone(btn, null, res.ok ? 'success' : 'error');
         if (res.ok) App.toast('تم حفظ أرصدة الإجازات ✓', 'success');
         else { errEl.textContent = 'حدث خطأ: ' + res.error; errEl.style.display = 'block'; }
       });
@@ -962,7 +1040,7 @@ var Employees = (function () {
       }
 
       prom.then(function(res) {
-        App.btnDone(btn);
+        App.btnDone(btn, null, res.ok ? 'success' : 'error');
         if (res.ok) {
           App.toast(isEdit ? 'تم تعديل بيانات الموظف' : 'تمت إضافة الموظف', 'success');
           App.navigate('employees');
@@ -987,9 +1065,10 @@ var Employees = (function () {
   function transferDialog(empId, name) {
     var modal = document.createElement('div');
     modal.className = 'modal-overlay';
-    modal.innerHTML = '<div class="modal-box">' +
-      '<h3>نقل ' + name + '</h3>' +
-      '<div class="form-field"><label>الوردية الجديدة</label>' +
+    modal.innerHTML = '<div class="modal-box transfer-modal-box">' +
+      '<h3>نقل الموظف: ' + name + '</h3>' +
+
+      '<div class="form-field"><label>الوردية الجديدة <span class="req">*</span></label>' +
         '<select id="transfer-shift" class="form-select">' +
           ['أ','ب','ج','د'].map(function(s) {
             var sk = CONFIG.shiftKey(s);
@@ -997,12 +1076,26 @@ var Employees = (function () {
           }).join('') +
         '</select>' +
       '</div>' +
+
+      '<div class="transfer-new-data">' +
+        '<div class="tnd-title">📍 بيانات الوردية الجديدة <span class="tnd-opt">(اختياري — تُطبَّق على الموظف فور النقل)</span></div>' +
+        '<div class="form-grid">' +
+          '<div class="form-field"><label>المنطقة الجديدة</label>' +
+            '<input type="text" id="transfer-region" class="form-input" placeholder="اتركها فارغة للإبقاء على الحالية"></div>' +
+          '<div class="form-field"><label>المركز الجديد</label>' +
+            '<input type="text" id="transfer-center" class="form-input" placeholder="اتركها فارغة للإبقاء على الحالي"></div>' +
+          '<div class="form-field"><label>رقم السيارة</label>' +
+            '<input type="text" id="transfer-car" class="form-input" placeholder="اتركها فارغة للإبقاء على الحالي"></div>' +
+        '</div>' +
+      '</div>' +
+
       '<div class="form-field"><label>ملاحظات</label>' +
         '<input type="text" id="transfer-notes" class="form-input" placeholder="اختياري">' +
       '</div>' +
+
       '<div id="transfer-err" class="form-error" style="display:none"></div>' +
       '<div class="form-actions">' +
-        '<button class="btn-primary" id="transfer-confirm-btn">تأكيد النقل</button>' +
+        '<button class="btn-primary" id="transfer-confirm-btn">✓ تأكيد النقل</button>' +
         '<button class="btn-outline" onclick="this.closest(\'.modal-overlay\').remove()">إلغاء</button>' +
       '</div>' +
     '</div>';
@@ -1011,19 +1104,27 @@ var Employees = (function () {
     modal.querySelector('#transfer-confirm-btn').onclick = function() {
       var newShift = modal.querySelector('#transfer-shift').value;
       var notes    = modal.querySelector('#transfer-notes').value;
-      var errEl    = modal.querySelector('#transfer-err');
-      var btn      = this;
-      btn.disabled = true; btn.textContent = 'جارٍ النقل...';
+      var newData  = {
+        region: modal.querySelector('#transfer-region').value.trim(),
+        center: modal.querySelector('#transfer-center').value.trim(),
+        car:    modal.querySelector('#transfer-car').value.trim()
+      };
+      var errEl = modal.querySelector('#transfer-err');
+      var btn   = this;
+      App.btnLoad(btn);
       errEl.style.display = 'none';
 
-      API.transferEmployee(empId, newShift, notes).then(function(res) {
-        btn.disabled = false; btn.textContent = 'تأكيد النقل';
+      API.transferEmployee(empId, newShift, notes, newData).then(function(res) {
+        App.btnDone(btn, null, res.ok ? 'success' : 'error');
         if (res.ok) {
-          modal.remove();
-          App.toast('تم نقل الموظف بنجاح', 'success');
-          App.navigate('employees');
+          setTimeout(function() {
+            modal.remove();
+            App.toast('تم نقل الموظف بنجاح ✓', 'success');
+            App.navigate('employees');
+          }, 900);
         } else {
-          var errMap = { same_shift:'الموظف في نفس الوردية', forbidden:'غير مصرح' };
+          var errMap = { same_shift:'الموظف في نفس الوردية', forbidden:'غير مصرح',
+                        cannot_transfer_to_own_shift:'لا يمكن النقل لنفس وردييتك' };
           errEl.textContent = errMap[res.error] || ('حدث خطأ: ' + res.error);
           errEl.style.display = 'block';
         }
@@ -1055,10 +1156,102 @@ var Employees = (function () {
     '</div>';
   }
 
+  // ============================================================
+  // تعديل البطاقة الشاملة مباشرة
+  // ============================================================
+
+  function toggleCardEdit() {
+    var card = document.getElementById('full-profile-card');
+    if (!card) return;
+    var isEditing = card.classList.contains('card-editing');
+    if (isEditing) {
+      // خروج من وضع التعديل
+      card.classList.remove('card-editing');
+      card.querySelectorAll('.section-display').forEach(function(d) { d.style.display = ''; });
+      card.querySelectorAll('.section-edit-form').forEach(function(f) { f.style.display = 'none'; });
+      card.querySelectorAll('.section-edit-btn').forEach(function(b) { b.style.display = 'none'; });
+      card.querySelectorAll('#leaves-display').forEach(function(d) { d.style.display = ''; });
+      card.querySelectorAll('#leaves-edit').forEach(function(f) { f.style.display = 'none'; });
+      var toggle = document.getElementById('card-edit-toggle');
+      if (toggle) { toggle.textContent = '✏️ تعديل'; toggle.classList.remove('btn-danger'); }
+    } else {
+      // دخول وضع التعديل
+      card.classList.add('card-editing');
+      card.querySelectorAll('.section-display').forEach(function(d) { d.style.display = 'none'; });
+      card.querySelectorAll('.section-edit-form').forEach(function(f) { f.style.display = ''; });
+      card.querySelectorAll('.section-edit-btn').forEach(function(b) { b.style.display = ''; });
+      var lvDisp = document.getElementById('leaves-display');
+      var lvEdit = document.getElementById('leaves-edit');
+      if (lvDisp) lvDisp.style.display = 'none';
+      if (lvEdit) lvEdit.style.display = '';
+      card.querySelectorAll('[data-section="leaves"] .section-edit-btn').forEach(function(b) { b.style.display = ''; });
+      var toggle2 = document.getElementById('card-edit-toggle');
+      if (toggle2) { toggle2.textContent = '✕ إلغاء التعديل'; toggle2.classList.add('btn-danger'); }
+    }
+  }
+
+  function saveCardSection(section) {
+    var el  = document.getElementById('view-content');
+    var targetId = el ? el.dataset.targetId : '';
+    var btn = el ? el.querySelector('[data-section="' + section + '"] .section-edit-btn') : null;
+    if (btn) { btn.disabled = true; btn.textContent = 'جارٍ الحفظ...'; }
+
+    var _gv = function(id) {
+      var e = document.getElementById(id); return e ? e.value.trim() : '';
+    };
+
+    var p, prom;
+    if (section === 'personal') {
+      p = { name: _gv('edit-personal-name'), phone: _gv('edit-personal-phone'),
+            role: _gv('edit-personal-role'),
+            workExpDate: _gv('edit-personal-workExpDate'),
+            srcExpDate:  _gv('edit-personal-srcExpDate') };
+      prom = API.updateEmployee(targetId, p);
+    } else if (section === 'region') {
+      prom = API.updateRegion(targetId, {
+        region: _gv('edit-region-region'),
+        center: _gv('edit-region-center'),
+        car:    _gv('edit-region-car')
+      });
+    } else if (section === 'equipment') {
+      prom = API.updateEquipment(targetId, {
+        cat2Shirt: _gv('edit-equipment-cat2Shirt'),
+        cat2Pants: _gv('edit-equipment-cat2Pants'),
+        shoes:     _gv('edit-equipment-shoes'),
+        cat4:      _gv('edit-equipment-cat4'),
+        bravo:     _gv('edit-equipment-bravo'),
+        major:     _gv('edit-equipment-major'),
+        other:     _gv('edit-equipment-other')
+      });
+    } else if (section === 'leaves') {
+      var role = Auth.getEffectiveRole();
+      var firstTime = (role === 'موظف') ? '1' : '0';
+      prom = API.updateLeaveBalance(targetId, {
+        annBal:     _gv('lv-annBal'),    schedBal:   _gv('lv-schedBal'),
+        sick:       _gv('lv-sick'),      birth:      _gv('lv-birth'),
+        death:      _gv('lv-death'),     marriage:   _gv('lv-marriage'),
+        exam:       _gv('lv-exam'),      workCourse: _gv('lv-workCourse'),
+        longService:_gv('lv-longService')
+      }, firstTime);
+    } else { return; }
+
+    prom.then(function(res) {
+      if (btn) { btn.disabled = false; btn.textContent = '💾 حفظ القسم'; }
+      if (res.ok) {
+        App.toast('تم حفظ ' + section + ' بنجاح ✓', 'success');
+        // إعادة تحميل البطاقة بالبيانات الجديدة
+        if (el) Employees.renderFullCard('view-content', targetId);
+      } else {
+        App.toast('خطأ: ' + res.error, 'error');
+      }
+    });
+  }
+
   return {
     renderList, renderProfile, renderAdminProfile, renderFullCard,
     viewProfile, editEmployee, renderForm,
     transferDialog, _roleChange,
+    toggleCardEdit, saveCardSection,
     getCache: function() { return _cache; }
   };
 })();
