@@ -4,6 +4,9 @@
 
 var Leaves = (function () {
 
+  var _cache = {};      // req.no → req (لفتح نموذج التعديل)
+  var _editReq = null;  // الطلب الحالي في وضع التعديل
+
   // ============================================================
   // قائمة طلبات الإجازات
   // ============================================================
@@ -24,6 +27,9 @@ var Leaves = (function () {
         var myId = String(Auth.getUser() ? Auth.getUser().empId : '');
         data = data.filter(function(req) { return String(req.empId) === myId; });
       }
+      // تخزين للوصول السريع عند التعديل
+      _cache = {};
+      data.forEach(function(req) { _cache[req.no] = req; });
 
       var html = '<div class="list-filters">' +
         '<select id="leave-status-filter" class="filter-select">' +
@@ -87,7 +93,7 @@ var Leaves = (function () {
       (canReview ? _reviewButtons(req.no, 'leave') : '') +
       (canModify
         ? '<div class="req-actions">' +
-            '<button class="btn-sm btn-edit"   onclick="Leaves.editLeaveReq(\'' + req.no + '\',\'' + (req.startDate||'') + '\',\'' + (req.endDate||'') + '\',\'' + (req.empNotes||'') + '\')">✏️ تعديل</button>' +
+            '<button class="btn-sm btn-edit" onclick="Leaves.editLeaveForm(\'' + req.no + '\')">✏️ تعديل</button>' +
             '<button class="btn-sm btn-danger" onclick="Leaves.cancelLeaveReq(\'' + req.no + '\')">🗑️ حذف</button>' +
           '</div>'
         : (canDelete
@@ -141,6 +147,12 @@ var Leaves = (function () {
   // تعديل / حذف طلب الإجازة (للموظف — قيد المراجعة فقط)
   // ============================================================
 
+  function editLeaveForm(no) {
+    _editReq = _cache[no] || null;
+    if (!_editReq) { App.toast('بيانات الطلب غير متوفرة', 'error'); return; }
+    App.navigate('leave-form');
+  }
+
   function cancelLeaveReq(no) {
     if (!confirm('هل تريد حذف الطلب ' + no + '؟')) return;
     API.cancelLeave(no).then(function(res) {
@@ -152,18 +164,24 @@ var Leaves = (function () {
     });
   }
 
-  function editLeaveReq(no, startDate, endDate, notes) {
+  function editLeaveReq(no, startDate, endDate, notes, leaveType) {
+    var typeOpts = CONFIG.LEAVE_TYPES.map(function(t) {
+      return '<option value="' + t.key + '"' + (t.key === leaveType ? ' selected' : '') + '>' + t.label + '</option>';
+    }).join('');
+
     var modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML =
       '<div class="modal-box">' +
         '<h3>تعديل الطلب ' + no + '</h3>' +
+        '<div class="form-field"><label>نوع الإجازة</label>' +
+          '<select id="elr-type" class="form-select">' + typeOpts + '</select></div>' +
         '<div class="form-field"><label>من تاريخ</label>' +
-          '<input type="date" id="elr-start" class="form-input" value="' + startDate + '"></div>' +
+          '<input type="date" id="elr-start" class="form-input" value="' + (startDate||'') + '"></div>' +
         '<div class="form-field"><label>إلى تاريخ</label>' +
-          '<input type="date" id="elr-end" class="form-input" value="' + endDate + '"></div>' +
+          '<input type="date" id="elr-end" class="form-input" value="' + (endDate||'') + '"></div>' +
         '<div class="form-field"><label>ملاحظات</label>' +
-          '<input type="text" id="elr-notes" class="form-input" value="' + (notes||'') + '"></div>' +
+          '<textarea id="elr-notes" class="form-textarea" rows="3">' + (notes||'') + '</textarea></div>' +
         '<div id="elr-err" class="form-error" style="display:none"></div>' +
         '<div class="form-actions">' +
           '<button class="btn-primary" id="elr-save">💾 حفظ التعديل</button>' +
@@ -173,9 +191,10 @@ var Leaves = (function () {
     document.body.appendChild(modal);
 
     modal.querySelector('#elr-save').onclick = function() {
-      var s = modal.querySelector('#elr-start').value;
-      var e = modal.querySelector('#elr-end').value;
-      var n = modal.querySelector('#elr-notes').value.trim();
+      var s  = modal.querySelector('#elr-start').value;
+      var e  = modal.querySelector('#elr-end').value;
+      var n  = modal.querySelector('#elr-notes').value.trim();
+      var tp = modal.querySelector('#elr-type').value;
       var errEl = modal.querySelector('#elr-err');
       var btn = this;
       if (!s || !e || s > e) {
@@ -183,7 +202,7 @@ var Leaves = (function () {
       }
       var days = Math.round((new Date(e) - new Date(s)) / 86400000) + 1;
       App.btnLoad(btn);
-      API.editLeave(no, { startDate:s, endDate:e, days:days, notes:n }).then(function(res) {
+      API.editLeave(no, { leaveType:tp, startDate:s, endDate:e, days:days, notes:n }).then(function(res) {
         App.btnDone(btn, null, res.ok ? 'success' : 'error');
         if (res.ok) {
           setTimeout(function() { modal.remove(); App.toast('تم تعديل الطلب ✓', 'success'); App.navigate('leaves'); }, 900);
@@ -202,16 +221,22 @@ var Leaves = (function () {
     var el = document.getElementById(containerId);
     if (!el) return;
 
-    var user = Auth.getUser();
-    var role = Auth.getEffectiveRole();
+    var user    = Auth.getUser();
+    var role    = Auth.getEffectiveRole();
+    var isEdit  = !!_editReq;
+    var eReq    = _editReq || {};
+    _editReq    = null;  // امسح بعد القراءة
 
-    var html = '<form id="leave-form" class="form-card" novalidate>';
+    var html = '<form id="leave-form" class="form-card" novalidate>' +
+      (isEdit ? '<div class="edit-mode-banner">✏️ وضع التعديل — الطلب ' + eReq.no + '</div>' : '');
     html += '<div class="form-grid">';
 
     if (role === 'موظف') {
       html += _staticField('الرقم الوظيفي', user.empId);
       html += _staticField('الاسم', user.name);
       html += _staticField('الوردية', 'وردية ' + user.shift);
+      html += '<div class="form-field"><label>المنطقة</label><div class="form-static" id="lf-region">جارٍ التحميل…</div></div>';
+      html += '<div class="form-field"><label>المركز</label><div class="form-static" id="lf-center">جارٍ التحميل…</div></div>';
     } else {
       html += '<div class="form-field"><label>الوردية</label><select id="lf-shift" class="form-select" onchange="Leaves._loadShiftEmployees(this.value)">' +
         ['أ','ب','ج','د'].map(function(s) {
@@ -225,7 +250,7 @@ var Leaves = (function () {
     // نوع الإجازة
     html += '<div class="form-field"><label>نوع الإجازة <span class="req">*</span></label><select id="lf-type" class="form-select" onchange="Leaves._typeChange(this)">';
     CONFIG.LEAVE_TYPES.forEach(function(t) {
-      html += '<option value="' + t.key + '">' + t.label + '</option>';
+      html += '<option value="' + t.key + '"' + (isEdit && t.key === eReq.type ? ' selected' : '') + '>' + t.label + '</option>';
     });
     html += '</select></div>';
 
@@ -234,8 +259,10 @@ var Leaves = (function () {
       '<label>الرصيد المتاح</label><div class="form-static" id="lf-balance-val">—</div>' +
     '</div>';
 
-    html += '<div class="form-field"><label>تاريخ البداية <span class="req">*</span></label><input type="date" id="lf-start" class="form-input" required onchange="Leaves._calcDays()"></div>';
-    html += '<div class="form-field"><label>تاريخ النهاية <span class="req">*</span></label><input type="date" id="lf-end"   class="form-input" required onchange="Leaves._calcDays()"></div>';
+    html += '<div class="form-field"><label>تاريخ البداية <span class="req">*</span></label>' +
+      '<input type="date" id="lf-start" class="form-input" required onchange="Leaves._calcDays()" value="' + (isEdit ? (eReq.startDate||'') : '') + '"></div>';
+    html += '<div class="form-field"><label>تاريخ النهاية <span class="req">*</span></label>' +
+      '<input type="date" id="lf-end" class="form-input" required onchange="Leaves._calcDays()" value="' + (isEdit ? (eReq.endDate||'') : '') + '"></div>';
     html += '<div class="form-field"><label>مدة الإجازة</label><div class="form-static" id="lf-days">—</div></div>';
 
     html += '</div>'; // form-grid
@@ -246,14 +273,18 @@ var Leaves = (function () {
     // تحذير الرصيد
     html += '<div id="lf-warn" class="form-warning" style="display:none">⚠️ الرصيد غير كافٍ — سيتم إرسال الطلب وسيراجعه المشرف</div>';
 
-    html += '<div class="form-field"><label>ملاحظات</label><textarea id="lf-notes" class="form-textarea" rows="3" placeholder="اختياري"></textarea></div>';
+    html += '<div class="form-field"><label>ملاحظات</label>' +
+      '<textarea id="lf-notes" class="form-textarea" rows="3" placeholder="اختياري">' + (isEdit ? (eReq.empNotes||'') : '') + '</textarea></div>';
 
     html += '<div id="lf-error" class="form-error" style="display:none"></div>';
     html += '<div class="form-actions">' +
-      '<button type="submit" class="btn-primary">إرسال الطلب</button>' +
+      '<button type="submit" class="btn-primary">' + (isEdit ? '💾 حفظ التعديل' : 'إرسال الطلب') + '</button>' +
       '<button type="button" class="btn-outline" onclick="App.goBack()">إلغاء</button>' +
     '</div>';
     html += '</form>';
+
+    // حفظ رقم الطلب في حالة التعديل
+    if (isEdit) el.dataset.editNo = eReq.no;
 
     el.innerHTML = html;
     _bindLeaveForm(role, user);
@@ -262,6 +293,18 @@ var Leaves = (function () {
       var defShift = role === 'مشرف' ? user.shift : 'أ';
       var shiftEl = document.getElementById('lf-shift');
       if (shiftEl) { shiftEl.value = defShift; Leaves._loadShiftEmployees(defShift); }
+    }
+
+    // جلب المنطقة والمركز للموظف تلقائياً
+    if (role === 'موظف') {
+      API.getRegions().then(function(res) {
+        var rEl = document.getElementById('lf-region');
+        var cEl = document.getElementById('lf-center');
+        if (!rEl || !cEl) return;
+        var rg = res.ok && res.data.length ? res.data[0] : null;
+        rEl.textContent = rg ? (rg.region || '—') : '—';
+        cEl.textContent = rg ? (rg.center || '—') : '—';
+      });
     }
   }
 
@@ -322,16 +365,23 @@ var Leaves = (function () {
         data.name = opt ? opt.text.split(' — ')[0] : '';
       }
 
-      var btn = form.querySelector('[type=submit]');
+      var btn    = form.querySelector('[type=submit]');
+      var editNo = form.closest('[data-edit-no]') ? form.closest('[data-edit-no]').dataset.editNo
+                  : (document.getElementById('view-content') ? document.getElementById('view-content').dataset.editNo : '');
       App.btnLoad(btn);
 
-      API.submitLeave(data).then(function(res) {
+      var apiCall = editNo
+        ? API.editLeave(editNo, data)
+        : API.submitLeave(data);
+
+      apiCall.then(function(res) {
         App.btnDone(btn, null, res.ok ? 'success' : 'error');
         if (res.ok) {
-          App.toast('تم إرسال طلب الإجازة: ' + res.no, 'success');
+          App.toast(editNo ? 'تم حفظ التعديل ✓' : 'تم إرسال طلب الإجازة: ' + (res.no||''), 'success');
           App.navigate('leaves');
         } else {
-          errEl.textContent = 'حدث خطأ: ' + res.error;
+          var errs = { cannot_edit_reviewed:'لا يمكن تعديل طلب تمت مراجعته' };
+          errEl.textContent = errs[res.error] || 'حدث خطأ: ' + res.error;
           errEl.style.display = 'block';
         }
       });
@@ -443,6 +493,6 @@ var Leaves = (function () {
   return {
     renderList, renderForm,
     _typeChange, _calcDays, _loadShiftEmployees,
-    cancelLeaveReq, editLeaveReq
+    cancelLeaveReq, editLeaveReq, editLeaveForm
   };
 })();
