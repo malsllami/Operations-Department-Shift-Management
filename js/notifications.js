@@ -71,8 +71,8 @@ var Notifications = (function () {
       if (!data.length) { el.innerHTML = '<div class="empty-state">لا توجد إشعارات</div>'; return; }
 
       // --- تجميع حسب رقم الطلب (ref) ---
-      var groups   = {};     // { LV00001: [n1, n2, n3] }
-      var singles  = [];     // إشعارات بدون ref (نقل وردية مثلاً)
+      var groups  = {};
+      var singles = [];
 
       data.forEach(function(n) {
         if (n.ref) {
@@ -83,33 +83,48 @@ var Notifications = (function () {
         }
       });
 
-      // --- ترتيب المجموعات بأحدثها أولاً ---
       var groupKeys = Object.keys(groups).sort(function(a, b) {
         var la = groups[a][groups[a].length-1].date;
         var lb = groups[b][groups[b].length-1].date;
         return la > lb ? -1 : 1;
       });
 
-      var html = '<div class="notif-list">';
+      // --- شريط الأدوات ---
+      var html = '<div class="notif-toolbar">' +
+        '<label class="notif-select-all-wrap">' +
+          '<input type="checkbox" id="notif-check-all" onchange="Notifications._toggleSelectAll(this)">' +
+          '<span>تحديد الكل</span>' +
+        '</label>' +
+        '<button class="btn-sm btn-danger" id="notif-del-selected" disabled ' +
+          'onclick="Notifications._deleteSelected(\'' + containerId + '\')">🗑️ حذف المحدد <span id="notif-sel-count"></span></button>' +
+        '<button class="btn-sm btn-outline" onclick="Notifications._deleteAll(\'' + containerId + '\')">🧹 مسح الكل</button>' +
+      '</div>';
+
+      html += '<div class="notif-list" id="notif-cards-list">';
 
       groupKeys.forEach(function(ref) {
-        html += _groupCard(ref, groups[ref]);
+        var nos = groups[ref].map(function(n) { return n.no; });
+        html += _groupCard(ref, groups[ref], nos);
       });
 
       singles.forEach(function(n) {
-        html += _singleCard(n);
+        html += _singleCard(n, [n.no]);
       });
 
       html += '</div>';
       el.innerHTML = html;
+
+      // ربط أحداث الاختيار
+      el.querySelectorAll('.notif-item-check').forEach(function(cb) {
+        cb.addEventListener('change', function() { _updateSelectionBar(); });
+      });
     });
   }
 
   // ============================================================
   // بطاقة مجمّعة — طلب واحد بجميع مراحله
   // ============================================================
-  function _groupCard(ref, notifications) {
-    // رتّب المراحل بترتيب منطقي
+  function _groupCard(ref, notifications, nos) {
     var sorted = notifications.slice().sort(function(a, b) {
       var oa = _STAGE_ORDER[a.type] || 99;
       var ob = _STAGE_ORDER[b.type] || 99;
@@ -124,16 +139,18 @@ var Notifications = (function () {
     var mainDest  = isLeave ? 'leaves' : 'overtime';
     var mainIcon  = isLeave ? '🏖️' : '⏱️';
     var mainTitle = isLeave ? 'طلب إجازة' : 'طلب عمل إضافي';
-
-    // IDs لتحديثها عند النقر
-    var nosJson = JSON.stringify(notifications.map(function(n) { return n.no; }));
+    var nosJson   = JSON.stringify(nos || notifications.map(function(n) { return n.no; }));
+    var nosAttr   = nosJson.replace(/"/g, '&quot;');
 
     var html = '<div class="notif-group-card' + (isDone ? ' ngc-done' : '') + '" ' +
-      'onclick="Notifications._openGroup(' + nosJson.replace(/"/g,"'") + ',\'' + mainDest + '\')">' +
+      'data-nos="' + nosAttr + '">' +
 
       '<div class="ngc-header">' +
-        '<span class="ngc-type-icon">' + mainIcon + '</span>' +
-        '<div class="ngc-header-info">' +
+        '<label class="notif-check-wrap" onclick="event.stopPropagation()">' +
+          '<input type="checkbox" class="notif-item-check" data-nos="' + nosAttr + '">' +
+        '</label>' +
+        '<span class="ngc-type-icon" onclick="Notifications._openGroup(' + nosJson.replace(/"/g,"'") + ',\'' + mainDest + '\')" style="cursor:pointer">' + mainIcon + '</span>' +
+        '<div class="ngc-header-info" onclick="Notifications._openGroup(' + nosJson.replace(/"/g,"'") + ',\'' + mainDest + '\')" style="cursor:pointer">' +
           '<span class="ngc-title">' + mainTitle + '</span>' +
           '<span class="ngc-ref">' + ref + '</span>' +
         '</div>' +
@@ -190,14 +207,18 @@ var Notifications = (function () {
   // ============================================================
   // بطاقة منفردة (بدون ref — مثل نقل الوردية)
   // ============================================================
-  function _singleCard(n) {
-    var tc = _TC[n.type] || { icon:'🔔', label:'إشعار', bg:'#F3F4F6', tx:'#374151' };
-    var isDone = n.status === 'actioned';
-    return '<div class="notif-group-card' + (isDone ? ' ngc-done' : '') + '" ' +
-      'onclick="Notifications._readAndNav(\'' + n.no + '\',\'' + n.type + '\',\'' + n.status + '\',this)">' +
+  function _singleCard(n, nos) {
+    var tc      = _TC[n.type] || { icon:'🔔', label:'إشعار', bg:'#F3F4F6', tx:'#374151' };
+    var isDone  = n.status === 'actioned';
+    var nosJson = JSON.stringify(nos || [n.no]);
+    var nosAttr = nosJson.replace(/"/g, '&quot;');
+    return '<div class="notif-group-card' + (isDone ? ' ngc-done' : '') + '" data-nos="' + nosAttr + '">' +
       '<div class="ngc-header">' +
-        '<span class="ngc-type-icon">' + tc.icon + '</span>' +
-        '<div class="ngc-header-info">' +
+        '<label class="notif-check-wrap" onclick="event.stopPropagation()">' +
+          '<input type="checkbox" class="notif-item-check" data-nos="' + nosAttr + '">' +
+        '</label>' +
+        '<span class="ngc-type-icon" onclick="Notifications._readAndNav(\'' + n.no + '\',\'' + n.type + '\',\'' + n.status + '\',this.closest(\'.notif-group-card\'))" style="cursor:pointer">' + tc.icon + '</span>' +
+        '<div class="ngc-header-info" onclick="Notifications._readAndNav(\'' + n.no + '\',\'' + n.type + '\',\'' + n.status + '\',this.closest(\'.notif-group-card\'))" style="cursor:pointer">' +
           '<span class="ngc-title">' + (n.title||'') + '</span>' +
         '</div>' +
         (n.status === 'unread' ? '<span class="ngc-unread-dot"></span>' : '') +
@@ -274,6 +295,77 @@ var Notifications = (function () {
   }
 
   // ============================================================
+  // تحديد وحذف الإشعارات
+  // ============================================================
+
+  function _updateSelectionBar() {
+    var all      = document.querySelectorAll('.notif-item-check');
+    var selected = document.querySelectorAll('.notif-item-check:checked');
+    var delBtn   = document.getElementById('notif-del-selected');
+    var countEl  = document.getElementById('notif-sel-count');
+    var checkAll = document.getElementById('notif-check-all');
+    if (delBtn)   { delBtn.disabled = selected.length === 0; }
+    if (countEl)  { countEl.textContent = selected.length > 0 ? '(' + selected.length + ')' : ''; }
+    if (checkAll) { checkAll.indeterminate = selected.length > 0 && selected.length < all.length;
+                    checkAll.checked = all.length > 0 && selected.length === all.length; }
+  }
+
+  function _toggleSelectAll(masterCb) {
+    document.querySelectorAll('.notif-item-check').forEach(function(cb) {
+      cb.checked = masterCb.checked;
+    });
+    _updateSelectionBar();
+  }
+
+  function _getSelectedNos() {
+    var nos = [];
+    document.querySelectorAll('.notif-item-check:checked').forEach(function(cb) {
+      try {
+        var arr = JSON.parse(cb.dataset.nos || '[]');
+        arr.forEach(function(n) { if (nos.indexOf(n) === -1) nos.push(n); });
+      } catch(e) {}
+    });
+    return nos;
+  }
+
+  function _getAllNos() {
+    var nos = [];
+    document.querySelectorAll('.notif-item-check').forEach(function(cb) {
+      try {
+        var arr = JSON.parse(cb.dataset.nos || '[]');
+        arr.forEach(function(n) { if (nos.indexOf(n) === -1) nos.push(n); });
+      } catch(e) {}
+    });
+    return nos;
+  }
+
+  function _deleteSelected(containerId) {
+    var nos = _getSelectedNos();
+    if (!nos.length) return;
+    if (!confirm('حذف ' + nos.length + ' إشعار محدد؟')) return;
+    _doDelete(nos, containerId);
+  }
+
+  function _deleteAll(containerId) {
+    var nos = _getAllNos();
+    if (!nos.length) return;
+    if (!confirm('حذف جميع الإشعارات؟')) return;
+    _doDelete(nos, containerId);
+  }
+
+  function _doDelete(nos, containerId) {
+    API.deleteNotifs(nos).then(function(res) {
+      if (res.ok) {
+        App.toast('تم حذف الإشعارات ✓', 'success');
+        App.loadNotifBadge();
+        render(containerId);
+      } else {
+        App.toast('خطأ أثناء الحذف', 'error');
+      }
+    });
+  }
+
+  // ============================================================
   // مساعدات
   // ============================================================
   function _fmtDate(d) {
@@ -283,5 +375,6 @@ var Notifications = (function () {
     return s.replace('T', ' ').replace(/\.000Z$/, '').replace(/Z$/, '');
   }
 
-  return { render, loadBadge, _openGroup, _readAndNav };
+  return { render, loadBadge, _openGroup, _readAndNav,
+           _toggleSelectAll, _deleteSelected, _deleteAll, _updateSelectionBar };
 })();
