@@ -377,23 +377,6 @@ var Overtime = (function () {
     _updateDutyStatus();
   }
 
-  function _updateMiniCal() {
-    var dateEl  = document.getElementById('otf-date');
-    var shiftEl = document.getElementById('otf-shift');
-    var user    = Auth.getUser();
-    var date    = dateEl  ? dateEl.value  : CONFIG.todayStr();
-    var shift   = shiftEl ? shiftEl.value : (user ? user.shift : '');
-    if (!shift || !date) return;
-
-    var d      = new Date(date);
-    var year   = d.getFullYear();
-    var month  = d.getMonth();
-    var start  = year + '-' + CONFIG._p(month + 1) + '-01';
-    var lastD  = new Date(year, month + 1, 0).getDate();
-    var end    = year + '-' + CONFIG._p(month + 1) + '-' + CONFIG._p(lastD);
-
-    Calendar.renderMini('otf-mini-cal', start, end, shift);
-  }
 
   function _updateDutyStatus() {
     var card = document.getElementById('otf-status-card');
@@ -538,7 +521,7 @@ var Overtime = (function () {
     renderList, renderForm,
     _supervisorApprove, _supervisorReject, _sendToCoord,
     _coordSendSystem, _coordReturn, _confirmReceipt,
-    _loadShiftEmps, _updateDay, _normalizeHours, _updateDutyStatus, _updateMiniCal, editOtForm,
+    _loadShiftEmps, _updateDay, _normalizeHours, _updateDutyStatus, editOtForm,
     _cancelOtReq, _editOtReq
   };
 })();
