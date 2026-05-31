@@ -357,6 +357,7 @@ var App = (function () {
       { id:'notifications',icon:'🔔', label:'الإشعارات',          show: true },
       { id:'profile',       icon:'👤', label:'ملفي الشخصي',          show: true },
       { id:'employee-card', icon:'🪪', label:'بطاقة الموظف الشاملة', show: true },
+      { id:'regions-map',   icon:'🗺️', label:'المناطق والمراكز',     show: true },
       { id:'settings',      icon:'⚙️', label:'الإعدادات',            show: role==='مدير' }
     ];
 
@@ -518,7 +519,8 @@ var App = (function () {
       leaves:'طلبات الإجازات', 'leave-form':'طلب إجازة',
       overtime:'العمل الإضافي', 'overtime-form':'طلب عمل إضافي',
       transfers:'التنقلات بين الورديات', notifications:'الإشعارات',
-      export:'تصدير البيانات', settings:'الإعدادات', profile:'ملفي الشخصي'
+      export:'تصدير البيانات', settings:'الإعدادات', profile:'ملفي الشخصي',
+      'regions-map':'المناطق والمراكز'
     };
 
     main.innerHTML = '<div class="view-header"><h1 class="view-title">' + (titles[viewName]||viewName) + '</h1></div>' +
@@ -535,6 +537,7 @@ var App = (function () {
       case 'leave-form':     Leaves.renderForm('view-content'); break;
       case 'overtime':       Overtime.renderList('view-content'); break;
       case 'overtime-form':  Overtime.renderForm('view-content'); break;
+      case 'regions-map':    _renderRegionsMap('view-content'); break;
       case 'transfers':      _renderTransfers('view-content'); break;
       case 'notifications':  Notifications.render('view-content'); break;
       case 'export':         Export.renderExportPanel('view-content'); break;
@@ -550,6 +553,151 @@ var App = (function () {
         }
         break;
     }
+  }
+
+  // ============================================================
+  // المناطق والمراكز — عرض شامل
+  // ============================================================
+
+  function _renderRegionsMap(containerId) {
+    var el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+
+    var today = CONFIG.todayStr();
+
+    Promise.all([
+      API.getRegions(),
+      API.getEmployees(),
+      API.getLeaveReqs()
+    ]).then(function(results) {
+      var rgRes  = results[0];
+      var empRes = results[1];
+      var lvRes  = results[2];
+
+      if (!rgRes.ok) { el.innerHTML = '<div class="empty-state">تعذّر تحميل البيانات</div>'; return; }
+
+      // --- فهرسة الموظفين ---
+      var empMap = {};
+      if (empRes.ok) empRes.data.forEach(function(e) { empMap[String(e.empId)] = e; });
+
+      // --- الموظفون في إجازة اليوم ---
+      var onLeaveSet = {};
+      if (lvRes.ok) {
+        lvRes.data.forEach(function(lv) {
+          if (lv.status === 'approved' && lv.startDate <= today && lv.endDate >= today) {
+            onLeaveSet[String(lv.empId)] = true;
+          }
+        });
+      }
+
+      // --- بناء هيكل المناطق ---
+      // { regionName: { centers: { centerName: [empRecord, ...] } } }
+      var regMap = {};
+      rgRes.data.forEach(function(rg) {
+        var reg = rg.region || 'غير محددة';
+        var cen = rg.center || 'غير محدد';
+        if (!regMap[reg]) regMap[reg] = { centers: {} };
+        if (!regMap[reg].centers[cen]) regMap[reg].centers[cen] = [];
+
+        var emp = empMap[String(rg.empId)];
+        if (!emp) return;
+
+        var sk  = CONFIG.shiftKey(emp.shift || '');
+        var sc  = CONFIG.SHIFTS[sk] || CONFIG.SHIFTS.a;
+        var st  = CONFIG.getShiftStatus(emp.shift || '', today);
+        var stc = CONFIG.STATUS[st.en] || CONFIG.STATUS.off;
+        regMap[reg].centers[cen].push({
+          empId:   emp.empId,
+          name:    emp.name,
+          shift:   emp.shift,
+          car:     rg.car || '—',
+          sc:      sc,
+          st:      st,
+          stc:     stc,
+          onLeave: !!onLeaveSet[String(emp.empId)]
+        });
+      });
+
+      var regionNames  = Object.keys(regMap);
+      var totalRegions = regionNames.length;
+      var totalCenters = 0;
+      regionNames.forEach(function(r) { totalCenters += Object.keys(regMap[r].centers).length; });
+
+      // --- بطاقة الملخص ---
+      var html = '<div class="rgm-summary">' +
+        '<div class="rgm-stat"><span class="rgm-stat-num">' + totalRegions + '</span><span class="rgm-stat-lbl">منطقة</span></div>' +
+        '<div class="rgm-stat-sep"></div>' +
+        '<div class="rgm-stat"><span class="rgm-stat-num">' + totalCenters + '</span><span class="rgm-stat-lbl">مركز</span></div>' +
+      '</div>';
+
+      // --- بطاقات المناطق ---
+      html += '<div class="rgm-regions">';
+      regionNames.forEach(function(regName, ri) {
+        var cenKeys   = Object.keys(regMap[regName].centers);
+        var empCount  = 0;
+        var lvCount   = 0;
+        cenKeys.forEach(function(c) {
+          regMap[regName].centers[c].forEach(function(e) {
+            empCount++;
+            if (e.onLeave) lvCount++;
+          });
+        });
+
+        html += '<div class="rgm-region-card">' +
+          '<div class="rgm-region-header" onclick="this.parentElement.classList.toggle(\'rgm-open\')">' +
+            '<div class="rgm-region-title">' +
+              '<span class="rgm-region-name">📍 ' + regName + '</span>' +
+              '<span class="rgm-region-meta">' + cenKeys.length + ' مركز · ' + empCount + ' موظف' +
+                (lvCount ? ' · <span class="rgm-leave-badge">' + lvCount + ' في إجازة</span>' : '') +
+              '</span>' +
+            '</div>' +
+            '<span class="rgm-chevron">▾</span>' +
+          '</div>' +
+
+          '<div class="rgm-centers">';
+
+        // --- مراكز المنطقة ---
+        cenKeys.forEach(function(cenName) {
+          var emps   = regMap[regName].centers[cenName];
+          var cenLv  = emps.filter(function(e) { return e.onLeave; }).length;
+
+          html += '<div class="rgm-center-block">' +
+            '<div class="rgm-center-header" onclick="this.parentElement.classList.toggle(\'rgm-center-open\')">' +
+              '<span class="rgm-center-name">🏢 ' + cenName + '</span>' +
+              '<span class="rgm-center-meta">' + emps.length + ' موظف' +
+                (cenLv ? ' · <span class="rgm-leave-badge">' + cenLv + ' في إجازة</span>' : '') +
+              '</span>' +
+              '<span class="rgm-chevron">▾</span>' +
+            '</div>' +
+
+            '<div class="rgm-emp-list">';
+
+          // --- موظفو المركز ---
+          emps.forEach(function(emp) {
+            html += '<div class="rgm-emp-row" style="border-right: 4px solid ' + emp.sc.color + '; background: ' + emp.sc.bg + '20">' +
+              '<div class="rgm-emp-info">' +
+                '<span class="rgm-emp-name">' + emp.name + '</span>' +
+                '<span class="rgm-emp-shift" style="background:' + emp.sc.color + ';color:#fff">وردية ' + emp.sc.label + '</span>' +
+              '</div>' +
+              '<div class="rgm-emp-badges">' +
+                (emp.onLeave
+                  ? '<span class="rgm-on-leave">🏖️ في إجازة</span>'
+                  : '<span class="rgm-duty-badge" style="background:' + emp.stc.bg + ';color:' + emp.stc.text + '">' + emp.stc.icon + ' ' + emp.stc.label + '</span>') +
+                (emp.car && emp.car !== '—' ? '<span class="rgm-car">🚗 ' + emp.car + '</span>' : '') +
+              '</div>' +
+            '</div>';
+          });
+
+          html += '</div></div>'; // rgm-emp-list + rgm-center-block
+        });
+
+        html += '</div></div>'; // rgm-centers + rgm-region-card
+      });
+
+      html += '</div>'; // rgm-regions
+      el.innerHTML = html;
+    });
   }
 
   // ============================================================
