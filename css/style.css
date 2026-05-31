@@ -891,19 +891,21 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 .btn-disabled { background: #9CA3AF !important; color: #fff !important; cursor: default; box-shadow: none !important; }
 :disabled { opacity: 0.65; cursor: not-allowed; transform: none !important; }
 
-/* ---- أنيميشن زر الحفظ (دائري عند الضغط) ---- */
+/* ---- أنيميشن زر الحفظ — دوّار داخلي فقط، الزر يحتفظ بشكله ---- */
+.btn-primary, .btn-outline, .btn-danger, .btn-add, .btn-export,
+.btn-sm, .btn-approve, .btn-reject, .btn-view, .btn-edit, .btn-transfer {
+  position: relative;
+  overflow: hidden;
+}
 .btn-loading {
   pointer-events: none;
   color: transparent !important;
-  min-width: 44px;
-  border-radius: 50px !important;
-  animation: btn-pulse 1s ease-in-out infinite;
-  transition: border-radius 0.25s ease, padding 0.25s ease !important;
+  transition: background 0.25s ease, color 0.15s !important;
 }
 .btn-loading::after {
   content: '';
   position: absolute;
-  width: 20px; height: 20px;
+  width: 18px; height: 18px;
   border: 2.5px solid rgba(255,255,255,0.35);
   border-top-color: #fff;
   border-radius: 50%;
@@ -912,26 +914,20 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
   transform: translate(-50%,-50%);
 }
 @keyframes btn-spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
-@keyframes btn-pulse {
-  0%,100% { box-shadow: 0 0 0 0 rgba(0,102,179,0.4); }
-  50%     { box-shadow: 0 0 0 8px rgba(0,102,179,0); }
-}
 
-/* حالة النجاح */
+/* حالة النجاح — لون أخضر، الشكل يبقى */
 .btn-success {
   background: linear-gradient(135deg, #00843D, #00C5A3) !important;
   border-color: transparent !important;
-  border-radius: 50px !important;
   color: #fff !important;
-  transition: all 0.3s ease !important;
+  transition: background 0.3s ease !important;
 }
-/* حالة الخطأ */
+/* حالة الخطأ — لون أحمر، الشكل يبقى */
 .btn-error {
   background: linear-gradient(135deg, #DC2626, #EF4444) !important;
   border-color: transparent !important;
-  border-radius: 50px !important;
   color: #fff !important;
-  transition: all 0.3s ease !important;
+  transition: background 0.3s ease !important;
 }
 
 /* تصدير */
@@ -989,6 +985,38 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 .filename-label { color: var(--text-muted); font-weight: 600; }
 .filename-preview { color: var(--primary); font-weight: 700; font-family: monospace; }
 .exp-shift-locked { padding: 10px 18px !important; font-size: 0.95rem; letter-spacing: 0.3px; }
+
+/* بطاقة الورديات المدمجة في لوحة الموظف */
+.emp-shifts-card { }
+.emp-shift-strips { display: flex; flex-direction: column; gap: 8px; }
+.ess-strip {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 14px;
+  background: var(--bg);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  transition: background 0.2s;
+}
+.ess-strip.ess-mine { background: var(--bg-card); border-color: var(--primary); }
+.ess-shift-badge {
+  font-size: 0.82rem; font-weight: 700;
+  padding: 3px 12px; border-radius: 50px;
+  white-space: nowrap;
+}
+.ess-status-badge {
+  font-size: 0.82rem; font-weight: 600;
+  padding: 3px 10px; border-radius: 50px;
+  white-space: nowrap;
+}
+.ess-counts { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--text-muted); }
+.ess-count strong { color: var(--text); font-weight: 700; }
+.ess-sep { color: var(--border); }
+.ess-mine-tag {
+  margin-right: auto;
+  font-size: 0.72rem; font-weight: 700;
+  padding: 2px 8px; border-radius: 50px;
+  background: var(--primary); color: #fff;
+}
 
 /* بطاقة تصدير الموظف في لوحة التحكم */
 .emp-export-card { display: flex; flex-direction: column; gap: 10px; }
@@ -1066,6 +1094,7 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
   box-shadow: 0 24px 60px rgba(0,0,0,0.3);
   animation: slideUp 0.2s ease;
 }
+.transfer-modal-box { max-width: 560px; }
 .modal-box h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 16px; }
 
 /* ============================================================
@@ -1932,3 +1961,66 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 /* المودال */
 [data-theme="dark"] .modal-box { background: #1E293B; border-color: var(--border); }
 [data-theme="dark"] .modal-overlay { background: rgba(0,0,0,0.7); }
+
+/* ============================================================
+   وضع التعديل المباشر في البطاقة الشاملة
+   ============================================================ */
+
+/* بطاقة الموظف في الداشبورد — قابلة للضغط */
+.emp-profile-card { transition: box-shadow 0.2s, transform 0.2s; }
+.emp-profile-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+
+/* زر التعديل في هيدر البطاقة الشاملة */
+.btn-card-edit {
+  position: absolute;
+  left: 12px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.78rem;
+  padding: 4px 12px;
+  border-radius: 50px;
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+  border: 1.5px solid rgba(255,255,255,0.4);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-card-edit:hover    { background: rgba(255,255,255,0.35); }
+.btn-card-edit.btn-danger { background: rgba(220,38,38,0.7); border-color: #DC2626; }
+.profile-header { position: relative; }
+
+/* حقل التعديل المدمج في القسم */
+.pf-input {
+  flex: 1;
+  border: 1.5px solid var(--primary);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  font-size: 0.88rem;
+  background: var(--bg);
+  color: var(--text);
+  min-width: 0;
+  width: 100%;
+}
+.pf-input:focus { outline: none; border-color: var(--secondary); box-shadow: 0 0 0 3px rgba(0,174,239,0.15); }
+.pf-locked { opacity: 0.55; font-style: italic; }
+
+/* زر حفظ القسم */
+.section-edit-btn {
+  font-size: 0.78rem !important;
+  padding: 3px 12px !important;
+  border-radius: 50px !important;
+  margin-top: -2px;
+}
+
+/* حقول التعديل في أقسام المودال */
+.pf-edit-form { display: flex; flex-direction: column; gap: 6px; }
+
+/* حوار النقل — قسم البيانات الجديدة */
+.transfer-new-data {
+  background: var(--bg);
+  border-radius: var(--radius);
+  border: 1.5px dashed var(--primary);
+  padding: 12px 14px;
+  margin: 12px 0;
+}
+.tnd-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 10px; color: var(--primary); }
+.tnd-opt   { font-weight: 400; font-size: 0.78rem; color: var(--text-muted); }
