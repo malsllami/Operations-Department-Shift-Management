@@ -225,8 +225,11 @@ var Calendar = (function () {
         if (!day) {
           html += '<div class="mini-day-cell mini-day-empty"></div>';
         } else {
+          var hd = Hijri.fromDate(new Date(day.ds));
+          var hijriTxt = hd.day + ' ' + CONFIG.HIJRI_MONTHS[hd.month - 1].substring(0, 3);
           html += '<div class="mini-day-cell" style="background:' + day.stc.bg + ';color:' + day.stc.text + ';border-color:' + day.stc.badge + '">' +
             '<span class="mdc-num">' + day.num + '</span>' +
+            '<span class="mdc-hijri">' + hijriTxt + '</span>' +
             '<span class="mdc-icon">' + day.stc.icon + '</span>' +
             '<span class="mdc-lbl">' + day.stc.label + '</span>' +
           '</div>';
