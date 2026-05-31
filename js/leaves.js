@@ -60,7 +60,8 @@ var Leaves = (function () {
     var sk  = CONFIG.shiftKey(req.shift || '');
     var sc  = CONFIG.SHIFTS[sk] || CONFIG.SHIFTS.a;
 
-    var canReview = (role === 'مدير' || role === 'مشرف') && req.status === 'pending_review';
+    var canReview  = (role === 'مدير' || role === 'مشرف') && req.status === 'pending_review';
+    var canModify  = role === 'موظف' && req.status === 'pending_review';
 
     return '<div class="req-card" data-status="' + req.status + '" style="border-right:4px solid ' + sc.color + '">' +
       '<div class="req-card-header">' +
@@ -76,6 +77,12 @@ var Leaves = (function () {
         (req.reviewerName ? '<div class="req-row"><span class="rr-label">المراجع</span><span>' + req.reviewerName + ' (' + req.reviewerRole + ')</span></div>' : '') +
       '</div>' +
       (canReview ? _reviewButtons(req.no, 'leave') : '') +
+      (canModify
+        ? '<div class="req-actions">' +
+            '<button class="btn-sm btn-edit"   onclick="Leaves.editLeaveReq(\'' + req.no + '\',\'' + (req.startDate||'') + '\',\'' + (req.endDate||'') + '\',\'' + (req.empNotes||'') + '\')">✏️ تعديل</button>' +
+            '<button class="btn-sm btn-danger" onclick="Leaves.cancelLeaveReq(\'' + req.no + '\')">🗑️ حذف</button>' +
+          '</div>'
+        : '') +
     '</div>';
   }
 
@@ -117,6 +124,63 @@ var Leaves = (function () {
       });
     });
   };
+
+  // ============================================================
+  // تعديل / حذف طلب الإجازة (للموظف — قيد المراجعة فقط)
+  // ============================================================
+
+  function cancelLeaveReq(no) {
+    if (!confirm('هل تريد حذف الطلب ' + no + '؟')) return;
+    API.cancelLeave(no).then(function(res) {
+      if (res.ok) { App.toast('تم حذف الطلب', 'success'); App.navigate('leaves'); }
+      else {
+        var em = { cannot_cancel_reviewed:'لا يمكن حذف طلب تمت مراجعته', not_found:'الطلب غير موجود' };
+        App.toast(em[res.error] || res.error, 'error');
+      }
+    });
+  }
+
+  function editLeaveReq(no, startDate, endDate, notes) {
+    var modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML =
+      '<div class="modal-box">' +
+        '<h3>تعديل الطلب ' + no + '</h3>' +
+        '<div class="form-field"><label>من تاريخ</label>' +
+          '<input type="date" id="elr-start" class="form-input" value="' + startDate + '"></div>' +
+        '<div class="form-field"><label>إلى تاريخ</label>' +
+          '<input type="date" id="elr-end" class="form-input" value="' + endDate + '"></div>' +
+        '<div class="form-field"><label>ملاحظات</label>' +
+          '<input type="text" id="elr-notes" class="form-input" value="' + (notes||'') + '"></div>' +
+        '<div id="elr-err" class="form-error" style="display:none"></div>' +
+        '<div class="form-actions">' +
+          '<button class="btn-primary" id="elr-save">💾 حفظ التعديل</button>' +
+          '<button class="btn-outline" onclick="this.closest(\'.modal-overlay\').remove()">إلغاء</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(modal);
+
+    modal.querySelector('#elr-save').onclick = function() {
+      var s = modal.querySelector('#elr-start').value;
+      var e = modal.querySelector('#elr-end').value;
+      var n = modal.querySelector('#elr-notes').value.trim();
+      var errEl = modal.querySelector('#elr-err');
+      var btn = this;
+      if (!s || !e || s > e) {
+        errEl.textContent = 'التواريخ غير صحيحة'; errEl.style.display = 'block'; return;
+      }
+      var days = Math.round((new Date(e) - new Date(s)) / 86400000) + 1;
+      App.btnLoad(btn);
+      API.editLeave(no, { startDate:s, endDate:e, days:days, notes:n }).then(function(res) {
+        App.btnDone(btn, null, res.ok ? 'success' : 'error');
+        if (res.ok) {
+          setTimeout(function() { modal.remove(); App.toast('تم تعديل الطلب ✓', 'success'); App.navigate('leaves'); }, 900);
+        } else {
+          errEl.textContent = res.error; errEl.style.display = 'block';
+        }
+      });
+    };
+  }
 
   // ============================================================
   // نموذج طلب الإجازة
@@ -250,7 +314,7 @@ var Leaves = (function () {
       App.btnLoad(btn);
 
       API.submitLeave(data).then(function(res) {
-        App.btnDone(btn);
+        App.btnDone(btn, null, res.ok ? 'success' : 'error');
         if (res.ok) {
           App.toast('تم إرسال طلب الإجازة: ' + res.no, 'success');
           App.navigate('leaves');
@@ -366,6 +430,7 @@ var Leaves = (function () {
 
   return {
     renderList, renderForm,
-    _typeChange, _calcDays, _loadShiftEmployees
+    _typeChange, _calcDays, _loadShiftEmployees,
+    cancelLeaveReq, editLeaveReq
   };
 })();
