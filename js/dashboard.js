@@ -87,7 +87,7 @@ var Dashboard = (function () {
 
       html += '<div class="epc-body">';
       html += _epcRow('الوردية',    'وردية ' + (user.shift||''));
-      html += _epcRow('رقم الجوال', emp.phone ? '+966 ' + emp.phone : '—');
+      html += _epcRow('رقم الجوال', emp.phone ? '<span class="phone-display">🇸🇦 +966 ' + emp.phone + '</span>' : '—');
 
       // تواريخ انتهاء البطاقات مع المدة المتبقية
       var _expiryPill = function(date, days) {
