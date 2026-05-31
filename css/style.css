@@ -21,9 +21,10 @@
   --border:       #E2E8F0;
   --shadow:       0 2px 12px rgba(0,0,0,0.08);
   --shadow-hover: 0 8px 24px rgba(0,0,0,0.12);
-  --radius:       12px;
-  --radius-sm:    8px;
-  --radius-lg:    16px;
+  --radius:       16px;
+  --radius-sm:    12px;
+  --radius-lg:    24px;
+  --radius-xl:    32px;
   --transition:   0.2s ease;
   --font:         'Segoe UI', Arial, sans-serif;
   --header-h:     60px;
@@ -289,6 +290,24 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 .role-employee   { background: #DCFCE7; color: #166534; }
 .role-viewer     { background: #F3E8FF; color: #6B21A8; }
 
+/* زر تبديل الوضع الداكن */
+.theme-toggle-btn {
+  background: none;
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  width: 36px; height: 36px;
+  cursor: pointer;
+  font-size: 1.05rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
+  flex-shrink: 0;
+}
+.theme-toggle-btn:hover {
+  background: var(--bg);
+  border-color: var(--primary);
+  transform: rotate(20deg);
+}
+
 #main-content { flex: 1; padding: 24px; }
 .view-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
 .view-title { font-size: 1.4rem; font-weight: 700; color: var(--text); }
@@ -300,7 +319,7 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 .card, .dash-card, .req-card, .emp-card, .profile-card,
 .form-card, .export-panel, .cal-sum-card, .settings-container > .form-card {
   background: var(--bg-card);
-  border-radius: 18px;
+  border-radius: 24px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04);
   border: 1px solid rgba(219,234,254,0.8);
   padding: 20px;
@@ -333,7 +352,7 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 /* بطاقات الورديات */
 .shift-cards-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
 .shift-status-card {
-  border: 2px solid; border-radius: 16px; overflow: hidden;
+  border: 2px solid; border-radius: 22px; overflow: hidden;
   box-shadow: 0 3px 12px rgba(0,0,0,0.08);
   transition: transform var(--transition), box-shadow var(--transition);
 }
@@ -877,6 +896,9 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
   pointer-events: none;
   color: transparent !important;
   min-width: 44px;
+  border-radius: 50px !important;
+  animation: btn-pulse 1s ease-in-out infinite;
+  transition: border-radius 0.25s ease, padding 0.25s ease !important;
 }
 .btn-loading::after {
   content: '';
@@ -890,6 +912,27 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
   transform: translate(-50%,-50%);
 }
 @keyframes btn-spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
+@keyframes btn-pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(0,102,179,0.4); }
+  50%     { box-shadow: 0 0 0 8px rgba(0,102,179,0); }
+}
+
+/* حالة النجاح */
+.btn-success {
+  background: linear-gradient(135deg, #00843D, #00C5A3) !important;
+  border-color: transparent !important;
+  border-radius: 50px !important;
+  color: #fff !important;
+  transition: all 0.3s ease !important;
+}
+/* حالة الخطأ */
+.btn-error {
+  background: linear-gradient(135deg, #DC2626, #EF4444) !important;
+  border-color: transparent !important;
+  border-radius: 50px !important;
+  color: #fff !important;
+  transition: all 0.3s ease !important;
+}
 
 /* تصدير */
 .export-buttons { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
@@ -1122,8 +1165,15 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 .cal-leg-icon { font-size: 0.9rem; }
 
 /* ---- الشبكة الشهرية ---- */
-.cal-scroll-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 20px; }
-.cal-month-grid  { display: grid; grid-template-columns: repeat(7, minmax(80px,1fr)); gap: 4px; min-width: 560px; }
+.cal-scroll-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  margin-bottom: 20px;
+  box-sizing: border-box;
+}
+.cal-month-grid  { display: grid; grid-template-columns: repeat(7, minmax(80px,1fr)); gap: 4px; min-width: 560px; width: max-content; }
 .cal-weekday { text-align: center; padding: 8px 4px; font-weight: 800; font-size: 0.8rem; color: var(--primary); background: #EFF6FF; border-radius: 8px; }
 .cal-day-cell {
   background: var(--bg-card); border-radius: 12px;
@@ -1371,7 +1421,7 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
   .card, .dash-card, .req-card, .emp-card, .profile-card,
   .form-card, .export-panel, .tabs-container,
   .cal-day-cell, .shift-status-card, .cal-sum-card {
-    border-radius: 14px !important;
+    border-radius: 18px !important;
   }
   .login-card { border-radius: 20px; }
 
@@ -1392,9 +1442,10 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
   .cal-scroll-wrap{ border-radius: 12px; }
 
   /* الشبكة — أصغر لكن قابلة للتمرير أفقياً */
-  .cal-month-grid { gap: 2px; min-width: 490px; }
+  .cal-scroll-wrap { width: 100%; padding-bottom: 6px; }
+  .cal-month-grid { gap: 2px; min-width: 420px; width: max-content; }
   .cal-weekday    { padding: 5px 2px; font-size: 0.65rem; }
-  .cal-day-cell   { min-height: 100px; border-radius: 8px !important; }
+  .cal-day-cell   { min-height: 80px; border-radius: 8px !important; padding: 4px 3px; }
   .cal-day-num    { width: 20px; height: 20px; font-size: 0.72rem; }
   .cal-day-hijri  { font-size: 0.52rem; }
   .cal-shift-row  { padding: 1px 3px; gap: 2px; border-radius: 4px; min-height: 17px; }
@@ -1464,7 +1515,8 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 /* ---- شاشات صغيرة جداً ---- */
 @media (max-width: 400px) {
   #main-content { padding: 8px; }
-  .cal-day-cell { min-height: 68px; }
+  .cal-month-grid { min-width: 350px; gap: 1px; }
+  .cal-day-cell { min-height: 65px; }
   .cal-shift-pill { padding: 1px 2px; }
   .csp-icon { display: none; }  /* فقط الحرف يظهر */
   .shift-cards-row { grid-template-columns: 1fr; }
@@ -1774,3 +1826,109 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
   .stage-label { font-size:0.82rem; }
   .stage-msg   { font-size:0.78rem; }
 }
+
+/* ============================================================
+   الوضع الداكن — Dark Mode
+   ألوان هادئة (slate/navy) مشتقة من الشعار، مختلفة عن الأزرق الأصلي
+   ============================================================ */
+[data-theme="dark"] {
+  --bg:           #111827;
+  --bg-card:      #1E293B;
+  --bg-sidebar:   #0B1220;
+  --sidebar-text:        #94A3B8;
+  --sidebar-active-bg:   rgba(56,189,248,0.12);
+  --sidebar-active-text: #38BDF8;
+  --text:         #F1F5F9;
+  --text-muted:   #94A3B8;
+  --border:       #334155;
+  --shadow:       0 2px 12px rgba(0,0,0,0.45);
+  --shadow-hover: 0 8px 24px rgba(0,0,0,0.65);
+  --primary:      #38BDF8;
+  --primary-dark: #0EA5E9;
+  --secondary:    #22D3EE;
+  --accent:       #2DD4BF;
+  --green:        #10B981;
+}
+
+/* الخلفية الرئيسية */
+[data-theme="dark"] body { background: var(--bg); color: var(--text); }
+
+/* الهيدر */
+[data-theme="dark"] #app-header {
+  background: #1E293B;
+  border-bottom-color: var(--border);
+}
+
+/* البطاقات والصناديق */
+[data-theme="dark"] .card,
+[data-theme="dark"] .dash-card,
+[data-theme="dark"] .req-card,
+[data-theme="dark"] .emp-card,
+[data-theme="dark"] .profile-card,
+[data-theme="dark"] .form-card,
+[data-theme="dark"] .export-panel,
+[data-theme="dark"] .cal-sum-card,
+[data-theme="dark"] .settings-container > .form-card {
+  background: var(--bg-card);
+  border-color: var(--border);
+  box-shadow: var(--shadow);
+}
+
+/* حقول الإدخال */
+[data-theme="dark"] .form-input,
+[data-theme="dark"] .form-select,
+[data-theme="dark"] .form-textarea {
+  background: #263245;
+  color: var(--text);
+  border-color: var(--border);
+}
+[data-theme="dark"] .form-input::placeholder,
+[data-theme="dark"] .form-textarea::placeholder { color: var(--text-muted); }
+[data-theme="dark"] .form-static {
+  background: #263245;
+  color: var(--text);
+}
+
+/* التقويم */
+[data-theme="dark"] .cal-day-cell {
+  background: #1E293B;
+  border-color: #334155;
+}
+[data-theme="dark"] .cal-day-empty { background: transparent; border-color: transparent; }
+[data-theme="dark"] .cal-weekday { background: #263245; color: var(--secondary); }
+[data-theme="dark"] .cal-nav-bar { background: #1E293B; border-color: var(--border); }
+
+/* الجداول */
+[data-theme="dark"] .regions-table th { background: #263245; color: var(--text); }
+[data-theme="dark"] .regions-table td { border-color: var(--border); color: var(--text); }
+[data-theme="dark"] .regions-table tr:nth-child(even) td { background: #263245; }
+
+/* الفلاتر */
+[data-theme="dark"] .filter-select { background: #263245; color: var(--text); border-color: var(--border); }
+[data-theme="dark"] .list-filters   { border-color: var(--border); }
+
+/* بطاقات الورديات */
+[data-theme="dark"] .shift-status-card { box-shadow: 0 3px 14px rgba(0,0,0,0.5); }
+[data-theme="dark"] .ssc-body          { background: rgba(255,255,255,0.03); }
+
+/* الشريط الجانبي */
+[data-theme="dark"] #sidebar { background: var(--bg-sidebar); }
+
+/* الأزرار المحايدة */
+[data-theme="dark"] .btn-outline {
+  background: #263245;
+  border-color: var(--border);
+  color: var(--text);
+}
+[data-theme="dark"] .btn-outline:hover { background: #334155; border-color: var(--primary); }
+
+/* الفواصل والخطوط */
+[data-theme="dark"] hr,
+[data-theme="dark"] .section-sep { border-color: var(--border); }
+
+/* الإشعارات */
+[data-theme="dark"] .notif-card { background: #1E293B; border-color: var(--border); }
+
+/* المودال */
+[data-theme="dark"] .modal-box { background: #1E293B; border-color: var(--border); }
+[data-theme="dark"] .modal-overlay { background: rgba(0,0,0,0.7); }
