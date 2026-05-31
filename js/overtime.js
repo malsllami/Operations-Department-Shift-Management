@@ -58,8 +58,9 @@ var Overtime = (function () {
     var user   = Auth.getUser();
 
     var actionsHtml = '';
+    var isMyReq = role === 'موظف' && String(req.empId) === String(user.empId);
 
-    // أزرار بحسب الصلاحية والمرحلة
+    // أزرار المشرف / المدير
     if ((role === 'مدير' || role === 'مشرف') && req.status === 'created') {
       actionsHtml = '<div class="req-actions">' +
         '<button class="btn-sm btn-approve" onclick="Overtime._supervisorApprove(\'' + req.no + '\')">اعتماد</button>' +
@@ -74,7 +75,8 @@ var Overtime = (function () {
         '<button class="btn-sm btn-approve" onclick="Overtime._coordSendSystem(\'' + req.no + '\')">إرسال للنظام</button>' +
         '<button class="btn-sm btn-reject"  onclick="Overtime._coordReturn(\'' + req.no + '\')">إعادة للمشرف</button>' +
       '</div>';
-    } else if (role === 'موظف' && req.status === 'sent_to_system' && String(req.empId) === String(user.empId)) {
+    // أزرار الموظف لطلبه الخاص
+    } else if (isMyReq && req.status === 'sent_to_system') {
       var received = req.receiptStatus === 'تم الاستلام';
       actionsHtml = '<div class="req-actions">' +
         '<button class="btn-sm ' + (received ? 'btn-disabled' : 'btn-approve') + '" ' +
@@ -82,11 +84,17 @@ var Overtime = (function () {
           (received ? '✓ تم الاستلام' : 'تأكيد الاستلام') +
         '</button>' +
         (!received ? '<button class="btn-sm btn-outline" onclick="Overtime._confirmReceipt(\'' + req.no + '\',false)">لم يتم الاستلام</button>' : '') +
+        '<button class="btn-sm btn-danger" onclick="Overtime._cancelOtReq(\'' + req.no + '\')" title="حذف الطلب">🗑️</button>' +
       '</div>';
-    } else if (role === 'موظف' && req.status === 'created' && String(req.empId) === String(user.empId)) {
-      // الموظف يعدّل / يحذف طلبه المعلق فقط
+    } else if (isMyReq && (req.status === 'created' || req.status === 'pending_supervisor')) {
+      // لم يتم أي إجراء — تعديل + حذف
       actionsHtml = '<div class="req-actions">' +
         '<button class="btn-sm btn-edit"   onclick="Overtime._editOtReq(\'' + req.no + '\',\'' + (req.hours||'') + '\',\'' + (req.reason||'').replace(/'/g,"\\'") + '\')">✏️ تعديل</button>' +
+        '<button class="btn-sm btn-danger" onclick="Overtime._cancelOtReq(\'' + req.no + '\')">🗑️ حذف</button>' +
+      '</div>';
+    } else if (isMyReq) {
+      // تم إجراء — حذف فقط
+      actionsHtml = '<div class="req-actions">' +
         '<button class="btn-sm btn-danger" onclick="Overtime._cancelOtReq(\'' + req.no + '\')">🗑️ حذف</button>' +
       '</div>';
     }
