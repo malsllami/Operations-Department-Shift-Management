@@ -79,7 +79,7 @@ var Employees = (function () {
         '<div class="ech-id">' + (emp.empId||'') + '</div>' +
       '</div>' +
       '<div class="emp-card-body">' +
-        _field('الجوال', (emp.phone ? '+966 ' + emp.phone : '—')) +
+        _field('الجوال', (emp.phone ? '<span class="phone-display">🇸🇦 +966 ' + emp.phone + '</span>' : '—')) +
         _field('المنطقة', rg ? (rg.region||'—') : '—') +
         _field('المركز',  rg ? (rg.center ||'—') : '—') +
       '</div>' +
@@ -190,7 +190,7 @@ var Employees = (function () {
       // البيانات الأساسية
       html += _section('البيانات الأساسية', [
         ['الوردية',    'وردية ' + (emp.shift||'—')],
-        ['الجوال',     emp.phone ? '+966 ' + emp.phone : '—'],
+        ['الجوال',     emp.phone ? '<span class="phone-display">🇸🇦 +966 ' + emp.phone + '</span>' : '—'],
         ['تاريخ التسجيل', CONFIG.fmtDate(emp.regDate)]
       ]);
 
@@ -289,7 +289,7 @@ var Employees = (function () {
             '<div class="admin-fields">' +
               _adminField('الرقم الوظيفي', emp.empId || '—') +
               _adminField('الاسم', emp.name || '—') +
-              _adminField('الجوال', emp.phone ? '+966 ' + emp.phone : '—') +
+              _adminField('الجوال', emp.phone ? '<span class="phone-display">🇸🇦 +966 ' + emp.phone + '</span>' : '—') +
               _adminField('الصلاحية', roleLabel) +
               _adminField('الوردية', 'وردية ' + (emp.shift || '—')) +
             '</div>' +
@@ -547,9 +547,12 @@ var Employees = (function () {
   // قسم قابل للتعديل — يعرض حقول عرض + حقول تعديل مخفية
   function _editableSection(title, sectionKey, fields) {
     var displayRows = fields.map(function(f) {
+      var dispVal = f.key === 'phone' && f.val
+        ? '<span class="phone-display">🇸🇦 +966 ' + f.val + '</span>'
+        : (f.val || '—');
       return '<div class="pf-row">' +
         '<span class="pf-label">' + f.label + '</span>' +
-        '<span class="pf-val">' + (f.val || '—') + '</span>' +
+        '<span class="pf-val">' + dispVal + '</span>' +
       '</div>';
     }).join('');
 
@@ -561,7 +564,17 @@ var Employees = (function () {
         '</div>';
       }
       var inp = '';
-      if (f.type === 'select') {
+      if (f.key === 'phone') {
+        inp = '<div class="phone-input-merged pf-phone-merged">' +
+          '<span class="phone-flag">🇸🇦</span>' +
+          '<span class="phone-cc">+966</span>' +
+          '<span class="phone-sep"></span>' +
+          '<input type="tel" class="form-input phone-merged-input" ' +
+            'id="edit-' + sectionKey + '-' + f.key + '" ' +
+            'value="' + (f.val || '') + '" ' +
+            'placeholder="5XXXXXXXX" maxlength="9" inputmode="numeric">' +
+        '</div>';
+      } else if (f.type === 'select') {
         inp = '<select class="pf-input form-select" id="edit-' + sectionKey + '-' + f.key + '">' +
           (f.opts || []).map(function(o) {
             return '<option value="' + o + '"' + (o === f.val ? ' selected' : '') + '>' + o + '</option>';
