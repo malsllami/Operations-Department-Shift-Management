@@ -660,11 +660,17 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
    البروفايل
    ============================================================ */
 .profile-card {
-  border-radius: 18px; overflow: hidden;
+  border-radius: 18px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04);
-  border: 1px solid rgba(219,234,254,0.8);
+  border: 1.5px solid var(--border);
+  padding: 10px;
 }
-.profile-header { padding: 24px 20px; color: #fff; display: flex; align-items: center; gap: 16px; }
+.profile-header {
+  padding: 20px 18px; color: #fff;
+  display: flex; align-items: center; gap: 16px;
+  border-radius: 12px;
+  margin-bottom: 4px;
+}
 .ph-avatar {
   width: 64px; height: 64px; border-radius: 50%;
   background: rgba(255,255,255,0.25); font-size: 1.8rem;
