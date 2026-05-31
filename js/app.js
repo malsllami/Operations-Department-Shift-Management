@@ -12,6 +12,7 @@ var App = (function () {
   // ============================================================
 
   function init() {
+    _initTheme();
     if (Auth.restore()) {
       _showApp();
       navigate('dashboard');
@@ -79,7 +80,7 @@ var App = (function () {
       errEl.style.display = 'none';
 
       Auth.login(empId, pass).then(function(res) {
-        App.btnDone(btn);
+        App.btnDone(btn, null, res.ok ? 'success' : 'error');
         if (res.ok) {
           if (res.force_change) {
             _renderChangePassForm();
@@ -182,7 +183,7 @@ var App = (function () {
       errEl.style.display = 'none';
 
       Auth.changePassword(newPass).then(function(res) {
-        App.btnDone(btn);
+        App.btnDone(btn, null, res.ok ? 'success' : 'error');
         if (res.ok) {
           App.toast('تم تغيير كلمة المرور بنجاح ✓', 'success');
           _showApp();
@@ -280,7 +281,7 @@ var App = (function () {
       errEl.style.display = 'none';
 
       Auth.setRoleCode(code).then(function(res) {
-        App.btnDone(btn);
+        App.btnDone(btn, null, res.ok ? 'success' : 'error');
         if (res.ok) {
           _showApp(); navigate('dashboard');
         } else {
@@ -709,12 +710,42 @@ var App = (function () {
     btn.disabled = true;
   }
 
-  function btnDone(btn, text) {
+  function btnDone(btn, text, status) {
     if (!btn) return;
     btn.classList.remove('btn-loading');
     btn.disabled = false;
     btn.style.minWidth = '';
-    btn.innerHTML = btn._origHtml || text || 'حفظ';
+
+    if (status === 'success' || status === 'error') {
+      var cls = status === 'success' ? 'btn-success' : 'btn-error';
+      btn.classList.add(cls);
+      btn.innerHTML = status === 'success'
+        ? '✓ ' + (text || 'تم')
+        : '✕ ' + (text || 'خطأ');
+      setTimeout(function() {
+        btn.classList.remove(cls);
+        btn.innerHTML = btn._origHtml || text || 'حفظ';
+      }, 1800);
+    } else {
+      btn.innerHTML = btn._origHtml || text || 'حفظ';
+    }
+  }
+
+  // ---- تبديل الوضع الداكن / الفاتح ----
+  function toggleTheme() {
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    var next = isDark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('se-theme', next);
+    var icon = document.getElementById('theme-icon');
+    if (icon) icon.textContent = next === 'dark' ? '☀️' : '🌙';
+  }
+
+  function _initTheme() {
+    var saved = localStorage.getItem('se-theme') || 'light';
+    document.documentElement.setAttribute('data-theme', saved);
+    var icon = document.getElementById('theme-icon');
+    if (icon) icon.textContent = saved === 'dark' ? '☀️' : '🌙';
   }
 
   function _roleClass(role) {
@@ -723,7 +754,8 @@ var App = (function () {
 
   return {
     init, navigate, goBack, toast, togglePw, loadNotifBadge,
-    btnLoad, btnDone, showSessionExpired, reLogin
+    btnLoad, btnDone, showSessionExpired, reLogin,
+    toggleTheme
   };
 })();
 
