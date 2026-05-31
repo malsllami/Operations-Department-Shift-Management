@@ -60,6 +60,12 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
   font-weight: 600;
 }
 .pf-phone-merged { margin-top: 2px; }
+/* بانر وضع التعديل في النماذج */
+.edit-mode-banner {
+  background: linear-gradient(135deg, #1D4ED8, #0066B3);
+  color: #fff; padding: 10px 18px; border-radius: 12px;
+  margin-bottom: 16px; font-weight: 700; font-size: 0.92rem;
+}
 
 /* ============================================================
    شاشة الدخول
@@ -2089,6 +2095,12 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 }
 .btn-card-edit:hover    { background: rgba(255,255,255,0.35); }
 .btn-card-edit.btn-danger { background: rgba(220,38,38,0.7); border-color: #DC2626; }
+.btn-card-save-all { background: rgba(0,132,61,0.85) !important; border-color: rgba(0,197,163,0.6) !important; }
+.btn-card-save-all:hover { background: rgba(0,132,61,1) !important; }
+.card-edit-controls {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  display: flex; gap: 6px; align-items: center;
+}
 .profile-header { position: relative; }
 
 /* حقل التعديل المدمج في القسم */
