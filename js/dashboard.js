@@ -72,8 +72,8 @@ var Dashboard = (function () {
 
       var html = '<div class="dashboard-grid emp-dashboard">';
 
-      // ---- 1. بطاقة بياناتي (أولى وكاملة العرض) ----
-      html += '<div class="dash-card emp-profile-card">';
+      // ---- 1. بطاقة بياناتي (أولى وكاملة العرض) — قابلة للضغط ----
+      html += '<div class="dash-card emp-profile-card" onclick="App.navigate(\'employee-card\')" title="اضغط لعرض وتعديل بطاقتك الشاملة" style="cursor:pointer">';
       html += '<div class="epc-header" style="background:' + sc.color + '">' +
         '<div class="epc-avatar">' + ((user.name||'?')[0]) + '</div>' +
         '<div class="epc-info">' +
@@ -116,36 +116,14 @@ var Dashboard = (function () {
       html += '</div>';
 
       html += '<div class="epc-footer">' +
-        '<button class="btn-sm btn-primary" onclick="App.navigate(\'profile\')">تعديل بياناتي</button>' +
+        '<button class="btn-sm btn-primary" onclick="event.stopPropagation();App.navigate(\'employee-card\')">✏️ بطاقتي الكاملة والتعديل</button>' +
       '</div>';
       html += '</div>'; // emp-profile-card
 
-      // ---- 2. بطاقات الورديات الأربع ----
-      html += '<div class="dash-card dash-card-wide">';
-      html += '<h3 class="dash-card-title">حالة الورديات اليوم</h3>';
-      html += '<div class="shift-cards-row">';
-      var shiftStats = dash.shiftStats || {};
+      var shiftStats  = dash.shiftStats  || {};
       var todayShifts = dash.todayShifts || {};
-      ['a','b','c','d'].forEach(function(sk2) {
-        var label  = CONFIG.SHIFTS[sk2].label;
-        var color  = colors[sk2] || CONFIG.SHIFTS[sk2].color;
-        var st2    = todayShifts[sk2] || {};
-        var stc2   = CONFIG.STATUS[st2.en] || CONFIG.STATUS.off;
-        var stat   = shiftStats[sk2] || {};
-        html += '<div class="shift-status-card" style="border-color:' + color + '">' +
-          '<div class="ssc-header" style="background:' + color + '">' +
-            '<span class="ssc-label">وردية ' + label + '</span>' +
-            '<span class="ssc-status">' + stc2.icon + ' ' + (st2.ar||'—') + '</span>' +
-          '</div>' +
-          '<div class="ssc-body">' +
-            '<div class="ssc-stat"><span class="ssc-num">' + (stat.emp||0) + '</span><span>موظف</span></div>' +
-            '<div class="ssc-stat"><span class="ssc-num">' + (stat.sup||0) + '</span><span>مشرف</span></div>' +
-          '</div>' +
-        '</div>';
-      });
-      html += '</div></div>';
 
-      // ---- 3. بطاقة إجازاتي ----
+      // ---- 2. إجازاتي ----
       html += _reqStatCard('leaves',
         '🏖️', 'إجازاتي',
         lvTotal, lvPending, lvDone,
@@ -156,14 +134,14 @@ var Dashboard = (function () {
         'عرض طلبات الإجازات'
       );
 
-      // ---- 4. بطاقة ساعاتي الإضافية ----
+      // ---- 3. ساعاتي الإضافية ----
       html += _reqStatCard('overtime',
         '⏱️', 'ساعاتي الإضافية',
         otTotal, otPending, otDone,
         '', 'عرض طلبات العمل الإضافي'
       );
 
-      // ---- 5. بطاقة تصدير بيانات الموظف ----
+      // ---- 4. تصدير بياناتي ----
       html += '<div class="dash-card emp-export-card">' +
         '<div class="rsc-header"><span class="rsc-icon-wrap">📤</span><span class="rsc-title">تصدير بياناتي</span></div>' +
         '<p class="emp-exp-desc">تصدير ملف Excel يحتوي 3 ورقات:</p>' +
@@ -172,12 +150,36 @@ var Dashboard = (function () {
           '<li><span class="emp-exp-dot" style="background:#2E7D32"></span>طلبات الإجازات</li>' +
           '<li><span class="emp-exp-dot" style="background:#6A1B9A"></span>العمل الإضافي</li>' +
         '</ul>' +
-        '<button class="btn-primary emp-exp-btn" onclick="Export.exportEmployee()">' +
-          '📊 تصدير Excel' +
-        '</button>' +
+        '<button class="btn-primary emp-exp-btn" onclick="Export.exportEmployee()">📊 تصدير Excel</button>' +
       '</div>';
 
-      // ---- 6. بطاقة المراكز والمناطق ----
+      // ---- 5. حالة الورديات — بطاقة واحدة أنيقة ----
+      html += '<div class="dash-card dash-card-wide emp-shifts-card">';
+      html += '<h3 class="dash-card-title">📊 حالة الورديات اليوم</h3>';
+      html += '<div class="emp-shift-strips">';
+      ['a','b','c','d'].forEach(function(sk2) {
+        var label  = CONFIG.SHIFTS[sk2].label;
+        var color  = colors[sk2] || CONFIG.SHIFTS[sk2].color;
+        var st2    = todayShifts[sk2] || {};
+        var stc2   = CONFIG.STATUS[st2.en] || CONFIG.STATUS.off;
+        var stat   = shiftStats[sk2] || {};
+        var isMyShift = CONFIG.shiftKey(user.shift) === sk2;
+        html += '<div class="ess-strip' + (isMyShift ? ' ess-mine' : '') + '" style="border-right:4px solid ' + color + '">' +
+          '<div class="ess-shift-badge" style="background:' + color + ';color:#fff">وردية ' + label + '</div>' +
+          '<div class="ess-status-badge" style="background:' + stc2.bg + ';color:' + stc2.text + '">' +
+            stc2.icon + ' ' + (st2.ar || '—') +
+          '</div>' +
+          '<div class="ess-counts">' +
+            '<span class="ess-count"><strong>' + (stat.emp||0) + '</strong> موظف</span>' +
+            '<span class="ess-sep">·</span>' +
+            '<span class="ess-count"><strong>' + (stat.sup||0) + '</strong> مشرف</span>' +
+          '</div>' +
+          (isMyShift ? '<div class="ess-mine-tag">وردييتي</div>' : '') +
+        '</div>';
+      });
+      html += '</div></div>';
+
+      // ---- 6. المراكز والمناطق ----
       html += _buildRegionsCard(rgList, results[2], results[3]);
 
       html += '</div>'; // dashboard-grid
