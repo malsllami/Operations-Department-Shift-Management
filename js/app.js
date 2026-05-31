@@ -16,7 +16,10 @@ var App = (function () {
     try {
       if (Auth.restore()) {
         _showApp();
-        navigate('dashboard');
+        // استعادة آخر صفحة كانت مفتوحة قبل التحديث
+        var lastView = sessionStorage.getItem('sm_last_view');
+        navigate(lastView && lastView !== 'leave-form' && lastView !== 'overtime-form'
+          && lastView !== 'employee-form' ? lastView : 'dashboard');
       } else {
         _showLogin();
       }
@@ -493,6 +496,8 @@ var App = (function () {
     _view = viewName;
     _render(viewName, params);
     _updateActiveNav(viewName);
+    // حفظ الصفحة الحالية للاستعادة عند التحديث
+    try { sessionStorage.setItem('sm_last_view', viewName); } catch(e) {}
   }
 
   function goBack() {
