@@ -35,6 +35,12 @@ var Calendar = (function () {
     var summary   = res.summary;
     var colors    = res.colors;
     var today     = CONFIG.todayStr();
+    var isDark    = document.documentElement.getAttribute('data-theme') === 'dark';
+    var DARK_ST   = {
+      morning: { bg:'#78350F', text:'#FDE68A', icon:'☀',  label:'صباح' },
+      evening: { bg:'#3B0764', text:'#E9D5FF', icon:'🌙', label:'مساء' },
+      off:     { bg:'#0F172A', text:'#94A3B8', icon:'🏠', label:'راحة' }
+    };
 
     var dayMap = {};
     schedule.forEach(function(d) { dayMap[d.date] = d; });
@@ -104,14 +110,14 @@ var Calendar = (function () {
       // رقم اليوم الميلادي + الهجري أسفله
       html += '<div class="cal-day-top">' +
         '<div class="cal-day-num' + (isToday ? ' cal-today-num' : '') + '">' + d2 + '</div>' +
-        '<div class="cal-day-hijri">' + hDate.day + ' ' + CONFIG.HIJRI_MONTHS[hDate.month-1].substring(0,3) + '</div>' +
+        '<div class="cal-day-hijri">' + hDate.day + ' ' + CONFIG.HIJRI_MONTHS[hDate.month-1] + '</div>' +
       '</div>';
 
       // أعمدة الورديات الأربع
       html += '<div class="cal-day-body">';
       ['a','b','c','d'].forEach(function(sk) {
         var status = dayData[sk] || 'off';
-        var stc    = CONFIG.STATUS[status] || CONFIG.STATUS.off;
+        var stc    = isDark ? (DARK_ST[status] || DARK_ST.off) : (CONFIG.STATUS[status] || CONFIG.STATUS.off);
         var color  = colors[sk] || CONFIG.SHIFTS[sk].color;
         html += '<div class="cal-shift-row" style="background:' + stc.bg + ';color:' + stc.text + '">' +
           '<span class="csr-letter" style="background:' + color + '">' + CONFIG.SHIFTS[sk].label + '</span>' +
