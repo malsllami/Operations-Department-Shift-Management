@@ -53,6 +53,13 @@ select   { direction: rtl; text-align: right; }
 input[type="text"], input[type="search"], input[type="password"] { direction: rtl; text-align: right; }
 input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 .phone-merged-input { direction: ltr !important; text-align: left !important; }
+/* عرض رقم الهاتف بترتيب صحيح في السياق العربي */
+.phone-display {
+  direction: ltr; unicode-bidi: embed;
+  display: inline-flex; align-items: center; gap: 4px;
+  font-weight: 600;
+}
+.pf-phone-merged { margin-top: 2px; }
 
 /* ============================================================
    شاشة الدخول
@@ -1238,7 +1245,7 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
   margin-bottom: 20px;
   box-sizing: border-box;
 }
-.cal-month-grid  { display: grid; grid-template-columns: repeat(7, minmax(80px,1fr)); gap: 4px; min-width: 560px; width: max-content; }
+.cal-month-grid  { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; width: 100%; }
 .cal-weekday { text-align: center; padding: 8px 4px; font-weight: 800; font-size: 0.8rem; color: var(--primary); background: #EFF6FF; border-radius: 8px; }
 .cal-day-cell {
   background: var(--bg-card); border-radius: 12px;
@@ -1255,7 +1262,11 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 .cal-day-top { display: flex; flex-direction: column; align-items: flex-end; padding: 5px 7px 3px; gap: 1px; }
 .cal-day-num { font-size: 1rem; font-weight: 800; color: var(--text); width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 .cal-today-num { background: var(--primary); color: #fff; box-shadow: 0 2px 8px rgba(0,102,179,0.4); }
-.cal-day-hijri { font-size: 0.58rem; color: var(--text-muted); text-align: right; line-height: 1.2; }
+.cal-day-hijri {
+  font-size: 0.55rem; color: var(--text-muted);
+  text-align: right; line-height: 1.25;
+  word-break: break-word; max-width: 100%;
+}
 .cal-day-body { flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 0 4px 5px; }
 .cal-shift-row { display: flex; align-items: center; gap: 3px; padding: 2px 5px; border-radius: 6px; font-size: 0.72rem; min-height: 20px; }
 .csr-letter { color: #fff; border-radius: 4px; padding: 1px 4px; font-size: 0.62rem; font-weight: 900; flex-shrink: 0; min-width: 16px; text-align: center; }
@@ -1273,13 +1284,18 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 .csc-total { margin-top: 8px; padding: 6px 8px; border-radius: 8px; background: var(--bg); text-align: center; font-weight: 800; font-size: 0.85rem; }
 
 /* ---- التقويم المصغر ---- */
-.mini-cal-wrap  { margin: 14px 0; }
+.mini-cal-wrap  { margin: 14px 0; width: 100%; }
 .mini-cal-title { font-size: 0.88rem; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
-.mini-cal-table { display: flex; flex-direction: column; gap: 3px; }
-.mini-cal-head  { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; }
+.mini-cal-table { display: flex; flex-direction: column; gap: 3px; width: 100%; }
+.mini-cal-head  { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; width: 100%; }
 .mini-head-cell { text-align: center; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); padding: 3px 0; }
-.mini-cal-row   { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; }
-.mini-day-cell  { border-radius: 8px; border: 1.5px solid; padding: 4px 2px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1px; min-height: 68px; }
+.mini-cal-row   { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; width: 100%; }
+.mini-day-cell  {
+  border-radius: 8px; border: 1.5px solid;
+  padding: 4px 2px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  min-height: 68px; width: 100%;
+}
 .mini-day-empty { background: transparent !important; border-color: transparent !important; }
 .mdc-num   { font-size: 0.85rem; font-weight: 800; line-height: 1; }
 .mdc-hijri {
@@ -1513,7 +1529,7 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 
   /* الشبكة — أصغر لكن قابلة للتمرير أفقياً */
   .cal-scroll-wrap { width: 100%; padding-bottom: 6px; }
-  .cal-month-grid { gap: 2px; min-width: 420px; width: max-content; }
+  .cal-month-grid { gap: 2px; min-width: 380px; width: 100%; }
   .cal-weekday    { padding: 5px 2px; font-size: 0.65rem; }
   .cal-day-cell   { min-height: 80px; border-radius: 8px !important; padding: 4px 3px; }
   .cal-day-num    { width: 20px; height: 20px; font-size: 0.72rem; }
@@ -2007,6 +2023,12 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 [data-theme="dark"] .cal-day-empty { background: transparent; border-color: transparent; }
 [data-theme="dark"] .cal-weekday { background: #263245; color: var(--secondary); }
 [data-theme="dark"] .cal-nav-bar { background: #1E293B; border-color: var(--border); }
+[data-theme="dark"] .cal-today   { background: linear-gradient(160deg,#1E3A5F,#1D4ED8) !important; border-color: var(--primary) !important; }
+[data-theme="dark"] .cal-weekend { background: #192032 !important; }
+[data-theme="dark"] .cal-day-hijri { color: var(--primary); opacity: 0.75; }
+[data-theme="dark"] .cal-sum-card  { background: #1E293B; border-color: #334155; }
+[data-theme="dark"] .csc-row       { background: #263245; }
+[data-theme="dark"] .csc-total     { background: #263245; }
 
 /* الجداول */
 [data-theme="dark"] .regions-table th { background: #263245; color: var(--text); }
