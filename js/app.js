@@ -13,10 +13,15 @@ var App = (function () {
 
   function init() {
     _initTheme();
-    if (Auth.restore()) {
-      _showApp();
-      navigate('dashboard');
-    } else {
+    try {
+      if (Auth.restore()) {
+        _showApp();
+        navigate('dashboard');
+      } else {
+        _showLogin();
+      }
+    } catch(e) {
+      console.error('[App.init] خطأ في التهيئة:', e);
       _showLogin();
     }
   }
@@ -700,12 +705,14 @@ var App = (function () {
       : '<svg viewBox="0 0 24 24" width="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
   }
 
-  // ---- أنيميشن زر التحميل (عام في الموقع) ----
+  // ---- أنيميشن زر التحميل — تحول دائري مع تغيير لون النتيجة ----
   function btnLoad(btn) {
     if (!btn) return;
-    btn._origHtml = btn.innerHTML;
-    btn._origW    = btn.offsetWidth;
-    btn.style.minWidth = btn._origW + 'px';
+    btn._origHtml  = btn.innerHTML;
+    btn._origStyle = btn.style.cssText;
+    var sz = Math.max(btn.offsetHeight || 36, 32);
+    btn.style.cssText = 'width:' + sz + 'px;height:' + sz + 'px;min-width:0;max-width:none;padding:0;border-radius:50%;';
+    btn.innerHTML = '';
     btn.classList.add('btn-loading');
     btn.disabled = true;
   }
@@ -714,20 +721,22 @@ var App = (function () {
     if (!btn) return;
     btn.classList.remove('btn-loading');
     btn.disabled = false;
-    btn.style.minWidth = '';
+
+    function _restore() {
+      btn.style.cssText = btn._origStyle || '';
+      btn.innerHTML = btn._origHtml || text || 'حفظ';
+    }
 
     if (status === 'success' || status === 'error') {
       var cls = status === 'success' ? 'btn-success' : 'btn-error';
       btn.classList.add(cls);
-      btn.innerHTML = status === 'success'
-        ? '✓ ' + (text || 'تم')
-        : '✕ ' + (text || 'خطأ');
+      btn.innerHTML = status === 'success' ? '✓' : '✕';
       setTimeout(function() {
         btn.classList.remove(cls);
-        btn.innerHTML = btn._origHtml || text || 'حفظ';
+        _restore();
       }, 1800);
     } else {
-      btn.innerHTML = btn._origHtml || text || 'حفظ';
+      _restore();
     }
   }
 
@@ -742,10 +751,12 @@ var App = (function () {
   }
 
   function _initTheme() {
-    var saved = localStorage.getItem('se-theme') || 'light';
-    document.documentElement.setAttribute('data-theme', saved);
-    var icon = document.getElementById('theme-icon');
-    if (icon) icon.textContent = saved === 'dark' ? '☀️' : '🌙';
+    try {
+      var saved = localStorage.getItem('se-theme') || 'light';
+      document.documentElement.setAttribute('data-theme', saved);
+      var icon = document.getElementById('theme-icon');
+      if (icon) icon.textContent = saved === 'dark' ? '☀️' : '🌙';
+    } catch(e) {}
   }
 
   function _roleClass(role) {
