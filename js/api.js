@@ -129,6 +129,14 @@ var API = (function () {
     return _call({ action:'reviewLeave', no:no, status:status, notes: notes||'' });
   }
 
+  function cancelLeave(no) {
+    return _call({ action:'cancelLeave', no:no });
+  }
+
+  function editLeave(no, updates) {
+    return _call(Object.assign({ action:'editLeave', no:no }, updates));
+  }
+
   // ---- طلبات العمل الإضافي ----
   function getOvertimeReqs(opts) {
     var p = { action:'getOvertimeReqs' };
@@ -147,6 +155,14 @@ var API = (function () {
     return _call({ action:'reviewOvertime', no:no, status:status, notes: notes||'' });
   }
 
+  function cancelOvertime(no) {
+    return _call({ action:'cancelOvertime', no:no });
+  }
+
+  function editOvertime(no, updates) {
+    return _call(Object.assign({ action:'editOvertime', no:no }, updates));
+  }
+
   function sendToCoordinator(no) {
     return _call({ action:'sendToCoordinator', no:no });
   }
@@ -160,8 +176,14 @@ var API = (function () {
   }
 
   // ---- التنقل بين الورديات ----
-  function transferEmployee(empId, newShift, notes) {
-    return _call({ action:'transferEmployee', empId:empId, newShift:newShift, notes: notes||'' });
+  function transferEmployee(empId, newShift, notes, newData) {
+    return _call({
+      action: 'transferEmployee',
+      empId: empId, newShift: newShift, notes: notes || '',
+      newRegion: (newData && newData.region) || '',
+      newCenter: (newData && newData.center) || '',
+      newCar:    (newData && newData.car)    || ''
+    });
   }
 
   function getTransfers() {
@@ -175,6 +197,10 @@ var API = (function () {
 
   function markNotifRead(no) {
     return _call({ action:'markNotifRead', no:no });
+  }
+
+  function deleteNotifs(nos) {
+    return _call({ action:'deleteNotif', nos: JSON.stringify(nos) });
   }
 
   // ---- لوحة التحكم ----
@@ -222,11 +248,11 @@ var API = (function () {
     getRegions, updateRegion,
     getEquipment, updateEquipment,
     getLeaves, updateLeaveBalance,
-    getLeaveReqs, submitLeave, reviewLeave,
-    getOvertimeReqs, submitOvertime, reviewOvertime,
+    getLeaveReqs, submitLeave, reviewLeave, cancelLeave, editLeave,
+    getOvertimeReqs, submitOvertime, reviewOvertime, cancelOvertime, editOvertime,
     sendToCoordinator, coordinatorAction, confirmReceipt,
     transferEmployee, getTransfers,
-    getNotifications, markNotifRead,
+    getNotifications, markNotifRead, deleteNotifs,
     getDashboard, getLogs, getApiUsage,
     yearlyLeaveReset, buildComprehensiveView
   };
