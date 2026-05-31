@@ -4,6 +4,9 @@
 
 var Overtime = (function () {
 
+  var _cache   = {};    // req.no → req
+  var _editReq = null;  // الطلب الحالي في وضع التعديل
+
   // ============================================================
   // قائمة الطلبات
   // ============================================================
@@ -24,6 +27,8 @@ var Overtime = (function () {
         var myId = String(Auth.getUser() ? Auth.getUser().empId : '');
         data = data.filter(function(req) { return String(req.empId) === myId; });
       }
+      _cache = {};
+      data.forEach(function(req) { _cache[req.no] = req; });
 
       var html = '<div class="list-filters">' +
         '<select id="ot-status-filter" class="filter-select">' +
@@ -96,7 +101,7 @@ var Overtime = (function () {
     } else if (isMyReq && (req.status === 'created' || req.status === 'pending_supervisor')) {
       // لم يتم أي إجراء — تعديل + حذف
       actionsHtml = '<div class="req-actions">' +
-        '<button class="btn-sm btn-edit"   onclick="Overtime._editOtReq(\'' + req.no + '\',\'' + (req.hours||'') + '\',\'' + (req.reason||'').replace(/'/g,"\\'") + '\')">✏️ تعديل</button>' +
+        '<button class="btn-sm btn-edit" onclick="Overtime.editOtForm(\'' + req.no + '\')">✏️ تعديل</button>' +
         '<button class="btn-sm btn-danger" onclick="Overtime._cancelOtReq(\'' + req.no + '\')">🗑️ حذف</button>' +
       '</div>';
     } else if (isMyReq) {
@@ -210,10 +215,14 @@ var Overtime = (function () {
     var el = document.getElementById(containerId);
     if (!el) return;
 
-    var user = Auth.getUser();
-    var role = Auth.getEffectiveRole();
+    var user    = Auth.getUser();
+    var role    = Auth.getEffectiveRole();
+    var isEdit  = !!_editReq;
+    var eReq    = _editReq || {};
+    _editReq    = null;
 
-    var html = '<form id="ot-form" class="form-card" novalidate>';
+    var html = '<form id="ot-form" class="form-card" novalidate>' +
+      (isEdit ? '<div class="edit-mode-banner">✏️ وضع التعديل — الطلب ' + eReq.no + '</div>' : '');
     html += '<div class="form-grid">';
 
     if (role === 'موظف') {
@@ -248,21 +257,23 @@ var Overtime = (function () {
     // عدد الساعات
     html += '<div class="form-field"><label>عدد ساعات العمل الإضافي <span class="req">*</span></label>' +
       '<input type="text" id="otf-hours" class="form-input" placeholder="مثال: 2 أو 1.5" required ' +
-      'onblur="Overtime._normalizeHours(this)" inputmode="decimal"></div>';
+      'onblur="Overtime._normalizeHours(this)" inputmode="decimal" value="' + (isEdit ? (eReq.hours||'') : '') + '"></div>';
 
-    // السبب (إلزامي)
-    html += '<div class="form-field form-field-full"><label>سبب العمل الإضافي <span class="req">*</span></label>' +
-      '<textarea id="otf-reason" class="form-textarea" rows="3" required placeholder="اذكر سبب العمل الإضافي..."></textarea></div>';
+    // الملاحظات / السبب (إلزامي)
+    html += '<div class="form-field form-field-full"><label>الملاحظات / سبب العمل الإضافي <span class="req">*</span></label>' +
+      '<textarea id="otf-reason" class="form-textarea" rows="3" required placeholder="اذكر سبب العمل الإضافي...">' +
+      (isEdit ? (eReq.reason||'') : '') + '</textarea></div>';
 
     html += '</div>'; // form-grid
 
     html += '<div id="otf-error" class="form-error" style="display:none"></div>';
     html += '<div class="form-actions">' +
-      '<button type="submit" class="btn-primary" id="otf-submit">إرسال الطلب</button>' +
+      '<button type="submit" class="btn-primary" id="otf-submit">' + (isEdit ? '💾 حفظ التعديل' : 'إرسال الطلب') + '</button>' +
       '<button type="button" class="btn-outline" onclick="App.goBack()">إلغاء</button>' +
     '</div>';
     html += '</form>';
 
+    if (isEdit) el.dataset.editNo = eReq.no;
     el.innerHTML = html;
     _bindOtForm(role, user);
 
@@ -318,17 +329,21 @@ var Overtime = (function () {
       }
 
       _submitting = true;
-      var btn = document.getElementById('otf-submit');
+      var btn    = document.getElementById('otf-submit');
+      var editNo = (document.getElementById('view-content') || {}).dataset && document.getElementById('view-content').dataset.editNo;
+      var dayAr  = CONFIG.DAYS_AR[new Date(data.date).getDay()] || '';
+      data.day   = dayAr;
       App.btnLoad(btn);
 
-      API.submitOvertime(data).then(function(res) {
+      var apiCall = editNo ? API.editOvertime(editNo, data) : API.submitOvertime(data);
+      apiCall.then(function(res) {
         _submitting = false;
         App.btnDone(btn, null, res.ok ? 'success' : 'error');
         if (res.ok) {
-          App.toast('تم إرسال الطلب: ' + res.no, 'success');
+          App.toast(editNo ? 'تم حفظ التعديل ✓' : 'تم إرسال الطلب: ' + (res.no||''), 'success');
           App.navigate('overtime');
         } else {
-          var errMap = { reason_required: 'سبب العمل الإضافي إلزامي' };
+          var errMap = { reason_required: 'الملاحظات / السبب إلزامي', cannot_edit_reviewed: 'لا يمكن تعديل طلب تمت مراجعته' };
           errEl.textContent = errMap[res.error] || ('حدث خطأ: ' + res.error);
           errEl.style.display = 'block';
         }
@@ -350,6 +365,12 @@ var Overtime = (function () {
         empEl.appendChild(opt);
       });
     });
+  }
+
+  function editOtForm(no) {
+    _editReq = _cache[no] || null;
+    if (!_editReq) { App.toast('بيانات الطلب غير متوفرة', 'error'); return; }
+    App.navigate('overtime-form');
   }
 
   function _updateDay(input) {
@@ -443,16 +464,23 @@ var Overtime = (function () {
     });
   }
 
-  function _editOtReq(no, hours, reason) {
+  function _editOtReq(no, hours, reason, date) {
+    var initDay = date ? (CONFIG.DAYS_AR[new Date(date).getDay()] || '') : '';
     var modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML =
       '<div class="modal-box">' +
         '<h3>تعديل الطلب ' + no + '</h3>' +
-        '<div class="form-field"><label>عدد الساعات</label>' +
-          '<input type="number" id="eot-hours" class="form-input" value="' + hours + '" min="0.5" step="0.5"></div>' +
-        '<div class="form-field"><label>السبب</label>' +
-          '<textarea id="eot-reason" class="form-textarea" rows="3">' + reason + '</textarea></div>' +
+        '<div class="form-field"><label>التاريخ <span class="req">*</span></label>' +
+          '<input type="date" id="eot-date" class="form-input" value="' + (date||CONFIG.todayStr()) + '" ' +
+          'onchange="document.getElementById(\'eot-day\').textContent=CONFIG.DAYS_AR[new Date(this.value).getDay()]||\'\'"></div>' +
+        '<div class="form-field"><label>اليوم</label>' +
+          '<div class="form-static" id="eot-day">' + initDay + '</div></div>' +
+        '<div class="form-field"><label>عدد الساعات <span class="req">*</span></label>' +
+          '<input type="text" id="eot-hours" class="form-input" value="' + (hours||'') + '" ' +
+          'placeholder="مثال: 2 أو 1.5" inputmode="decimal"></div>' +
+        '<div class="form-field"><label>الملاحظات / السبب <span class="req">*</span></label>' +
+          '<textarea id="eot-reason" class="form-textarea" rows="3">' + (reason||'') + '</textarea></div>' +
         '<div id="eot-err" class="form-error" style="display:none"></div>' +
         '<div class="form-actions">' +
           '<button class="btn-primary" id="eot-save">💾 حفظ التعديل</button>' +
@@ -462,14 +490,17 @@ var Overtime = (function () {
     document.body.appendChild(modal);
 
     modal.querySelector('#eot-save').onclick = function() {
-      var h = parseFloat(CONFIG.toLatinNums(modal.querySelector('#eot-hours').value)) || 0;
+      var d = modal.querySelector('#eot-date').value;
+      var h = parseFloat(CONFIG.toLatinNums(modal.querySelector('#eot-hours').value.replace(',','.'))) || 0;
       var r = modal.querySelector('#eot-reason').value.trim();
       var errEl = modal.querySelector('#eot-err');
       var btn = this;
+      if (!d) { errEl.textContent = 'يرجى تحديد التاريخ'; errEl.style.display = 'block'; return; }
       if (h <= 0) { errEl.textContent = 'يرجى إدخال عدد ساعات صحيح'; errEl.style.display = 'block'; return; }
-      if (!r) { errEl.textContent = 'السبب مطلوب'; errEl.style.display = 'block'; return; }
+      if (!r) { errEl.textContent = 'الملاحظات / السبب مطلوب'; errEl.style.display = 'block'; return; }
+      var dayAr = CONFIG.DAYS_AR[new Date(d).getDay()] || '';
       App.btnLoad(btn);
-      API.editOvertime(no, { hours:String(h), reason:r }).then(function(res) {
+      API.editOvertime(no, { date:d, day:dayAr, hours:String(h), reason:r }).then(function(res) {
         App.btnDone(btn, null, res.ok ? 'success' : 'error');
         if (res.ok) {
           setTimeout(function() { modal.remove(); App.toast('تم تعديل الطلب ✓', 'success'); App.navigate('overtime'); }, 900);
@@ -512,7 +543,7 @@ var Overtime = (function () {
     renderList, renderForm,
     _supervisorApprove, _supervisorReject, _sendToCoord,
     _coordSendSystem, _coordReturn, _confirmReceipt,
-    _loadShiftEmps, _updateDay, _normalizeHours, _updateDutyStatus, _updateMiniCal,
+    _loadShiftEmps, _updateDay, _normalizeHours, _updateDutyStatus, _updateMiniCal, editOtForm,
     _cancelOtReq, _editOtReq
   };
 })();
