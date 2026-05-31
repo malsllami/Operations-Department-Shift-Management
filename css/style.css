@@ -592,11 +592,28 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
   .csp-txt { display: none; }
 }
 @media (max-width: 600px) {
-  .cal-month-grid { gap: 2px; }
-  .cal-day-cell { min-height: 70px; padding: 4px 3px; }
-  .cal-day-num  { font-size: 0.85rem; width: 22px; height: 22px; }
-  .cal-summary-cards { grid-template-columns: 1fr 1fr; }
-  .csp-icon { display: none; }
+  /* --- إخفاء رأس الأيام — الاسم داخل البطاقة الآن --- */
+  .cal-weekday           { display: none; }
+  .cal-day-name          { display: block; }
+
+  /* --- الشبكة تملأ العرض كاملاً بلا تمرير --- */
+  .cal-scroll-wrap       { overflow-x: hidden; }
+  .cal-month-grid        { gap: 2px; min-width: 0; width: 100%; }
+
+  /* --- حجم الخلية --- */
+  .cal-day-cell          { min-height: 88px; padding: 3px 2px; border-radius: 8px !important; }
+  .cal-day-num           { font-size: 0.82rem; width: 20px; height: 20px; }
+  .cal-day-hijri         { font-size: 0.42rem; word-break: break-word; }
+  .cal-day-top           { padding: 3px 4px 2px; gap: 1px; }
+
+  /* --- صف الوردية: حرف + أيقونة فقط (بلا نص) --- */
+  .cal-shift-row         { gap: 2px; padding: 1px 3px; min-height: 17px; }
+  .csr-label             { display: none; }
+  .csr-icon              { font-size: 0.68rem; }
+  .csr-letter            { font-size: 0.58rem; padding: 1px 3px; min-width: 13px; }
+
+  .cal-summary-cards     { grid-template-columns: 1fr 1fr; }
+  .csp-icon              { display: none; }
 }
 
 .shift-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-left: 6px; }
@@ -1266,6 +1283,7 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 .cal-today { border: 2px solid var(--primary) !important; background: linear-gradient(160deg,#EFF6FF,#DBEAFE) !important; box-shadow: 0 4px 16px rgba(0,102,179,0.18) !important; }
 .cal-weekend { background: #FAFAFA; }
 .cal-day-top { display: flex; flex-direction: column; align-items: flex-end; padding: 5px 7px 3px; gap: 1px; }
+.cal-day-name { display: none; font-size: 0.55rem; font-weight: 800; color: var(--primary); text-align: center; width: 100%; }
 .cal-day-num { font-size: 1rem; font-weight: 800; color: var(--text); width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 .cal-today-num { background: var(--primary); color: #fff; box-shadow: 0 2px 8px rgba(0,102,179,0.4); }
 .cal-day-hijri {
@@ -1534,16 +1552,18 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
   .cal-scroll-wrap{ border-radius: 12px; }
 
   /* الشبكة — أصغر لكن قابلة للتمرير أفقياً */
-  .cal-scroll-wrap { width: 100%; padding-bottom: 6px; }
-  .cal-month-grid { gap: 2px; min-width: 380px; width: 100%; }
-  .cal-weekday    { padding: 5px 2px; font-size: 0.65rem; }
-  .cal-day-cell   { min-height: 80px; border-radius: 8px !important; padding: 4px 3px; }
-  .cal-day-num    { width: 20px; height: 20px; font-size: 0.72rem; }
-  .cal-day-hijri  { font-size: 0.52rem; }
+  .cal-scroll-wrap { width: 100%; overflow-x: hidden; }
+  .cal-month-grid { gap: 2px; min-width: 0; width: 100%; }
+  .cal-weekday    { display: none; }
+  .cal-day-name   { display: block; }
+  .cal-day-cell   { min-height: 88px; border-radius: 8px !important; padding: 3px 2px; }
+  .cal-day-top    { padding: 3px 4px 2px; gap: 1px; }
+  .cal-day-num    { width: 20px; height: 20px; font-size: 0.78rem; }
+  .cal-day-hijri  { font-size: 0.42rem; }
   .cal-shift-row  { padding: 1px 3px; gap: 2px; border-radius: 4px; min-height: 17px; }
   .csr-letter     { font-size: 0.55rem; padding: 0 2px; min-width: 13px; }
-  .csr-icon       { font-size: 0.6rem; }
-  .csr-label      { font-size: 0.55rem; }
+  .csr-icon       { font-size: 0.62rem; }
+  .csr-label      { display: none; }
 
   /* بطاقات الملخص */
   .cal-summary-cards { grid-template-columns: repeat(2,1fr); gap: 8px; }
@@ -2259,3 +2279,106 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 /* --- أزرار عامة (الحالتين) --- */
 [data-theme="dark"] .btn-disabled             { background: #334155 !important; color: var(--text-muted) !important; }
 [data-theme="dark"] .btn-card                 { background: linear-gradient(135deg,#5B21B6,#7C3AED); }
+
+/* ============================================================
+   صفحة المناطق والمراكز
+   ============================================================ */
+.rgm-summary {
+  display: flex; align-items: center; justify-content: center; gap: 32px;
+  padding: 24px; background: var(--bg-card); border-radius: 18px;
+  border: 1.5px solid var(--border); margin-bottom: 20px;
+  box-shadow: var(--shadow);
+}
+.rgm-stat { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.rgm-stat-num { font-size: 2.4rem; font-weight: 900; color: var(--primary); line-height: 1; }
+.rgm-stat-lbl { font-size: 0.88rem; color: var(--text-muted); font-weight: 600; }
+.rgm-stat-sep { width: 1.5px; height: 48px; background: var(--border); }
+
+.rgm-regions { display: flex; flex-direction: column; gap: 12px; }
+
+/* بطاقة المنطقة */
+.rgm-region-card {
+  background: var(--bg-card); border-radius: 16px;
+  border: 1.5px solid var(--border); overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+.rgm-region-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; cursor: pointer;
+  background: linear-gradient(135deg, #EFF6FF, #DBEAFE);
+  transition: background 0.2s;
+}
+.rgm-region-header:hover { background: linear-gradient(135deg, #DBEAFE, #BFDBFE); }
+.rgm-region-title { display: flex; flex-direction: column; gap: 4px; }
+.rgm-region-name { font-size: 1.05rem; font-weight: 800; color: var(--primary); }
+.rgm-region-meta { font-size: 0.82rem; color: var(--text-muted); }
+.rgm-chevron { font-size: 1rem; color: var(--primary); transition: transform 0.25s; }
+.rgm-region-card.rgm-open .rgm-chevron { transform: rotate(180deg); }
+
+/* قسم المراكز — مخفي افتراضياً */
+.rgm-centers { display: none; padding: 10px 14px; display: none; flex-direction: column; gap: 8px; }
+.rgm-region-card.rgm-open .rgm-centers { display: flex; }
+
+/* مركز */
+.rgm-center-block {
+  border-radius: 12px; overflow: hidden;
+  border: 1.5px solid var(--border);
+}
+.rgm-center-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; cursor: pointer;
+  background: var(--bg); transition: background 0.2s;
+}
+.rgm-center-header:hover { background: rgba(0,102,179,0.06); }
+.rgm-center-name { font-weight: 700; font-size: 0.9rem; color: var(--text); flex: 1; }
+.rgm-center-meta { font-size: 0.78rem; color: var(--text-muted); }
+.rgm-center-block .rgm-chevron { font-size: 0.85rem; }
+.rgm-center-block.rgm-center-open .rgm-chevron { transform: rotate(180deg); }
+
+/* قائمة الموظفين — مخفية افتراضياً */
+.rgm-emp-list { display: none; flex-direction: column; gap: 4px; padding: 8px 10px; }
+.rgm-center-block.rgm-center-open .rgm-emp-list { display: flex; }
+
+/* صف موظف */
+.rgm-emp-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; border-radius: 10px;
+  flex-wrap: wrap; gap: 6px;
+}
+.rgm-emp-info { display: flex; align-items: center; gap: 8px; }
+.rgm-emp-name { font-weight: 700; font-size: 0.88rem; color: var(--text); }
+.rgm-emp-shift {
+  font-size: 0.72rem; font-weight: 700; padding: 2px 8px;
+  border-radius: 99px;
+}
+.rgm-emp-badges { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.rgm-on-leave {
+  font-size: 0.75rem; font-weight: 700; padding: 3px 10px;
+  border-radius: 99px; background: #FEF3C7; color: #92400E;
+}
+.rgm-duty-badge {
+  font-size: 0.75rem; font-weight: 700; padding: 3px 10px;
+  border-radius: 99px;
+}
+.rgm-car { font-size: 0.75rem; color: var(--text-muted); }
+.rgm-leave-badge {
+  color: #B45309; background: #FEF3C7;
+  padding: 1px 7px; border-radius: 99px; font-size: 0.72rem; font-weight: 700;
+}
+
+/* وضع داكن */
+[data-theme="dark"] .rgm-summary        { background: #1E293B; border-color: #334155; }
+[data-theme="dark"] .rgm-region-card    { background: #1E293B; border-color: #334155; }
+[data-theme="dark"] .rgm-region-header  { background: linear-gradient(135deg,#1E3A5F,#1D4ED8); }
+[data-theme="dark"] .rgm-region-header:hover { background: linear-gradient(135deg,#1D4ED8,#2563EB); }
+[data-theme="dark"] .rgm-center-block   { border-color: #334155; }
+[data-theme="dark"] .rgm-center-header  { background: #263245; }
+[data-theme="dark"] .rgm-center-header:hover { background: #2D3A50; }
+[data-theme="dark"] .rgm-on-leave       { background: #78350F; color: #FDE68A; }
+[data-theme="dark"] .rgm-leave-badge    { background: #78350F; color: #FDE68A; }
+
+@media (max-width: 600px) {
+  .rgm-emp-row { flex-direction: column; align-items: flex-start; }
+  .rgm-summary { gap: 20px; }
+  .rgm-stat-num { font-size: 1.8rem; }
+}
