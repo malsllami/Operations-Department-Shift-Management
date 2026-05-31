@@ -182,12 +182,19 @@ var Calendar = (function () {
     var end   = new Date(endDate);
     if (isNaN(start) || isNaN(end) || start > end) { el.innerHTML = ''; return; }
 
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    var DARK_STATUS = {
+      morning: { bg:'#78350F', text:'#FDE68A', badge:'#F59E0B', icon:'☀',  label:'صباح'  },
+      evening: { bg:'#3B0764', text:'#E9D5FF', badge:'#A855F7', icon:'🌙', label:'مساء'  },
+      off:     { bg:'#0F172A', text:'#94A3B8', badge:'#475569', icon:'🏠', label:'راحة'  }
+    };
+
     var days  = [];
     var d     = new Date(start);
     while (d <= end) {
       var ds  = d.getFullYear() + '-' + CONFIG._p(d.getMonth()+1) + '-' + CONFIG._p(d.getDate());
       var st  = CONFIG.getShiftStatus(shift, ds);
-      var stc = CONFIG.STATUS[st.en] || CONFIG.STATUS.off;
+      var stc = isDark ? (DARK_STATUS[st.en] || DARK_STATUS.off) : (CONFIG.STATUS[st.en] || CONFIG.STATUS.off);
       days.push({ num: d.getDate(), dow: d.getDay(), stc: stc, ds: ds });
       d.setDate(d.getDate() + 1);
     }
@@ -226,7 +233,7 @@ var Calendar = (function () {
           html += '<div class="mini-day-cell mini-day-empty"></div>';
         } else {
           var hd = Hijri.fromDate(new Date(day.ds));
-          var hijriTxt = hd.day + ' ' + CONFIG.HIJRI_MONTHS[hd.month - 1].substring(0, 3);
+          var hijriTxt = hd.day + ' ' + CONFIG.HIJRI_MONTHS[hd.month - 1];
           html += '<div class="mini-day-cell" style="background:' + day.stc.bg + ';color:' + day.stc.text + ';border-color:' + day.stc.badge + '">' +
             '<span class="mdc-num">' + day.num + '</span>' +
             '<span class="mdc-hijri">' + hijriTxt + '</span>' +
