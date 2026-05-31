@@ -107,8 +107,10 @@ var Calendar = (function () {
         (isWeekend  ? ' cal-weekend' : '') + '"' +
         (isToday    ? ' id="cal-today-cell"' : '') + '>';
 
-      // رقم اليوم الميلادي + الهجري أسفله
+      // رقم اليوم الميلادي + الهجري + اسم اليوم
+      var DAY_SHORT = ['أحد','اثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت'];
       html += '<div class="cal-day-top">' +
+        '<div class="cal-day-name">' + DAY_SHORT[dowIdx] + '</div>' +
         '<div class="cal-day-num' + (isToday ? ' cal-today-num' : '') + '">' + d2 + '</div>' +
         '<div class="cal-day-hijri">' + hDate.day + ' ' + CONFIG.HIJRI_MONTHS[hDate.month-1] + '</div>' +
       '</div>';
