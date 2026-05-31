@@ -18,6 +18,13 @@ var Overtime = (function () {
     API.getOvertimeReqs().then(function(res) {
       if (!res.ok) { el.innerHTML = '<div class="empty-state">تعذّر التحميل</div>'; return; }
 
+      // الموظف يرى طلباته فقط
+      var data = res.data;
+      if (role === 'موظف') {
+        var myId = String(Auth.getUser() ? Auth.getUser().empId : '');
+        data = data.filter(function(req) { return String(req.empId) === myId; });
+      }
+
       var html = '<div class="list-filters">' +
         '<select id="ot-status-filter" class="filter-select">' +
           '<option value="">كل الحالات</option>';
@@ -38,16 +45,16 @@ var Overtime = (function () {
         html += Export.inlineBar('overtime', expShift);
       }
 
-      if (!res.data.length) {
+      if (!data.length) {
         html += '<div class="empty-state">لا توجد طلبات عمل إضافي</div>';
       } else {
         html += '<div class="req-list" id="ot-list">';
-        res.data.forEach(function(req) { html += _otCard(req, role); });
+        data.forEach(function(req) { html += _otCard(req, role); });
         html += '</div>';
       }
 
       el.innerHTML = html;
-      _bindFilter(res.data);
+      _bindFilter(data);
     });
   }
 
