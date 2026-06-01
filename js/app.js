@@ -54,6 +54,14 @@ var App = (function () {
     document.getElementById('screen-login').style.display = 'none';
     document.getElementById('screen-app').style.display   = 'flex';
     _buildShell();
+    // تحميل رسائل واتساب من جدول الإعدادات
+    API.getWaMessages().then(function(res) {
+      if (res.ok && res.data) {
+        Object.keys(res.data).forEach(function(k) {
+          if (res.data[k]) CONFIG.WA_MESSAGES[k] = res.data[k];
+        });
+      }
+    });
   }
 
   function _renderLoginForm() {
@@ -917,7 +925,7 @@ var App = (function () {
     return { 'مدير':'admin','مشرف':'supervisor','موظف':'employee','اداري':'viewer' }[role] || 'employee';
   }
 
-  // ---- واتساب — رابط مباشر ----
+  // ---- واتساب — رابط مباشر (يزيل + للتوافق مع wa.me) ----
   function _waLink(phone, msg) {
     var p = String(phone || '').replace(/\D/g, '');
     if (p.length === 9 && p[0] === '5') p = '966' + p;
