@@ -72,15 +72,13 @@ var Overtime = (function () {
     var actionsHtml = '';
     var isMyReq = role === 'موظف' && String(req.empId) === String(user.empId);
 
-    // أزرار المشرف / المدير
+    // أزرار المشرف / المدير — اعتماد + إرسال للتنسيق في خطوة واحدة
+    var safeEmpPhone = (req.empPhone||'').replace(/'/g,'');
+    var safeEmpName  = (req.name||'').replace(/'/g,"\\'");
     if ((role === 'مدير' || role === 'مشرف') && req.status === 'تم الإنشاء') {
       actionsHtml = '<div class="req-actions">' +
-        '<button class="btn-sm btn-approve" onclick="Overtime._supervisorApprove(\'' + req.no + '\')">اعتماد</button>' +
-        '<button class="btn-sm btn-reject"  onclick="Overtime._supervisorReject(\'' + req.no + '\')">رفض</button>' +
-      '</div>';
-    } else if ((role === 'مدير' || role === 'مشرف') && req.status === 'معتمد من المشرف') {
-      actionsHtml = '<div class="req-actions">' +
-        '<button class="btn-sm btn-primary" onclick="Overtime._sendToCoord(\'' + req.no + '\')">إرسال للتنسيق الإداري</button>' +
+        '<button class="btn-sm btn-approve" onclick="Overtime._supervisorApproveAndSend(\'' + req.no + '\',\'' + safeEmpPhone + '\',\'' + safeEmpName + '\')">✅ اعتماد وإرسال</button>' +
+        '<button class="btn-sm btn-reject"  onclick="Overtime._supervisorReject(\'' + req.no + '\',\'' + safeEmpPhone + '\',\'' + safeEmpName + '\')">❌ رفض</button>' +
       '</div>';
     } else if ((role === 'مدير' || role === 'اداري') && req.status === 'أُرسل للتنسيق الإداري') {
       actionsHtml = '<div class="req-actions">' +
@@ -111,21 +109,23 @@ var Overtime = (function () {
       '</div>';
     }
 
-    // زر واتساب
+    // زر واتساب — يظهر فقط للطلبات المكتملة (لا يظهر لقيد الإنشاء/المراجعة لأن واتساب يظهر بعد الاعتماد مباشرة)
+    var pendingStatuses = ['تم الإنشاء', 'قيد مراجعة المشرف'];
     var otWaSection = '';
-    if ((role === 'مدير' || role === 'مشرف' || role === 'اداري') && req.empPhone) {
-      var waMsgOT = req.status === 'معتمد من المشرف'
-        ? 'السلام عليكم ورحمة الله وبركاته\nصباح الخير/ مساء الخير\nتم اعتماد الوقت الإضافي وإرساله إلى التنسيق الإداري لمراجعته'
+    if ((role === 'مدير' || role === 'مشرف' || role === 'اداري') && req.empPhone &&
+        pendingStatuses.indexOf(req.status) === -1) {
+      var waMsgOT = req.status === 'أُرسل للتنسيق الإداري'
+        ? CONFIG.WA_MESSAGES.ot_approve
         : req.status === 'مرفوض'
-          ? 'السلام عليكم ورحمة الله وبركاته\nصباح الخير/ مساء الخير\nتم رفض طلب الوقت الإضافي' + (req.supNotes ? '\n' + req.supNotes : '')
-          : req.status === 'تم الإرسال للنظام'
-            ? 'السلام عليكم ورحمة الله وبركاته\nصباح الخير/ مساء الخير\nتم مراجعة طلب ساعات عمل إضافي وتم إرسال الطلب في النظام'
+          ? CONFIG.WA_MESSAGES.ot_reject + (req.supNotes ? '\nالسبب: ' + req.supNotes : '')
+          : req.status === 'تم الإرسال للنظام' || req.status === 'تم الاستلام' || req.status === 'لم يتم الاستلام'
+            ? CONFIG.WA_MESSAGES.ot_system
             : 'بخصوص طلب العمل الإضافي رقم ' + req.no;
       otWaSection = '<div class="req-wa-row">' +
         '<a href="' + App.waLink(req.empPhone, waMsgOT) + '" target="_blank" class="btn-sm btn-wa">📱 واتساب الموظف</a>' +
       '</div>';
     } else if (isMyReq && req.status === 'تم الإنشاء') {
-      var waMsgEmpOT = 'السلام عليكم ورحمة الله وبركاته 🙏\nأرسلت طلب عمل إضافي رقم ' + req.no + '\nأرجو المراجعة والاعتماد';
+      var waMsgEmpOT = CONFIG.WA_MESSAGES.ot_new.replace('{no}', req.no);
       otWaSection = '<div class="req-wa-row">' +
         '<button class="btn-sm btn-wa" onclick="Overtime._showShiftWaOT(\'' + (req.shift||'') + '\',\'' + waMsgEmpOT.replace(/\n/g,'\\n').replace(/'/g,"\\'") + '\')">📱 أبلغ المشرف</button>' +
       '</div>';
@@ -175,22 +175,35 @@ var Overtime = (function () {
   // إجراءات المراحل
   // ============================================================
 
-  function _supervisorApprove(no) {
+  function _supervisorApproveAndSend(no, empPhone, empName) {
     _notesModal('ملاحظات الاعتماد (اختياري)', function(notes) {
-      API.reviewOvertime(no, 'approved', notes).then(function(res) {
-        if (res.ok) { App.toast('تم اعتماد الطلب', 'success'); App.navigate('overtime'); }
-        else App.toast('خطأ: ' + res.error, 'error');
+      API.reviewAndSendOvertime(no, notes).then(function(res) {
+        if (res.ok) {
+          App.toast('تم الاعتماد والإرسال للتنسيق ✓', 'success');
+          App.navigate('overtime');
+          // واتساب للموظف بعد الاعتماد
+          if (empPhone) {
+            var msg = CONFIG.WA_MESSAGES.ot_approve;
+            App.showWaModal([{ name: empName, phone: empPhone, role: 'موظف' }], msg, '📱 أبلغ الموظف بالاعتماد');
+          }
+        } else App.toast('خطأ: ' + res.error, 'error');
       });
     }, true);
   }
 
-  function _supervisorReject(no) {
-    _notesModal('سبب الرفض', function(notes) {
+  function _supervisorReject(no, empPhone, empName) {
+    _notesModal('سبب الرفض — مطلوب', function(notes) {
       API.reviewOvertime(no, 'rejected', notes).then(function(res) {
-        if (res.ok) { App.toast('تم رفض الطلب', 'success'); App.navigate('overtime'); }
-        else App.toast('خطأ: ' + res.error, 'error');
+        if (res.ok) {
+          App.toast('تم رفض الطلب', 'success');
+          App.navigate('overtime');
+          if (empPhone) {
+            var msg = CONFIG.WA_MESSAGES.ot_reject + '\nالسبب: ' + notes;
+            App.showWaModal([{name: empName, phone: empPhone, role: 'موظف'}], msg, '📱 أبلغ الموظف بالرفض');
+          }
+        } else App.toast('خطأ: ' + res.error, 'error');
       });
-    });
+    }); // بدون optional — السبب إجباري
   }
 
   function _sendToCoord(no) {
@@ -204,19 +217,29 @@ var Overtime = (function () {
   function _coordSendSystem(no) {
     _notesModal('ملاحظات (اختياري)', function(notes) {
       API.coordinatorAction(no, 'send_system', notes).then(function(res) {
-        if (res.ok) { App.toast('تم الإرسال للنظام', 'success'); App.navigate('overtime'); }
-        else App.toast('خطأ: ' + res.error, 'error');
+        if (res.ok) {
+          App.toast('تم الإرسال للنظام', 'success');
+          App.navigate('overtime');
+          if (res.empId) {
+            API.getEmployee(res.empId).then(function(er) {
+              if (er.ok && er.data && er.data.phone) {
+                App.showWaModal([{name: er.data.name, phone: er.data.phone, role: 'موظف'}],
+                  CONFIG.WA_MESSAGES.ot_system, '📱 أبلغ الموظف بالإرسال للنظام');
+              }
+            });
+          }
+        } else App.toast('خطأ: ' + res.error, 'error');
       });
     }, true);
   }
 
   function _coordReturn(no) {
-    _notesModal('سبب الإعادة للمشرف', function(notes) {
+    _notesModal('سبب الإعادة للمشرف — مطلوب', function(notes) {
       API.coordinatorAction(no, 'return_supervisor', notes).then(function(res) {
         if (res.ok) { App.toast('تم الإعادة للمشرف', 'success'); App.navigate('overtime'); }
         else App.toast('خطأ: ' + res.error, 'error');
       });
-    });
+    }); // السبب إجباري
   }
 
   function _confirmReceipt(no, received) {
@@ -558,7 +581,7 @@ var Overtime = (function () {
 
   return {
     renderList, renderForm,
-    _supervisorApprove, _supervisorReject, _sendToCoord,
+    _supervisorApproveAndSend, _supervisorReject, _sendToCoord,
     _coordSendSystem, _coordReturn, _confirmReceipt,
     _loadShiftEmps, _updateDay, _normalizeHours, _updateDutyStatus, editOtForm,
     _cancelOtReq, _editOtReq, _showShiftWaOT
