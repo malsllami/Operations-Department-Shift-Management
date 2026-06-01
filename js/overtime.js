@@ -111,6 +111,26 @@ var Overtime = (function () {
       '</div>';
     }
 
+    // زر واتساب
+    var otWaSection = '';
+    if ((role === 'مدير' || role === 'مشرف' || role === 'اداري') && req.empPhone) {
+      var waMsgOT = req.status === 'معتمد من المشرف'
+        ? 'السلام عليكم ورحمة الله وبركاته\nصباح الخير/ مساء الخير\nتم اعتماد الوقت الإضافي وإرساله إلى التنسيق الإداري لمراجعته'
+        : req.status === 'مرفوض'
+          ? 'السلام عليكم ورحمة الله وبركاته\nصباح الخير/ مساء الخير\nتم رفض طلب الوقت الإضافي' + (req.supNotes ? '\n' + req.supNotes : '')
+          : req.status === 'تم الإرسال للنظام'
+            ? 'السلام عليكم ورحمة الله وبركاته\nصباح الخير/ مساء الخير\nتم مراجعة طلب ساعات عمل إضافي وتم إرسال الطلب في النظام'
+            : 'بخصوص طلب العمل الإضافي رقم ' + req.no;
+      otWaSection = '<div class="req-wa-row">' +
+        '<a href="' + App.waLink(req.empPhone, waMsgOT) + '" target="_blank" class="btn-sm btn-wa">📱 واتساب الموظف</a>' +
+      '</div>';
+    } else if (isMyReq && req.status === 'تم الإنشاء') {
+      var waMsgEmpOT = 'السلام عليكم ورحمة الله وبركاته 🙏\nأرسلت طلب عمل إضافي رقم ' + req.no + '\nأرجو المراجعة والاعتماد';
+      otWaSection = '<div class="req-wa-row">' +
+        '<button class="btn-sm btn-wa" onclick="Overtime._showShiftWaOT(\'' + (req.shift||'') + '\',\'' + waMsgEmpOT.replace(/\n/g,'\\n').replace(/'/g,"\\'") + '\')">📱 أبلغ المشرف</button>' +
+      '</div>';
+    }
+
     return '<div class="req-card ot-card" data-status="' + req.status + '" style="border-right:4px solid ' + sc.color + '">' +
       '<div class="req-card-header">' +
         '<span class="req-no">' + req.no + '</span>' +
@@ -126,6 +146,7 @@ var Overtime = (function () {
         _stageRow('الإرسال للنظام', req.systemSentDate, null, null) +
         (req.receiptStatus ? '<div class="req-row"><span class="rr-label">حالة الاستلام</span><span class="req-status" style="background:' + (req.receiptStatus==='تم الاستلام'?'#C8E6C9':'#E0E0E0') + ';color:' + (req.receiptStatus==='تم الاستلام'?'#1B5E20':'#424242') + '">' + req.receiptStatus + '</span></div>' : '') +
       '</div>' +
+      otWaSection +
       actionsHtml +
     '</div>';
   }
@@ -338,6 +359,17 @@ var Overtime = (function () {
         if (res.ok) {
           App.toast(editNo ? 'تم حفظ التعديل ✓' : 'تم إرسال الطلب: ' + (res.no||''), 'success');
           App.navigate('overtime');
+          if (!editNo) {
+            var shiftForWa = data.shift || (Auth.getUser() ? Auth.getUser().shift : '');
+            var noForWa = res.no || '';
+            API.getShiftContacts(shiftForWa).then(function(r) {
+              if (r.ok && r.data.length) {
+                App.showWaModal(r.data,
+                  'السلام عليكم ورحمة الله وبركاته 🙏\nأرسلت طلب عمل إضافي رقم ' + noForWa + '\nأرجو المراجعة والاعتماد',
+                  '📱 أبلغ المشرفين عبر واتساب');
+              }
+            });
+          }
         } else {
           var errMap = { reason_required: 'الملاحظات / السبب إلزامي', cannot_edit_reviewed: 'لا يمكن تعديل طلب تمت مراجعته' };
           errEl.textContent = errMap[res.error] || ('حدث خطأ: ' + res.error);
@@ -345,6 +377,13 @@ var Overtime = (function () {
         }
       });
     };
+  }
+
+  function _showShiftWaOT(shift, msg) {
+    var realMsg = msg.replace(/\\n/g, '\n');
+    API.getShiftContacts(shift).then(function(r) {
+      App.showWaModal(r.ok ? r.data : [], realMsg, '📱 أبلغ المشرف عبر واتساب');
+    });
   }
 
   function _loadShiftEmps(shift) {
@@ -522,6 +561,6 @@ var Overtime = (function () {
     _supervisorApprove, _supervisorReject, _sendToCoord,
     _coordSendSystem, _coordReturn, _confirmReceipt,
     _loadShiftEmps, _updateDay, _normalizeHours, _updateDutyStatus, editOtForm,
-    _cancelOtReq, _editOtReq
+    _cancelOtReq, _editOtReq, _showShiftWaOT
   };
 })();
