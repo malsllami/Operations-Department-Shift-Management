@@ -778,6 +778,8 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
   max-width: 900px;
   width: 100%;
   box-sizing: border-box;
+  overflow: hidden;
+  min-width: 0;
 }
 .form-grid {
   display: grid;
@@ -1198,7 +1200,7 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 .pfc-header { display: flex; align-items: center; gap: 10px; padding: 14px 18px; color: #fff; }
 .pfc-icon   { font-size: 1.3rem; line-height: 1; }
 .pfc-title  { font-size: 1rem; font-weight: 800; }
-.pfc-body   { padding: 18px; }
+.pfc-body   { padding: 18px; overflow: hidden; min-width: 0; }
 
 /* شبكة أرصدة الإجازات */
 .leave-edit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(160px,100%),1fr)); gap: 8px; }
@@ -1544,6 +1546,15 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
   input[type="date"], input[type="number"],
   .phone-merged-input, .login-input { direction: ltr; text-align: left; }
 
+  /* تاريخ — منع التمدد خارج الإطار */
+  input[type="date"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+
   /* ==== التقويم على الجوال ==== */
   .cal-nav-bar    { padding: 10px 12px; border-radius: 14px; }
   .cal-month-title{ font-size: 0.95rem; }
@@ -1600,8 +1611,13 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 
   /* ==== نماذج الإجازة والأوفرتايم ==== */
   .mini-cal-day { width: 44px; height: 54px; font-size: 0.72rem; }
-  .form-actions { flex-wrap: wrap; gap: 8px; }
-  .form-actions button { flex: 1; min-width: 120px; }
+  .form-actions { flex-wrap: wrap; gap: 8px; align-items: center; }
+  .form-actions > button:not(.btn-loading):not(.btn-success):not(.btn-error) {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 120px;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
 
   /* ==== لوحة التصدير ==== */
   .export-buttons { flex-direction: column; }
