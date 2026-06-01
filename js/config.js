@@ -48,16 +48,16 @@ var CONFIG = {
 
   // ---- أنواع الإجازات (قابلة للتوسع) ----
   LEAVE_TYPES: [
-    { key:'annual',       label:'سنوية',           hasBalance: true  },
-    { key:'scheduled',    label:'مجدولة',          hasBalance: true  },
-    { key:'sick',         label:'مرضية',           hasBalance: false },
-    { key:'birth',        label:'مولود',           hasBalance: false },
-    { key:'death',        label:'وفاة',            hasBalance: false },
-    { key:'marriage',     label:'زواج',            hasBalance: false },
-    { key:'exam',         label:'اختبارات',        hasBalance: false },
-    { key:'work_course',  label:'دورة عمل',        hasBalance: false },
-    { key:'long_service', label:'خدمة عمل طويلة', hasBalance: false },
-    { key:'other',        label:'أخرى',            hasBalance: false }
+    { key:'سنوية',           label:'سنوية',           hasBalance: true  },
+    { key:'مجدولة',          label:'مجدولة',          hasBalance: true  },
+    { key:'مرضية',           label:'مرضية',           hasBalance: false },
+    { key:'مولود',           label:'مولود',           hasBalance: false },
+    { key:'وفاة',            label:'وفاة',            hasBalance: false },
+    { key:'زواج',            label:'زواج',            hasBalance: false },
+    { key:'اختبارات',        label:'اختبارات',        hasBalance: false },
+    { key:'دورة عمل',        label:'دورة عمل',        hasBalance: false },
+    { key:'خدمة عمل طويلة', label:'خدمة عمل طويلة', hasBalance: false },
+    { key:'أخرى',            label:'أخرى',            hasBalance: false }
   ],
 
   // ---- مناطق ----
@@ -79,15 +79,15 @@ var CONFIG = {
 
   // ---- ألوان مراحل الأوفرتايم ----
   OT_STATUS: {
-    created:              { label:'تم الإنشاء',             bg:'#FFF3CD', text:'#856404'  },
-    pending_supervisor:   { label:'قيد مراجعة المشرف',     bg:'#FFF9C4', text:'#F57F17'  },
-    supervisor_approved:  { label:'معتمد من المشرف',       bg:'#DBEAFE', text:'#1E3A8A'  },
-    rejected:             { label:'مرفوض',                 bg:'#FFCDD2', text:'#B71C1C'  },
-    sent_to_coordinator:  { label:'أُرسل للتنسيق الإداري', bg:'#E0F2FE', text:'#0369A1'  },
-    returned_to_supervisor: { label:'أُعيد للمشرف',        bg:'#FEF3C7', text:'#92400E'  },
-    sent_to_system:       { label:'تم الإرسال للنظام',    bg:'#D1FAE5', text:'#065F46'  },
-    received:             { label:'تم الاستلام',           bg:'#C8E6C9', text:'#1B5E20'  },
-    not_received:         { label:'لم يتم الاستلام',       bg:'#E0E0E0', text:'#424242'  }
+    'تم الإنشاء':              { label:'تم الإنشاء',             bg:'#FFF3CD', text:'#856404'  },
+    'قيد مراجعة المشرف':       { label:'قيد مراجعة المشرف',     bg:'#FFF9C4', text:'#F57F17'  },
+    'معتمد من المشرف':         { label:'معتمد من المشرف',       bg:'#DBEAFE', text:'#1E3A8A'  },
+    'مرفوض':                   { label:'مرفوض',                 bg:'#FFCDD2', text:'#B71C1C'  },
+    'أُرسل للتنسيق الإداري':   { label:'أُرسل للتنسيق الإداري', bg:'#E0F2FE', text:'#0369A1'  },
+    'أُعيد للمشرف':            { label:'أُعيد للمشرف',          bg:'#FEF3C7', text:'#92400E'  },
+    'تم الإرسال للنظام':       { label:'تم الإرسال للنظام',    bg:'#D1FAE5', text:'#065F46'  },
+    'تم الاستلام':             { label:'تم الاستلام',           bg:'#C8E6C9', text:'#1B5E20'  },
+    'لم يتم الاستلام':         { label:'لم يتم الاستلام',       bg:'#E0E0E0', text:'#424242'  }
   },
 
   // ---- ألوان مراحل الإشعارات ----
