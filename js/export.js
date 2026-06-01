@@ -445,7 +445,7 @@ var Export = (function () {
     //   - رفض: status=rejected وCoordSentDate فارغ (أي الرفض كان في مرحلة المشرف)
     //   - اعتماد: خلاف ذلك
     var supDecision = x.supRevDate
-      ? (x.status === 'rejected' && !x.coordSentDate ? 'رفض' : 'اعتماد')
+      ? (x.status === 'مرفوض' && !x.coordSentDate ? 'رفض' : 'اعتماد')
       : 'لم يتم الإجراء';
 
     var coordActionLabel = x.coordSentDate
