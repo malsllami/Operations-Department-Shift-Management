@@ -385,7 +385,7 @@ var Employees = (function () {
   function _calcOtHours(otData) {
     var total = 0;
     (otData || []).forEach(function(r) {
-      if (r.status !== 'rejected') total += parseFloat(r.hours) || 0;
+      if (r.status !== 'مرفوض') total += parseFloat(r.hours) || 0;
     });
     return total;
   }
@@ -660,6 +660,7 @@ var Employees = (function () {
         (role !== 'موظف' ? _shiftField(emp.shift||'', role) + _roleField(emp.role||'موظف') : '') +
         _dateField('workExpDate','تاريخ انتهاء بطاقة العمل', emp.workExpDate||'') +
         _dateField('srcExpDate', 'تاريخ انتهاء بطاقة مصدر / مستلم', emp.srcExpDate||'') +
+        _inputField('waKey', 'مفتاح واتساب CallMeBot', emp.waKey||'', 'text') +
         '<div class="form-actions form-field-full">' +
           '<button type="submit" class="btn-primary">💾 ' + (isEdit?'حفظ البيانات الأساسية':'إضافة الموظف') + '</button>' +
           (!isEdit ? '<button type="button" class="btn-outline" onclick="App.goBack()">إلغاء</button>' : '') +
@@ -856,6 +857,7 @@ var Employees = (function () {
       var rcEl   = document.getElementById('f-role-code'); if (rcEl) data.roleCode = rcEl.value;
       var weEl   = document.getElementById('f-workExpDate'); if (weEl) data.workExpDate = weEl.value;
       var seEl   = document.getElementById('f-srcExpDate');  if (seEl) data.srcExpDate  = seEl.value;
+      var waEl   = document.getElementById('f-waKey');       if (waEl) data.waKey = waEl.value.trim();
 
       App.btnLoad(btn);
       var prom;
