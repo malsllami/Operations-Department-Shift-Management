@@ -590,7 +590,7 @@ var App = (function () {
       var onLeaveSet = {};
       if (lvRes.ok) {
         lvRes.data.forEach(function(lv) {
-          if (lv.status === 'approved' && lv.startDate <= today && lv.endDate >= today) {
+          if (lv.status === 'معتمد' && lv.startDate <= today && lv.endDate >= today) {
             onLeaveSet[String(lv.empId)] = true;
           }
         });
