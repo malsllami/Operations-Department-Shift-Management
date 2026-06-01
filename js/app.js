@@ -537,7 +537,7 @@ var App = (function () {
       case 'employees':      Employees.renderList('view-content', params && params.filterShift); break;
       case 'employee-form':  Employees.renderForm('view-content', params || {}, !!(params && (params.emp || params.empId))); break;
       case 'employee-view':  Employees.renderProfile('view-content', params && params.empId); break;
-      case 'employee-card':  Employees.renderFullCard('view-content', params && params.empId); break;
+      case 'employee-card':  Employees.renderFullCard('view-content', params && params.empId, !!(params && params.autoEdit)); break;
       case 'leaves':         Leaves.renderList('view-content'); break;
       case 'leave-form':     Leaves.renderForm('view-content'); break;
       case 'overtime':       Overtime.renderList('view-content'); break;
@@ -917,10 +917,47 @@ var App = (function () {
     return { 'مدير':'admin','مشرف':'supervisor','موظف':'employee','اداري':'viewer' }[role] || 'employee';
   }
 
+  // ---- واتساب — رابط مباشر ----
+  function _waLink(phone, msg) {
+    var p = String(phone || '').replace(/\D/g, '');
+    if (p.length === 9 && p[0] === '5') p = '966' + p;
+    if (!p) return '#';
+    return 'https://wa.me/' + p + (msg ? '?text=' + encodeURIComponent(msg) : '');
+  }
+
+  function showWaModal(contacts, msg, title) {
+    var old = document.getElementById('_wa_modal');
+    if (old) old.remove();
+    if (!contacts || !contacts.length) {
+      toast('لا توجد أرقام جوال مسجلة للمشرفين', 'error'); return;
+    }
+    var m = document.createElement('div');
+    m.id = '_wa_modal';
+    m.className = 'modal-overlay';
+    m.innerHTML =
+      '<div class="modal-box" style="max-width:420px">' +
+        '<h3 style="margin-bottom:14px;color:var(--primary)">' + (title || 'إرسال واتساب') + '</h3>' +
+        contacts.map(function(c) {
+          var link = _waLink(c.phone, msg);
+          if (link === '#') return '';
+          return '<div class="wa-contact-row">' +
+            '<div><span class="wa-name">' + c.name + '</span>' +
+            '<span class="wa-role"> (' + c.role + ')</span></div>' +
+            '<a href="' + link + '" target="_blank" class="btn-sm btn-wa">📱 فتح واتساب</a>' +
+          '</div>';
+        }).join('') +
+        '<div class="form-actions" style="margin-top:14px">' +
+          '<button class="btn-outline" onclick="document.getElementById(\'_wa_modal\').remove()">إغلاق</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(m);
+  }
+
   return {
     init, navigate, goBack, toast, togglePw, loadNotifBadge,
     btnLoad, btnDone, showSessionExpired, reLogin,
-    toggleTheme
+    toggleTheme,
+    waLink: _waLink, showWaModal: showWaModal
   };
 })();
 
