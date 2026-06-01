@@ -77,21 +77,17 @@ var Leaves = (function () {
     var canModify  = role === 'موظف' && req.status === 'قيد المراجعة';
     var canDelete  = role === 'موظف' && !canModify;
 
-    // أزرار واتساب
+    // أزرار واتساب — تظهر فقط للطلبات المكتملة (معتمد/مرفوض)، أما قيد المراجعة فواتساب يظهر بعد الاعتماد مباشرة
     var waSection = '';
-    if ((role === 'مدير' || role === 'مشرف') && req.empPhone) {
-      // المشرف/المدير: زر لمراسلة الموظف — الرسالة تعتمد على الحالة
+    if ((role === 'مدير' || role === 'مشرف') && req.empPhone && req.status !== 'قيد المراجعة') {
       var waMsgSup = req.status === 'معتمد'
-        ? 'السلام عليكم ورحمة الله وبركاته\nصباح الخير/ مساء الخير\nتم اعتماد الإجازة ✅\nونتمنى لك إجازة سعيدة'
-        : req.status === 'مرفوض'
-          ? 'السلام عليكم ورحمة الله وبركاته\nصباح الخير/ مساء الخير\nنأسف لكم بأن طلب الإجازة تم رفضه بعد المراجعة' + (req.revNotes ? '\n' + req.revNotes : '')
-          : 'بخصوص طلب الإجازة رقم ' + req.no;
+        ? CONFIG.WA_MESSAGES.leave_approve
+        : CONFIG.WA_MESSAGES.leave_reject + (req.revNotes ? '\nالسبب: ' + req.revNotes : '');
       waSection = '<div class="req-wa-row">' +
         '<a href="' + App.waLink(req.empPhone, waMsgSup) + '" target="_blank" class="btn-sm btn-wa">📱 واتساب الموظف</a>' +
       '</div>';
     } else if (role === 'موظف' && req.status === 'قيد المراجعة') {
-      // الموظف: زر لمراسلة مشرف الوردية
-      var waMsgEmp = 'السلام عليكم ورحمة الله وبركاته 🙏\nأرسلت طلب إجازة رقم ' + req.no + '\nأرجو المراجعة والاعتماد';
+      var waMsgEmp = CONFIG.WA_MESSAGES.leave_new.replace('{no}', req.no);
       waSection = '<div class="req-wa-row">' +
         '<button class="btn-sm btn-wa" onclick="Leaves._showShiftWa(\'' + (req.shift||'') + '\',\'' + waMsgEmp.replace(/\n/g,'\\n').replace(/'/g,"\\'") + '\')">📱 أبلغ المشرف</button>' +
       '</div>';
@@ -111,7 +107,7 @@ var Leaves = (function () {
         (req.reviewerName ? '<div class="req-row"><span class="rr-label">المراجع</span><span>' + req.reviewerName + ' (' + req.reviewerRole + ')</span></div>' : '') +
       '</div>' +
       waSection +
-      (canReview ? _reviewButtons(req.no, 'leave') : '') +
+      (canReview ? _reviewButtons(req.no, 'leave', req.empPhone, req.name) : '') +
       (canModify
         ? '<div class="req-actions">' +
             '<button class="btn-sm btn-edit" onclick="Leaves.editLeaveForm(\'' + req.no + '\')">✏️ تعديل</button>' +
@@ -125,10 +121,12 @@ var Leaves = (function () {
     '</div>';
   }
 
-  function _reviewButtons(no, type) {
+  function _reviewButtons(no, type, empPhone, empName) {
+    var safePhone = (empPhone || '').replace(/'/g, '');
+    var safeName  = (empName  || '').replace(/'/g, "\\'");
     return '<div class="req-actions">' +
-      '<button class="btn-sm btn-approve" onclick="' + type + 'Review(\'' + no + '\',\'approved\')">اعتماد</button>' +
-      '<button class="btn-sm btn-reject"  onclick="' + type + 'ReviewReject(\'' + no + '\')">رفض</button>' +
+      '<button class="btn-sm btn-approve" onclick="Leaves._leaveApproveAndNotify(\'' + no + '\',\'' + safePhone + '\',\'' + safeName + '\')">✅ اعتماد</button>' +
+      '<button class="btn-sm btn-reject"  onclick="leaveReviewReject(\'' + no + '\',\'' + safePhone + '\',\'' + safeName + '\')">❌ رفض</button>' +
     '</div>';
   }
 
@@ -155,11 +153,33 @@ var Leaves = (function () {
     });
   };
 
-  window.leaveReviewReject = function(no) {
-    _showNotesModal('سبب الرفض', function(notes) {
+  // اعتماد + واتساب للموظف (زر واحد يقوم بالاثنين)
+  function _leaveApproveAndNotify(no, empPhone, empName) {
+    API.reviewLeave(no, 'approved', '').then(function(res) {
+      if (res.ok) {
+        App.toast('تم الاعتماد ✓', 'success');
+        App.navigate('leaves');
+        if (empPhone) {
+          App.showWaModal([{name: empName, phone: empPhone, role: 'موظف'}],
+            CONFIG.WA_MESSAGES.leave_approve, '📱 أبلغ الموظف بالاعتماد');
+        }
+      } else App.toast('حدث خطأ: ' + res.error, 'error');
+    });
+  }
+
+  // رفض + واتساب للموظف (سبب الرفض إجباري)
+  window.leaveReviewReject = function(no, empPhone, empName) {
+    _showNotesModal('سبب الرفض — مطلوب', function(notes) {
       API.reviewLeave(no, 'rejected', notes).then(function(res) {
-        if (res.ok) { App.toast('تم رفض الطلب', 'success'); App.navigate('leaves'); }
-        else App.toast('حدث خطأ: ' + res.error, 'error');
+        if (res.ok) {
+          App.toast('تم رفض الطلب', 'success');
+          App.navigate('leaves');
+          if (empPhone) {
+            var msg = CONFIG.WA_MESSAGES.leave_reject + '\nالسبب: ' + notes;
+            App.showWaModal([{name: empName, phone: empPhone, role: 'موظف'}],
+              msg, '📱 أبلغ الموظف بالرفض');
+          }
+        } else App.toast('حدث خطأ: ' + res.error, 'error');
       });
     });
   };
@@ -525,6 +545,7 @@ var Leaves = (function () {
     document.body.appendChild(modal);
     modal.querySelector('#modal-confirm').onclick = function() {
       var notes = modal.querySelector('#modal-notes').value.trim();
+      if (!notes) { alert('يرجى إدخال سبب الرفض'); return; }
       modal.remove();
       cb(notes);
     };
@@ -532,7 +553,7 @@ var Leaves = (function () {
 
   return {
     renderList, renderForm,
-    _typeChange, _calcDays, _loadShiftEmployees, _showShiftWa,
+    _typeChange, _calcDays, _loadShiftEmployees, _showShiftWa, _leaveApproveAndNotify,
     cancelLeaveReq, editLeaveReq, editLeaveForm
   };
 })();
