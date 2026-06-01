@@ -330,7 +330,7 @@ var Employees = (function () {
   // بطاقة الموظف الشاملة (مع الأوفرتايم حسب الفترة)
   // ============================================================
 
-  function renderFullCard(containerId, empId) {
+  function renderFullCard(containerId, empId, autoEdit) {
     var el = document.getElementById(containerId);
     if (!el) return;
     el.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
@@ -432,7 +432,7 @@ var Employees = (function () {
     html += '<div class="profile-sections">';
 
     html += _editableSection('البيانات الشخصية', 'personal', [
-      { label:'الاسم',           val: emp.name    || '—', key:'name',     type:'text',   locked: false },
+      { label:'الاسم',           val: emp.name    || '',  key:'name',     type:'text',   locked: false },
       { label:'الرقم الوظيفي',  val: emp.empId   || '—', key:'empId',    type:'text',   locked: true  },
       { label:'رقم الجوال',      val: emp.phone   || '',  key:'phone',    type:'text',   locked: false },
       { label:'الوردية',         val: 'وردية ' + (emp.shift || '—'), key:'shift', type:'text', locked: true },
@@ -440,14 +440,14 @@ var Employees = (function () {
         opts: ['موظف','مشرف','اداري','مدير'] },
       { label:'انتهاء بطاقة العمل', val: emp.workExpDate || '', key:'workExpDate', type:'date', locked: false },
       { label:'انتهاء بطاقة المصدر',val: emp.srcExpDate  || '', key:'srcExpDate',  type:'date', locked: false },
+      { label:'مفتاح واتساب',    val: emp.waKey   || '',  key:'waKey',    type:'text',   locked: false },
       { label:'تاريخ التسجيل',   val: CONFIG.fmtDate(emp.regDate), key:'regDate', type:'text', locked: true }
     ]);
 
-    var canEditRegion = role === 'مدير' || role === 'مشرف';
     html += _editableSection('المنطقة والمركز والسيارة', 'region', [
-      { label:'المنطقة',     val: rg.region || '', key:'region', type:'text',   locked: !canEditRegion },
-      { label:'المركز',      val: rg.center || '', key:'center', type:'center', locked: !canEditRegion },
-      { label:'رقم السيارة', val: rg.car    || '', key:'car',    type:'text',   locked: !canEditRegion }
+      { label:'المنطقة',     val: rg.region || '', key:'region', type:'text', locked: false },
+      { label:'المركز',      val: rg.center || '', key:'center', type:'text', locked: false },
+      { label:'رقم السيارة', val: rg.car    || '', key:'car',    type:'text', locked: false }
     ]);
 
     html += '<div class="profile-section"><h3 class="section-title">صلاحية البطاقات</h3>' +
@@ -466,6 +466,7 @@ var Employees = (function () {
       { label:'عدد أخرى',      val: eq.other     || '', key:'other',     type:'text', locked: false }
     ]);
 
+    var hasAnnBal = !!(parseFloat(lv.annBal));
     // عرض الأرصدة (قراءة — المتبقي يُحسب ديناميكياً من الطلبات)
     html += '<div class="profile-section" data-section="leaves"><h3 class="section-title">أرصدة الإجازة</h3>' +
       '<div class="leave-grid" id="leaves-display">' +
@@ -473,13 +474,31 @@ var Employees = (function () {
         _leaveBal('المتبقي السنوية',  lv.annRem,  true)  +
         _leaveBal('رصيد المجدولة',    lv.schedBal,false) +
         _leaveBal('المتبقي المجدولة', lv.schedRem,false) +
+        _leaveBal('مرضية',   lv.sick,        false) +
+        _leaveBal('مولود',   lv.birth,       false) +
+        _leaveBal('وفاة',    lv.death,       false) +
+        _leaveBal('زواج',    lv.marriage,    false) +
+        _leaveBal('اختبارات',lv.exam,        false) +
+        _leaveBal('دورة عمل',lv.workCourse,  false) +
+        _leaveBal('خدمة طويلة',lv.longService,false) +
       '</div>' +
       '<div class="pf-edit-form" id="leaves-edit" style="display:none">' +
-        _numInput('رصيد السنوية', 'lv-annBal', lv.annBal) +
+        // السنوي: الموظف يدخله مرة واحدة فقط
+        (role === 'موظف' && hasAnnBal
+          ? '<div class="pf-row"><span class="pf-label">رصيد السنوية</span><span class="pf-val pf-locked">' + (lv.annBal || 0) + ' يوم — يُضاف تلقائياً كل عام ✓</span></div>'
+          : _numInput('رصيد السنوية', 'lv-annBal', lv.annBal)) +
+        // المجدول: مشرف ومدير فقط
         (role === 'مدير' || role === 'مشرف'
-          ? _numInput('رصيد المجدولة', 'lv-schedBal', lv.schedBal) +
-            '<small class="field-hint" style="margin-top:-8px;display:block;color:var(--text-muted)">أيام خُصمت من السنوي وتم جدولتها مستقبلاً</small>'
-          : '<div class="pf-row"><span class="pf-label">رصيد المجدولة</span><span class="pf-val pf-locked">' + (lv.schedBal || 0) + ' يوم — يُدخله المشرف / المدير</span></div>') +
+          ? _numInput('رصيد المجدولة', 'lv-schedBal', lv.schedBal)
+          : '') +
+        // باقي الأنواع: الجميع
+        _numInput('مرضية',     'lv-sick',        lv.sick) +
+        _numInput('مولود',     'lv-birth',       lv.birth) +
+        _numInput('وفاة',      'lv-death',       lv.death) +
+        _numInput('زواج',      'lv-marriage',    lv.marriage) +
+        _numInput('اختبارات',  'lv-exam',        lv.exam) +
+        _numInput('دورة عمل',  'lv-workCourse',  lv.workCourse) +
+        _numInput('خدمة طويلة','lv-longService', lv.longService) +
       '</div>' +
     '</div>';
 
@@ -502,6 +521,11 @@ var Employees = (function () {
 
     html += '</div></div>';
     el.innerHTML = html;
+
+    // تفعيل وضع التعديل تلقائياً إذا طُلب ذلك
+    if (autoEdit && canEdit) {
+      setTimeout(function() { _setEditMode(true); }, 50);
+    }
 
     el.querySelectorAll('.ot-period-tab').forEach(function(btn) {
       btn.onclick = function() {
@@ -614,7 +638,7 @@ var Employees = (function () {
   // ============================================================
 
   function editEmployee(empId) {
-    App.navigate('employee-form', { empId: String(empId), emp: _cache[String(empId)] || null });
+    App.navigate('employee-card', { empId: String(empId), autoEdit: true });
   }
 
   // ============================================================
@@ -705,21 +729,22 @@ var Employees = (function () {
         html += _cardWrap('🦺', 'العدد والمقاسات', '#2E7D32', eqHtml);
 
         // ==== بطاقة 4: أرصدة الإجازات ====
-        var firstTime = !lv.annBal;
-        var lvHint = (role==='موظف' && !firstTime)
-          ? '<div class="form-warning">⚠️ يمكن إدخال الرصيد أول مرة فقط — للتعديل تواصل مع المشرف</div>' : '';
-        var lvHtml = '<form id="form-leave" novalidate>' + lvHint +
+        var hasAnnBal = !!(parseFloat(lv.annBal));
+        var annLocked = role === 'موظف' && hasAnnBal;
+        var annHint = annLocked
+          ? '<div class="form-warning" style="margin-bottom:10px">✅ الرصيد السنوي تم إدخاله — يُضاف تلقائياً كل عام</div>' : '';
+        var lvHtml = '<form id="form-leave" novalidate>' + annHint +
           '<div class="leave-edit-grid">' +
           [
-            {id:'lv-ann',   lbl:'رصيد السنوي',       val:lv.annBal||'',     dis:role==='موظف'&&!!lv.annBal},
-            {id:'lv-sched', lbl:'رصيد المجدولة',      val:lv.schedBal||'',   dis:role==='موظف'},
-            {id:'lv-sick',  lbl:'مرضية',              val:lv.sick||'',       dis:false},
-            {id:'lv-birth', lbl:'مولود',              val:lv.birth||'',      dis:false},
-            {id:'lv-death', lbl:'وفاة',               val:lv.death||'',      dis:false},
-            {id:'lv-marr',  lbl:'زواج',               val:lv.marriage||'',   dis:false},
-            {id:'lv-exam',  lbl:'اختبارات',           val:lv.exam||'',       dis:false},
-            {id:'lv-course',lbl:'دورة عمل',           val:lv.workCourse||'', dis:false},
-            {id:'lv-long',  lbl:'خدمة عمل طويلة',    val:lv.longService||'',dis:false}
+            {id:'lv-ann',   lbl:'رصيد السنوي',    val:lv.annBal||'',    dis: annLocked},
+            {id:'lv-sched', lbl:'رصيد المجدولة',  val:lv.schedBal||'',  dis: role==='موظف'},
+            {id:'lv-sick',  lbl:'مرضية',          val:lv.sick||'',      dis: false},
+            {id:'lv-birth', lbl:'مولود',          val:lv.birth||'',     dis: false},
+            {id:'lv-death', lbl:'وفاة',           val:lv.death||'',     dis: false},
+            {id:'lv-marr',  lbl:'زواج',           val:lv.marriage||'',  dis: false},
+            {id:'lv-exam',  lbl:'اختبارات',       val:lv.exam||'',      dis: false},
+            {id:'lv-course',lbl:'دورة عمل',       val:lv.workCourse||'',dis: false},
+            {id:'lv-long',  lbl:'خدمة عمل طويلة',val:lv.longService||'',dis:false}
           ].map(function(f) {
             return '<div class="leave-edit-item' + (f.dis?' leave-disabled':'') + '">' +
               '<span class="lei-label">' + f.lbl + '</span>' +
@@ -729,8 +754,8 @@ var Employees = (function () {
           }).join('') +
           '</div>' +
           '<div class="form-actions" style="margin-top:14px">' +
-            '<button type="submit" class="btn-primary"' + (role==='موظف'&&!firstTime?' disabled':'') + '>💾 ' +
-            (firstTime&&role==='موظف'?'إدخال الرصيد الأولي':'حفظ الأرصدة') + '</button>' +
+            '<button type="submit" class="btn-primary">💾 ' +
+            (!hasAnnBal && role==='موظف' ? 'إدخال الرصيد الأولي' : 'حفظ الأرصدة') + '</button>' +
           '</div>' +
           '<div id="err-leave" class="form-error" style="display:none"></div>' +
           '</form>';
@@ -775,7 +800,7 @@ var Employees = (function () {
       if (isEdit) {
         _bindRegionForm(eid);
         _bindEquipForm(eid);
-        _bindLeaveForm(eid, role, !lv.annBal);
+        _bindLeaveForm(eid, role, false);
         _bindPwForm();
       }
     });
@@ -940,7 +965,7 @@ var Employees = (function () {
         longService: _n('lv-long')
       };
       App.btnLoad(btn);
-      API.updateLeaveBalance(empId, updates, firstTime).then(function(res) {
+      API.updateLeaveBalance(empId, updates, '0').then(function(res) {
         App.btnDone(btn, null, res.ok ? 'success' : 'error');
         if (res.ok) App.toast('تم حفظ أرصدة الإجازات ✓', 'success');
         else { errEl.textContent = 'حدث خطأ: ' + res.error; errEl.style.display = 'block'; }
@@ -1209,14 +1234,18 @@ var Employees = (function () {
     };
     var role = Auth.getEffectiveRole();
 
+    var personalData = {
+      name:        _gv('edit-personal-name'),
+      phone:       _gv('edit-personal-phone'),
+      workExpDate: _gv('edit-personal-workExpDate'),
+      srcExpDate:  _gv('edit-personal-srcExpDate'),
+      waKey:       _gv('edit-personal-waKey')
+    };
+    var roleVal = _gv('edit-personal-role');
+    if (roleVal) personalData.role = roleVal;
+
     var jobs = [
-      API.updateEmployee(targetId, {
-        name:        _gv('edit-personal-name'),
-        phone:       _gv('edit-personal-phone'),
-        role:        _gv('edit-personal-role'),
-        workExpDate: _gv('edit-personal-workExpDate'),
-        srcExpDate:  _gv('edit-personal-srcExpDate')
-      }),
+      API.updateEmployee(targetId, personalData),
       API.updateRegion(targetId, {
         region: _gv('edit-region-region'),
         center: _gv('edit-region-center'),
@@ -1232,11 +1261,19 @@ var Employees = (function () {
         other:     _gv('edit-equipment-other')
       }),
       (function() {
-        var lbData = { annBal: _gv('lv-annBal') };
-        if (role === 'مدير' || role === 'مشرف') {
-          lbData.schedBal = _gv('lv-schedBal');
-        }
-        return API.updateLeaveBalance(targetId, lbData, role === 'موظف' ? '1' : '0');
+        var lbData = {
+          sick:        _gv('lv-sick'),
+          birth:       _gv('lv-birth'),
+          death:       _gv('lv-death'),
+          marriage:    _gv('lv-marriage'),
+          exam:        _gv('lv-exam'),
+          workCourse:  _gv('lv-workCourse'),
+          longService: _gv('lv-longService')
+        };
+        var annVal = _gv('lv-annBal');
+        if (annVal) lbData.annBal = annVal;
+        if (role === 'مدير' || role === 'مشرف') lbData.schedBal = _gv('lv-schedBal');
+        return API.updateLeaveBalance(targetId, lbData, '0');
       })()
     ];
 
@@ -1264,10 +1301,12 @@ var Employees = (function () {
 
     var p, prom;
     if (section === 'personal') {
-      p = { name: _gv('edit-personal-name'), phone: _gv('edit-personal-phone'),
-            role: _gv('edit-personal-role'),
+      p = { name:        _gv('edit-personal-name'),
+            phone:       _gv('edit-personal-phone'),
             workExpDate: _gv('edit-personal-workExpDate'),
-            srcExpDate:  _gv('edit-personal-srcExpDate') };
+            srcExpDate:  _gv('edit-personal-srcExpDate'),
+            waKey:       _gv('edit-personal-waKey') };
+      var rv = _gv('edit-personal-role'); if (rv) p.role = rv;
       prom = API.updateEmployee(targetId, p);
     } else if (section === 'region') {
       prom = API.updateRegion(targetId, {
@@ -1287,11 +1326,19 @@ var Employees = (function () {
       });
     } else if (section === 'leaves') {
       var role = Auth.getEffectiveRole();
-      var lbData = { annBal: _gv('lv-annBal') };
-      if (role === 'مدير' || role === 'مشرف') {
-        lbData.schedBal = _gv('lv-schedBal');
-      }
-      prom = API.updateLeaveBalance(targetId, lbData, role === 'موظف' ? '1' : '0');
+      var lbData = {
+        sick:        _gv('lv-sick'),
+        birth:       _gv('lv-birth'),
+        death:       _gv('lv-death'),
+        marriage:    _gv('lv-marriage'),
+        exam:        _gv('lv-exam'),
+        workCourse:  _gv('lv-workCourse'),
+        longService: _gv('lv-longService')
+      };
+      var annV = _gv('lv-annBal');
+      if (annV) lbData.annBal = annV;
+      if (role === 'مدير' || role === 'مشرف') lbData.schedBal = _gv('lv-schedBal');
+      prom = API.updateLeaveBalance(targetId, lbData, '0');
     } else { return; }
 
     prom.then(function(res) {
