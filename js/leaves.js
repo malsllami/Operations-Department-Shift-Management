@@ -34,9 +34,9 @@ var Leaves = (function () {
       var html = '<div class="list-filters">' +
         '<select id="leave-status-filter" class="filter-select">' +
           '<option value="">كل الحالات</option>' +
-          '<option value="pending_review">قيد المراجعة</option>' +
-          '<option value="approved">معتمد</option>' +
-          '<option value="rejected">مرفوض</option>' +
+          '<option value="قيد المراجعة">قيد المراجعة</option>' +
+          '<option value="معتمد">معتمد</option>' +
+          '<option value="مرفوض">مرفوض</option>' +
         '</select>';
 
       if (role === 'موظف' || role === 'مشرف' || role === 'مدير') {
@@ -65,16 +65,16 @@ var Leaves = (function () {
 
   function _leaveCard(req, role) {
     var statusMap = {
-      pending_review: { label:'قيد المراجعة', bg:'#FFF9C4', text:'#F57F17' },
-      approved:       { label:'معتمد',         bg:'#C8E6C9', text:'#1B5E20' },
-      rejected:       { label:'مرفوض',         bg:'#FFCDD2', text:'#B71C1C' }
+      'قيد المراجعة': { label:'قيد المراجعة', bg:'#FFF9C4', text:'#F57F17' },
+      'معتمد':        { label:'معتمد',         bg:'#C8E6C9', text:'#1B5E20' },
+      'مرفوض':        { label:'مرفوض',         bg:'#FFCDD2', text:'#B71C1C' }
     };
     var st  = statusMap[req.status] || { label: req.status, bg:'#E0E0E0', text:'#424242' };
     var sk  = CONFIG.shiftKey(req.shift || '');
     var sc  = CONFIG.SHIFTS[sk] || CONFIG.SHIFTS.a;
 
-    var canReview  = (role === 'مدير' || role === 'مشرف') && req.status === 'pending_review';
-    var canModify  = role === 'موظف' && req.status === 'pending_review';
+    var canReview  = (role === 'مدير' || role === 'مشرف') && req.status === 'قيد المراجعة';
+    var canModify  = role === 'موظف' && req.status === 'قيد المراجعة';
     var canDelete  = role === 'موظف' && !canModify;
 
     return '<div class="req-card" data-status="' + req.status + '" style="border-right:4px solid ' + sc.color + '">' +
@@ -423,7 +423,7 @@ var Leaves = (function () {
     var warn = document.getElementById('lf-warn');
 
     if (type && type.hasBalance && _leaveData && wrap) {
-      var bal = key === 'annual' ? _leaveData.annRem : _leaveData.schedRem;
+      var bal = key === 'سنوية' ? _leaveData.annRem : _leaveData.schedRem;
       wrap.style.display = 'block';
       if (valEl) valEl.textContent = (bal !== undefined ? bal : '—') + ' يوم';
       if (warn) warn.style.display = (bal !== undefined && bal <= 0) ? 'block' : 'none';
