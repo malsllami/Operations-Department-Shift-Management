@@ -605,8 +605,9 @@ var App = (function () {
         if (!regMap[reg]) regMap[reg] = { centers: {} };
         if (!regMap[reg].centers[cen]) regMap[reg].centers[cen] = [];
 
-        var emp = empMap[String(rg.empId)];
-        if (!emp) return;
+        // استخدام بيانات جدول المناطق كـ fallback إذا لم تتوفر بيانات الموظفين
+        var emp = empMap[String(rg.empId)] || { empId: rg.empId, name: rg.name, shift: rg.shift };
+        if (!emp.name) return;
 
         var sk  = CONFIG.shiftKey(emp.shift || '');
         var sc  = CONFIG.SHIFTS[sk] || CONFIG.SHIFTS.a;
@@ -863,8 +864,8 @@ var App = (function () {
     if (!btn) return;
     btn._origHtml  = btn.innerHTML;
     btn._origStyle = btn.style.cssText;
-    var sz = Math.max(btn.offsetHeight || 36, 32);
-    btn.style.cssText = 'width:' + sz + 'px;height:' + sz + 'px;min-width:0;max-width:none;padding:0;border-radius:50%;';
+    var sz = Math.max(btn.offsetHeight || 44, 36);
+    btn.style.cssText = 'width:' + sz + 'px!important;height:' + sz + 'px!important;min-width:0!important;max-width:' + sz + 'px!important;padding:0!important;border-radius:50%!important;flex:none!important;align-self:center!important;';
     btn.innerHTML = '';
     btn.classList.add('btn-loading');
     btn.disabled = true;
