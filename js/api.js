@@ -78,6 +78,13 @@ var API = (function () {
     return _call({ action:'updateEmployee', empId: empId, updates: JSON.stringify(updates) });
   }
 
+  // ---- جهات الاتصال للواتساب ----
+  function getShiftContacts(shift) {
+    var p = { action:'getShiftContacts' };
+    if (shift) p.shift = shift;
+    return _call(p);
+  }
+
   // ---- المناطق والمراكز ----
   function getRegions(empId) {
     var p = { action:'getRegions' };
@@ -245,6 +252,7 @@ var API = (function () {
     getSettings, updateSettings,
     verifyRoleCode, setRoleCode,
     getEmployees, getEmployee, addEmployee, updateEmployee,
+    getShiftContacts,
     getRegions, updateRegion,
     getEquipment, updateEquipment,
     getLeaves, updateLeaveBalance,
