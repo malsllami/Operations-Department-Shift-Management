@@ -47,7 +47,7 @@ var Dashboard = (function () {
 
       // هل الموظف في إجازة اليوم؟
       var onLeave = lvReqs.some(function(r) {
-        return r.status === 'approved' && r.startDate <= today && r.endDate >= today;
+        return r.status === 'معتمد' && r.startDate <= today && r.endDate >= today;
       });
 
       // حالة الوردية اليوم
@@ -59,13 +59,13 @@ var Dashboard = (function () {
 
       // إحصاءات الإجازات
       var lvTotal   = lvReqs.length;
-      var lvPending = lvReqs.filter(function(r){ return r.status==='pending_review'; }).length;
-      var lvDone    = lvReqs.filter(function(r){ return r.status==='approved'||r.status==='rejected'; }).length;
+      var lvPending = lvReqs.filter(function(r){ return r.status==='قيد المراجعة'; }).length;
+      var lvDone    = lvReqs.filter(function(r){ return r.status==='معتمد'||r.status==='مرفوض'; }).length;
 
       // إحصاءات الأوفرتايم
       var otTotal   = otReqs.length;
-      var otPending = otReqs.filter(function(r){ return r.status==='created'||r.status==='pending_supervisor'; }).length;
-      var otDone    = otReqs.filter(function(r){ return r.status==='sent_to_system'||r.status==='received'||r.status==='rejected'; }).length;
+      var otPending = otReqs.filter(function(r){ return r.status==='تم الإنشاء'||r.status==='قيد مراجعة المشرف'; }).length;
+      var otDone    = otReqs.filter(function(r){ return r.status==='تم الإرسال للنظام'||r.status==='تم الاستلام'||r.status==='مرفوض'; }).length;
 
       // رقم المنطقة والمركز
       var myRg = rgList.length ? rgList[0] : {};
@@ -313,9 +313,9 @@ var Dashboard = (function () {
       var todayShifts = dash.todayShifts || {};
       var shiftStats  = dash.shiftStats  || {};
 
-      var lvPending = lvReqs.filter(function(r){ return r.status==='pending_review'; }).length;
+      var lvPending = lvReqs.filter(function(r){ return r.status==='قيد المراجعة'; }).length;
       var otPending = otReqs.filter(function(r){
-        return r.status==='created'||r.status==='sent_to_coordinator';
+        return r.status==='تم الإنشاء'||r.status==='أُرسل للتنسيق الإداري';
       }).length;
 
       // تجميع عدد الموظفين حسب المنطقة لكل وردية (من rgList)
@@ -490,7 +490,7 @@ var Dashboard = (function () {
     // الموظفون في إجازة اليوم
     var onLeaveIds = {};
     lvReqs.forEach(function(r) {
-      if (r.status === 'approved' && r.startDate <= today && r.endDate >= today) {
+      if (r.status === 'معتمد' && r.startDate <= today && r.endDate >= today) {
         onLeaveIds[String(r.empId)] = true;
       }
     });
