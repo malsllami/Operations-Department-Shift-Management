@@ -73,22 +73,22 @@ var Overtime = (function () {
     var isMyReq = role === 'موظف' && String(req.empId) === String(user.empId);
 
     // أزرار المشرف / المدير
-    if ((role === 'مدير' || role === 'مشرف') && req.status === 'created') {
+    if ((role === 'مدير' || role === 'مشرف') && req.status === 'تم الإنشاء') {
       actionsHtml = '<div class="req-actions">' +
         '<button class="btn-sm btn-approve" onclick="Overtime._supervisorApprove(\'' + req.no + '\')">اعتماد</button>' +
         '<button class="btn-sm btn-reject"  onclick="Overtime._supervisorReject(\'' + req.no + '\')">رفض</button>' +
       '</div>';
-    } else if ((role === 'مدير' || role === 'مشرف') && req.status === 'supervisor_approved') {
+    } else if ((role === 'مدير' || role === 'مشرف') && req.status === 'معتمد من المشرف') {
       actionsHtml = '<div class="req-actions">' +
         '<button class="btn-sm btn-primary" onclick="Overtime._sendToCoord(\'' + req.no + '\')">إرسال للتنسيق الإداري</button>' +
       '</div>';
-    } else if ((role === 'مدير' || role === 'اداري') && req.status === 'sent_to_coordinator') {
+    } else if ((role === 'مدير' || role === 'اداري') && req.status === 'أُرسل للتنسيق الإداري') {
       actionsHtml = '<div class="req-actions">' +
         '<button class="btn-sm btn-approve" onclick="Overtime._coordSendSystem(\'' + req.no + '\')">إرسال للنظام</button>' +
         '<button class="btn-sm btn-reject"  onclick="Overtime._coordReturn(\'' + req.no + '\')">إعادة للمشرف</button>' +
       '</div>';
     // أزرار الموظف لطلبه الخاص
-    } else if (isMyReq && req.status === 'sent_to_system') {
+    } else if (isMyReq && req.status === 'تم الإرسال للنظام') {
       var received = req.receiptStatus === 'تم الاستلام';
       actionsHtml = '<div class="req-actions">' +
         '<button class="btn-sm ' + (received ? 'btn-disabled' : 'btn-approve') + '" ' +
@@ -98,7 +98,7 @@ var Overtime = (function () {
         (!received ? '<button class="btn-sm btn-outline" onclick="Overtime._confirmReceipt(\'' + req.no + '\',false)">لم يتم الاستلام</button>' : '') +
         '<button class="btn-sm btn-danger" onclick="Overtime._cancelOtReq(\'' + req.no + '\')" title="حذف الطلب">🗑️</button>' +
       '</div>';
-    } else if (isMyReq && (req.status === 'created' || req.status === 'pending_supervisor')) {
+    } else if (isMyReq && (req.status === 'تم الإنشاء' || req.status === 'قيد مراجعة المشرف')) {
       // لم يتم أي إجراء — تعديل + حذف
       actionsHtml = '<div class="req-actions">' +
         '<button class="btn-sm btn-edit" onclick="Overtime.editOtForm(\'' + req.no + '\')">✏️ تعديل</button>' +
