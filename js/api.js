@@ -162,6 +162,10 @@ var API = (function () {
     return _call({ action:'reviewOvertime', no:no, status:status, notes: notes||'' });
   }
 
+  function reviewAndSendOvertime(no, notes) {
+    return _call({ action:'reviewAndSendOvertime', no:no, notes: notes||'' });
+  }
+
   function cancelOvertime(no) {
     return _call({ action:'cancelOvertime', no:no });
   }
@@ -237,6 +241,13 @@ var API = (function () {
     return _call({ action:'buildComprehensiveView' });
   }
 
+  // ---- رسائل واتساب من جدول الإعدادات ----
+  function getWaMessages() {
+    return fetch(CONFIG.API_URL + '?action=getWaMessages', { redirect: 'follow' })
+      .then(function(r) { return r.json(); })
+      .catch(function() { return { ok: false }; });
+  }
+
   // ---- رمز الصلاحية الشخصي ----
   function verifyRoleCode(code) {
     return _call({ action:'verifyRoleCode', code: code });
@@ -257,11 +268,11 @@ var API = (function () {
     getEquipment, updateEquipment,
     getLeaves, updateLeaveBalance,
     getLeaveReqs, submitLeave, reviewLeave, cancelLeave, editLeave,
-    getOvertimeReqs, submitOvertime, reviewOvertime, cancelOvertime, editOvertime,
+    getOvertimeReqs, submitOvertime, reviewOvertime, reviewAndSendOvertime, cancelOvertime, editOvertime,
     sendToCoordinator, coordinatorAction, confirmReceipt,
     transferEmployee, getTransfers,
     getNotifications, markNotifRead, deleteNotifs,
     getDashboard, getLogs, getApiUsage,
-    yearlyLeaveReset, buildComprehensiveView
+    yearlyLeaveReset, buildComprehensiveView, getWaMessages
   };
 })();
