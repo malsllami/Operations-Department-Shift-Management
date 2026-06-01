@@ -778,7 +778,6 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
   max-width: 900px;
   width: 100%;
   box-sizing: border-box;
-  overflow: hidden;
   min-width: 0;
 }
 .form-grid {
@@ -993,6 +992,18 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
   transition: background 0.3s ease, box-shadow 0.3s ease !important;
 }
 
+/* واتساب */
+.btn-wa { background: #25D366 !important; color: #fff !important; white-space: nowrap; }
+.btn-wa:hover { background: #128C7E !important; }
+.wa-contact-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.wa-contact-row:last-child { border-bottom: none; }
+.wa-name { font-weight: 700; }
+.wa-role { font-size: 0.82rem; color: var(--text-muted); }
+.req-wa-row { padding: 8px 12px 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; flex-wrap: wrap; }
+
 /* تصدير */
 .export-buttons { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
 .btn-excel { background: #166534; color: #fff; }
@@ -1200,7 +1211,7 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 .pfc-header { display: flex; align-items: center; gap: 10px; padding: 14px 18px; color: #fff; }
 .pfc-icon   { font-size: 1.3rem; line-height: 1; }
 .pfc-title  { font-size: 1rem; font-weight: 800; }
-.pfc-body   { padding: 18px; overflow: hidden; min-width: 0; }
+.pfc-body   { padding: 18px; min-width: 0; overflow: visible; }
 
 /* شبكة أرصدة الإجازات */
 .leave-edit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(160px,100%),1fr)); gap: 8px; }
@@ -1546,13 +1557,14 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
   input[type="date"], input[type="number"],
   .phone-merged-input, .login-input { direction: ltr; text-align: left; }
 
-  /* تاريخ — منع التمدد خارج الإطار */
+  /* تاريخ — تعزيز القواعد العامة على الجوال */
   input[type="date"] {
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
     box-sizing: border-box !important;
     display: block !important;
+    padding: 10px 14px !important;
   }
 
   /* ==== التقويم على الجوال ==== */
@@ -2397,4 +2409,158 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
   .rgm-emp-row { flex-direction: column; align-items: flex-start; }
   .rgm-summary { gap: 20px; }
   .rgm-stat-num { font-size: 1.8rem; }
+}
+
+/* ============================================================
+   إصلاح شامل — تناسق العناصر + منع التمدد خارج الحدود
+   ============================================================ */
+
+/* التواريخ — إصلاح على كل الشاشات */
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* منع تمدد المدخلات عموماً */
+input, select, textarea {
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* pf-row — منع تمدد القيم خارج الصف */
+.pf-row {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+.pf-val {
+  word-break: break-word;
+  overflow-wrap: break-word;
+  min-width: 0;
+  flex: 1;
+}
+.pf-input {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+/* أقسام البروفايل */
+.profile-section {
+  min-width: 0;
+  overflow: hidden;
+}
+.section-edit-form {
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* حقول النماذج — منع التمدد */
+.form-field {
+  min-width: 0;
+}
+.form-field input,
+.form-field select,
+.form-field textarea {
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* الطلبات — منع تمدد السطر */
+.req-row {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.rr-label {
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   الجوال — أزرار متناسقة لا تتداخل
+   ============================================================ */
+@media (max-width: 768px) {
+  /* profile-sections — padding أصغر */
+  .profile-sections { padding: 10px 12px; }
+
+  /* أزرار الطلبات — تلتف بشكل صحيح */
+  .req-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .req-actions > button,
+  .req-actions > a.btn-sm,
+  .req-actions > a.btn-wa {
+    flex: 1 1 auto;
+    min-width: min-content;
+    max-width: 100%;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  /* Modal — عرض مناسب */
+  .modal-box {
+    min-width: 0 !important;
+    width: calc(100vw - 32px) !important;
+    max-width: 100% !important;
+    padding: 20px 16px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* form-actions — زر واحد في كل سطر إذا كان عريضاً */
+  .form-actions > button,
+  .form-actions > a {
+    flex-shrink: 1;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* شاشات صغيرة جداً ≤ 400px */
+@media (max-width: 400px) {
+  /* form-actions — تكديس عمودي */
+  .form-actions {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  .form-actions > button,
+  .form-actions > a {
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: none !important;
+    text-align: center !important;
+    white-space: normal !important;
+  }
+
+  /* req-actions — تكديس عمودي */
+  .req-actions {
+    flex-direction: column !important;
+    gap: 6px !important;
+  }
+  .req-actions > button,
+  .req-actions > a {
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: none !important;
+    text-align: center !important;
+  }
+
+  /* leave-edit-grid — عمودان على شاشة 400px */
+  .leave-edit-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* profile-sections padding */
+  .profile-sections { padding: 8px !important; }
+
+  /* تاريخ */
+  input[type="date"] {
+    font-size: 13px !important;
+    padding: 8px 10px !important;
+  }
 }
