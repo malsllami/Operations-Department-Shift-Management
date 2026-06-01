@@ -77,6 +77,26 @@ var Leaves = (function () {
     var canModify  = role === 'موظف' && req.status === 'قيد المراجعة';
     var canDelete  = role === 'موظف' && !canModify;
 
+    // أزرار واتساب
+    var waSection = '';
+    if ((role === 'مدير' || role === 'مشرف') && req.empPhone) {
+      // المشرف/المدير: زر لمراسلة الموظف — الرسالة تعتمد على الحالة
+      var waMsgSup = req.status === 'معتمد'
+        ? 'السلام عليكم ورحمة الله وبركاته\nصباح الخير/ مساء الخير\nتم اعتماد الإجازة ✅\nونتمنى لك إجازة سعيدة'
+        : req.status === 'مرفوض'
+          ? 'السلام عليكم ورحمة الله وبركاته\nصباح الخير/ مساء الخير\nنأسف لكم بأن طلب الإجازة تم رفضه بعد المراجعة' + (req.revNotes ? '\n' + req.revNotes : '')
+          : 'بخصوص طلب الإجازة رقم ' + req.no;
+      waSection = '<div class="req-wa-row">' +
+        '<a href="' + App.waLink(req.empPhone, waMsgSup) + '" target="_blank" class="btn-sm btn-wa">📱 واتساب الموظف</a>' +
+      '</div>';
+    } else if (role === 'موظف' && req.status === 'قيد المراجعة') {
+      // الموظف: زر لمراسلة مشرف الوردية
+      var waMsgEmp = 'السلام عليكم ورحمة الله وبركاته 🙏\nأرسلت طلب إجازة رقم ' + req.no + '\nأرجو المراجعة والاعتماد';
+      waSection = '<div class="req-wa-row">' +
+        '<button class="btn-sm btn-wa" onclick="Leaves._showShiftWa(\'' + (req.shift||'') + '\',\'' + waMsgEmp.replace(/\n/g,'\\n').replace(/'/g,"\\'") + '\')">📱 أبلغ المشرف</button>' +
+      '</div>';
+    }
+
     return '<div class="req-card" data-status="' + req.status + '" style="border-right:4px solid ' + sc.color + '">' +
       '<div class="req-card-header">' +
         '<span class="req-no">' + req.no + '</span>' +
@@ -90,6 +110,7 @@ var Leaves = (function () {
         (req.revNotes ? '<div class="req-row"><span class="rr-label">ملاحظات المراجع</span><span>' + req.revNotes + '</span></div>' : '') +
         (req.reviewerName ? '<div class="req-row"><span class="rr-label">المراجع</span><span>' + req.reviewerName + ' (' + req.reviewerRole + ')</span></div>' : '') +
       '</div>' +
+      waSection +
       (canReview ? _reviewButtons(req.no, 'leave') : '') +
       (canModify
         ? '<div class="req-actions">' +
@@ -379,6 +400,18 @@ var Leaves = (function () {
         if (res.ok) {
           App.toast(editNo ? 'تم حفظ التعديل ✓' : 'تم إرسال طلب الإجازة: ' + (res.no||''), 'success');
           App.navigate('leaves');
+          // عرض نافذة واتساب للمشرفين (عند إرسال طلب جديد فقط)
+          if (!editNo) {
+            var shiftForWa = data.shift || (Auth.getUser() ? Auth.getUser().shift : '');
+            var noForWa = res.no || '';
+            API.getShiftContacts(shiftForWa).then(function(r) {
+              if (r.ok && r.data.length) {
+                App.showWaModal(r.data,
+                  'السلام عليكم ورحمة الله وبركاته 🙏\nأرسلت طلب إجازة رقم ' + noForWa + '\nأرجو المراجعة والاعتماد',
+                  '📱 أبلغ المشرفين عبر واتساب');
+              }
+            });
+          }
         } else {
           var errs = { cannot_edit_reviewed:'لا يمكن تعديل طلب تمت مراجعته' };
           errEl.textContent = errs[res.error] || 'حدث خطأ: ' + res.error;
@@ -386,6 +419,13 @@ var Leaves = (function () {
         }
       });
     };
+  }
+
+  function _showShiftWa(shift, msg) {
+    var realMsg = msg.replace(/\\n/g, '\n');
+    API.getShiftContacts(shift).then(function(r) {
+      App.showWaModal(r.ok ? r.data : [], realMsg, '📱 أبلغ المشرف عبر واتساب');
+    });
   }
 
   function _loadShiftEmployees(shift) {
@@ -492,7 +532,7 @@ var Leaves = (function () {
 
   return {
     renderList, renderForm,
-    _typeChange, _calcDays, _loadShiftEmployees,
+    _typeChange, _calcDays, _loadShiftEmployees, _showShiftWa,
     cancelLeaveReq, editLeaveReq, editLeaveForm
   };
 })();
