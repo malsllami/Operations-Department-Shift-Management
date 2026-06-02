@@ -184,5 +184,15 @@ var CONFIG = {
   validatePhone: function(phone) {
     var latin = CONFIG.toLatinNums(String(phone || '')).trim();
     return /^5\d{8}$/.test(latin);
+  },
+
+  // يزيل بادئة +966 / 00966 / 966 إن كانت مخزَّنة مع الرقم
+  normPhone: function(phone) {
+    if (!phone) return '';
+    var s = CONFIG.toLatinNums(String(phone)).replace(/\s/g, '');
+    if (s.indexOf('+966') === 0)          return s.slice(4);
+    if (s.indexOf('00966') === 0)         return s.slice(5);
+    if (s.indexOf('966') === 0 && s.length >= 12) return s.slice(3);
+    return s;
   }
 };
