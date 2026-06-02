@@ -69,8 +69,8 @@ var Auth = (function () {
   // تغيير كلمة المرور
   // ============================================================
 
-  function changePassword(newPassword) {
-    return API.changePassword(newPassword).then(function(res) {
+  function changePassword(newPassword, currentPassword) {
+    return API.changePassword(newPassword, currentPassword).then(function(res) {
       if (res.ok) {
         _forceChange = false;
         if (!_forceRoleCode) _save();
