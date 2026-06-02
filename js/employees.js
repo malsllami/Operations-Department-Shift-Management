@@ -79,7 +79,7 @@ var Employees = (function () {
         '<div class="ech-id">' + (emp.empId||'') + '</div>' +
       '</div>' +
       '<div class="emp-card-body">' +
-        _field('الجوال', (emp.phone ? '<span class="phone-display">🇸🇦 +966 ' + emp.phone + '</span>' : '—')) +
+        _field('الجوال', (emp.phone ? '<span class="phone-display">🇸🇦 +966 ' + CONFIG.normPhone(emp.phone) + '</span>' : '—')) +
         _field('المنطقة', rg ? (rg.region||'—') : '—') +
         _field('المركز',  rg ? (rg.center ||'—') : '—') +
       '</div>' +
@@ -190,7 +190,7 @@ var Employees = (function () {
       // البيانات الأساسية
       html += _section('البيانات الأساسية', [
         ['الوردية',    'وردية ' + (emp.shift||'—')],
-        ['الجوال',     emp.phone ? '<span class="phone-display">🇸🇦 +966 ' + emp.phone + '</span>' : '—'],
+        ['الجوال',     emp.phone ? '<span class="phone-display">🇸🇦 +966 ' + CONFIG.normPhone(emp.phone) + '</span>' : '—'],
         ['تاريخ التسجيل', CONFIG.fmtDate(emp.regDate)]
       ]);
 
@@ -289,7 +289,7 @@ var Employees = (function () {
             '<div class="admin-fields">' +
               _adminField('الرقم الوظيفي', emp.empId || '—') +
               _adminField('الاسم', emp.name || '—') +
-              _adminField('الجوال', emp.phone ? '<span class="phone-display">🇸🇦 +966 ' + emp.phone + '</span>' : '—') +
+              _adminField('الجوال', emp.phone ? '<span class="phone-display">🇸🇦 +966 ' + CONFIG.normPhone(emp.phone) + '</span>' : '—') +
               _adminField('الصلاحية', roleLabel) +
               _adminField('الوردية', 'وردية ' + (emp.shift || '—')) +
             '</div>' +
@@ -545,7 +545,7 @@ var Employees = (function () {
   function _editableSection(title, sectionKey, fields) {
     var displayRows = fields.map(function(f) {
       var dispVal = f.key === 'phone' && f.val
-        ? '<span class="phone-display">🇸🇦 +966 ' + f.val + '</span>'
+        ? '<span class="phone-display">🇸🇦 +966 ' + CONFIG.normPhone(f.val) + '</span>'
         : (f.val || '—');
       return '<div class="pf-row">' +
         '<span class="pf-label">' + f.label + '</span>' +
