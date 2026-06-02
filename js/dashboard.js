@@ -87,7 +87,7 @@ var Dashboard = (function () {
 
       html += '<div class="epc-body">';
       html += _epcRow('الوردية',    'وردية ' + (user.shift||''));
-      html += _epcRow('رقم الجوال', emp.phone ? '<span class="phone-display">🇸🇦 +966 ' + emp.phone + '</span>' : '—');
+      html += _epcRow('رقم الجوال', emp.phone ? '<span class="phone-display">🇸🇦 +966 ' + CONFIG.normPhone(emp.phone) + '</span>' : '—');
 
       // تواريخ انتهاء البطاقات مع المدة المتبقية
       var _expiryPill = function(date, days) {
@@ -279,7 +279,7 @@ var Dashboard = (function () {
         html += '<tr>' +
           '<td>' + (r.empId||'—')  + '</td>' +
           '<td>' + (r.name||'—')   + '</td>' +
-          '<td><span class="shift-badge-sm" style="background:' + sc.color + ';color:#fff">وردية ' + (r.shift||'—') + '</span></td>' +
+          '<td><span class="shift-badge-sm" style="background:' + sc.color + ';color:#fff">' + (r.shift||'—') + '</span></td>' +
           '<td>' + (r.region||'—') + '</td>' +
           '<td>' + (r.center||'—') + '</td>' +
           '<td>' + (r.car||'—')    + '</td>' +
@@ -555,7 +555,7 @@ var Dashboard = (function () {
           html += '<tr' + (onL ? ' class="row-on-leave"' : '') + '>' +
             '<td>' + (r.empId||'—')  + '</td>' +
             '<td>' + (r.name||'—')   + '</td>' +
-            '<td><span class="shift-badge-sm" style="background:' + sc.color + ';color:#fff">وردية ' + (r.shift||'—') + '</span></td>' +
+            '<td><span class="shift-badge-sm" style="background:' + sc.color + ';color:#fff">' + (r.shift||'—') + '</span></td>' +
             '<td>' + (r.region||'—') + '</td>' +
             '<td>' + (r.center||'—') + '</td>' +
             '<td>' + (r.car||'—')    + '</td>' +
