@@ -41,8 +41,10 @@ var API = (function () {
     return _call({ action:'login', empId: empId, password: password });
   }
 
-  function changePassword(newPassword) {
-    return _call({ action:'changePassword', newPassword: newPassword });
+  function changePassword(newPassword, currentPassword) {
+    var p = { action:'changePassword', newPassword: newPassword };
+    if (currentPassword) p.currentPassword = currentPassword;
+    return _call(p);
   }
 
   // ---- الجدول ----
