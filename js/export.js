@@ -397,11 +397,10 @@ var Export = (function () {
       API.getOvertimeReqs({ from: from||'', to: to||'' }).then(function(r) {
         var list = r.ok ? r.data : [];
         if (shift) list = list.filter(function(x) { return x.shift === shift; });
-        var rows = list.map(_otFullRow);
         cb({
-          headers: OT_FULL_HEADERS, rows: rows, title: 'طلبات العمل الإضافي',
+          headers: OT_FULL_HEADERS, rows: _buildOTRows(list), title: 'طلبات العمل الإضافي',
           grouped: groupByShift,
-          shiftGroups: groupByShift ? _buildShiftGroups(list, _otFullRow) : null,
+          shiftGroups: groupByShift ? _buildOTShiftGroups(list) : null,
           fileName: _buildFileName(shift)
         });
       });
@@ -476,16 +475,13 @@ var Export = (function () {
                 _statusLabel(x.status), x.empNotes||'', x.reviewerName||''];
       };
 
-      // — العمل الإضافي (جميع المراحل) —
-      var otToRow = _otFullRow;
-
       cb({
         comprehensive: true,
         fileName: fileName,
         employees:    { title:'الموظفون',       headers:empHeaders, rows:empList.map(empToRow), grouped:groupByShift, shiftGroups:groupByShift?_buildShiftGroups(empList,empToRow):null },
         leaveBalance: { title:'أرصدة الإجازات', headers:lvHeaders,  rows:empList.map(lvToRow),  grouped:groupByShift, shiftGroups:groupByShift?_buildShiftGroups(empList,lvToRow):null  },
         leaveReqs:    { title:'طلبات الإجازات', headers:lrHeaders,  rows:lrList.map(lrToRow),   grouped:groupByShift, shiftGroups:groupByShift?_buildShiftGroups(lrList,lrToRow):null   },
-        overtime:     { title:'العمل الإضافي',  headers:OT_FULL_HEADERS, rows:otList.map(otToRow), grouped:groupByShift, shiftGroups:groupByShift?_buildShiftGroups(otList,otToRow):null }
+        overtime:     { title:'العمل الإضافي',  headers:OT_FULL_HEADERS, rows:_buildOTRows(otList), grouped:groupByShift, shiftGroups:groupByShift?_buildOTShiftGroups(otList):null }
       });
     });
   }
@@ -589,6 +585,40 @@ var Export = (function () {
       .replace(/"/g,'&quot;');
   }
 
+  // الحالات التي تعني "تم الإرسال في النظام أو ما بعده"
+  function _isSentToSystem(status) {
+    return status === 'تم الإرسال للنظام' ||
+           status === 'تم الاستلام'        ||
+           status === 'لم يتم الاستلام';
+  }
+
+  // بناء صفوف الأوفرتايم مع علامة فاصل بين الجديدة والمرسلة للنظام
+  function _buildOTRows(list) {
+    var pending = list.filter(function(x) { return !_isSentToSystem(x.status); });
+    var sent    = list.filter(function(x) { return  _isSentToSystem(x.status); });
+    var rows = pending.map(_otFullRow);
+    if (sent.length > 0) {
+      rows.push({ __sep__: '▼  تم الإرسال في النظام  —  ' + sent.length + ' طلب  ▼' });
+      sent.forEach(function(x) { rows.push(_otFullRow(x)); });
+    }
+    return rows;
+  }
+
+  // نسخة مُعدَّلة من _buildShiftGroups تستخدم _buildOTRows بدل .map(toRow)
+  function _buildOTShiftGroups(list) {
+    var order  = ['أ','ب','ج','د'];
+    var groups = {};
+    list.forEach(function(item) { var s = item.shift; (groups[s] = groups[s]||[]).push(item); });
+    return order.filter(function(s) { return groups[s] && groups[s].length; }).map(function(s) {
+      var sk = CONFIG.shiftKey(s);
+      return {
+        shift: s, label: CONFIG.SHIFTS[sk].label,
+        color: CONFIG.SHIFTS[sk].color, bg: CONFIG.SHIFTS[sk].bg,
+        rows: _buildOTRows(groups[s])
+      };
+    });
+  }
+
   function _smlStyles() {
     // تعريف الأنماط: [id, bgHex, fgHex, bold, border, fontSize]
     var defs = [
@@ -596,6 +626,8 @@ var Export = (function () {
       ['data',    'FFFFFF', '000000', false, true,  10],
       ['data-alt','F5F5F5', '212121', false, true,  10],
       ['sep',     'FFFFFF', 'FFFFFF', false, false, 6 ],
+      // فاصل "تم الإرسال في النظام"
+      ['ot-sys-sep', 'FFF3CD', '7C4A00', true, true, 10],
       // عناوين الأقسام
       ['hdr-emp', _SEC.emp.bg, _SEC.emp.fg, true, true, 12],
       ['hdr-lv',  _SEC.lv.bg,  _SEC.lv.fg,  true, true, 12],
@@ -691,16 +723,34 @@ var Export = (function () {
 
       if (sec.shiftGroups && sec.shiftGroups.length) {
         sec.shiftGroups.forEach(function(g) {
-          var sk   = _SHIFT_SK[g.shift] || 'a';
+          var sk    = _SHIFT_SK[g.shift] || 'a';
           var shSty = 'shift-' + sk;
           xml += _smlMergedRow('وردية ' + g.label, maxCols, shSty, 20);
-          g.rows.forEach(function(r, ri) {
-            xml += _smlDataRow(r, ri % 2 === 0 ? 'data' : 'data-alt', maxCols);
+          var dataRi = 0;
+          g.rows.forEach(function(r) {
+            if (r && !Array.isArray(r) && r.__sep__) {
+              xml += _smlSepRow(maxCols);
+              xml += _smlMergedRow(r.__sep__, maxCols, 'ot-sys-sep', 20);
+              xml += _smlSepRow(maxCols);
+              dataRi = 0;
+              return;
+            }
+            xml += _smlDataRow(r, dataRi % 2 === 0 ? 'data' : 'data-alt', maxCols);
+            dataRi++;
           });
         });
       } else {
-        (sec.rows || []).forEach(function(r, ri) {
-          xml += _smlDataRow(r, ri % 2 === 0 ? 'data' : 'data-alt', maxCols);
+        var dataRi2 = 0;
+        (sec.rows || []).forEach(function(r) {
+          if (r && !Array.isArray(r) && r.__sep__) {
+            xml += _smlSepRow(maxCols);
+            xml += _smlMergedRow(r.__sep__, maxCols, 'ot-sys-sep', 20);
+            xml += _smlSepRow(maxCols);
+            dataRi2 = 0;
+            return;
+          }
+          xml += _smlDataRow(r, dataRi2 % 2 === 0 ? 'data' : 'data-alt', maxCols);
+          dataRi2++;
         });
       }
 
@@ -916,14 +966,14 @@ var Export = (function () {
       if (statusEl) { statusEl.textContent = ''; statusEl.className = 'export-status'; }
       var list        = r.ok ? r.data : [];
       var allShifts   = ['أ','ب','ج','د'];
-      var shiftGroups = _buildShiftGroups(list, _otFullRow);
+      var shiftGroups = _buildOTShiftGroups(list);
 
       if (format === 'print') {
         _doPrintAdminOvertime(list, shiftGroups, fileName, from, to);
         return;
       }
 
-      // ورقة 1 — شامل
+      // ورقة 1 — شامل (كل الورديات مجمّعة مع فصل المُرسَلة للنظام)
       var sheet1 = {
         name: 'الأوفرتايم الشامل',
         tabColor: '0066B3',
@@ -931,14 +981,14 @@ var Export = (function () {
           key: 'ot',
           title: 'طلبات العمل الإضافي — جميع الورديات' + (from ? ' (' + from + ' → ' + (to||'اليوم') + ')' : ''),
           headers: OT_FULL_HEADERS,
-          rows: list.map(_otFullRow),
+          rows: _buildOTRows(list),
           shiftGroups: shiftGroups
         }]
       };
 
       var sheets = [sheet1];
 
-      // أوراق 2-5 — كل وردية مستقلة
+      // أوراق 2-5 — كل وردية مستقلة مع الفاصل
       allShifts.forEach(function(s) {
         var sk        = CONFIG.shiftKey(s);
         var sc        = CONFIG.SHIFTS[sk] || CONFIG.SHIFTS.a;
@@ -950,7 +1000,7 @@ var Export = (function () {
             key: 'ot',
             title: 'العمل الإضافي — وردية ' + sc.label,
             headers: OT_FULL_HEADERS,
-            rows: shiftList.map(_otFullRow),
+            rows: _buildOTRows(shiftList),
             shiftGroups: null
           }]
         });
@@ -969,15 +1019,21 @@ var Export = (function () {
       return '.shift-' + k + '{background:' + shifts[k].color + ';color:#fff;font-weight:700;text-align:center;padding:8px}';
     }).join('\n');
 
-    // جدول شامل مع تلوين الورديات
+    // جدول شامل مع تلوين الورديات والفاصل بين المُرسَلة وغير المُرسَلة
+    var numCols2  = OT_FULL_HEADERS.length;
     var tableHtml = '';
     shiftGroups.forEach(function(g) {
       var sk = CONFIG.shiftKey(g.shift);
-      tableHtml += '<tr><td colspan="' + OT_FULL_HEADERS.length + '" class="shift-' + sk + '">وردية ' + g.label + '</td></tr>';
+      tableHtml += '<tr><td colspan="' + numCols2 + '" class="shift-' + sk + '">وردية ' + g.label + '</td></tr>';
       g.rows.forEach(function(row) {
+        if (row && !Array.isArray(row) && row.__sep__) {
+          tableHtml += '<tr><td colspan="' + numCols2 + '" class="ot-sys-sep-row">' + row.__sep__ + '</td></tr>';
+          tableHtml += '<tr class="sep-row"><td colspan="' + numCols2 + '"></td></tr>';
+          return;
+        }
         tableHtml += '<tr>' + row.map(function(c) { return '<td>' + (c||'') + '</td>'; }).join('') + '</tr>';
       });
-      tableHtml += '<tr class="sep-row"><td colspan="' + OT_FULL_HEADERS.length + '"></td></tr>';
+      tableHtml += '<tr class="sep-row"><td colspan="' + numCols2 + '"></td></tr>';
     });
 
     var period = from ? ('الفترة: ' + from + (to ? ' → ' + to : '')) : 'جميع الفترات';
@@ -988,6 +1044,7 @@ var Export = (function () {
       'th{background:#0066B3;color:#fff;padding:5px;text-align:center;font-size:10px;border:1px solid #0055a0}' +
       'td{border:1px solid #ccc;padding:3px;text-align:center;font-size:9px}' +
       'tr:nth-child(even){background:#F9FAFB}.sep-row td{height:10px;border:none;background:#fff}' +
+      '.ot-sys-sep-row{background:#FFF3CD;color:#7C4A00;font-weight:700;font-size:9px;padding:4px;border:1px solid #F6C343}' +
       shiftCss +
       '@media print{button{display:none}}</style></head><body>' +
       '<h2>طلبات العمل الإضافي — جميع الورديات</h2>' +
@@ -1050,20 +1107,30 @@ var Export = (function () {
     }).join('\n');
 
     var tableHtml = '';
+    var numCols   = data.headers.length;
     if (data.grouped && data.shiftGroups && data.shiftGroups.length) {
       data.shiftGroups.forEach(function(g) {
         var sk = CONFIG.shiftKey(g.shift);
-        tableHtml +=
-          '<tr><td colspan="' + data.headers.length + '" class="shift-' + sk + '">وردية ' + g.label + '</td></tr>';
+        tableHtml += '<tr><td colspan="' + numCols + '" class="shift-' + sk + '">وردية ' + g.label + '</td></tr>';
         g.rows.forEach(function(row) {
+          if (row && !Array.isArray(row) && row.__sep__) {
+            tableHtml += '<tr><td colspan="' + numCols + '" class="ot-sys-sep-row">' + row.__sep__ + '</td></tr>';
+            tableHtml += '<tr class="sep-row"><td colspan="' + numCols + '"></td></tr>';
+            return;
+          }
           tableHtml += '<tr>' + row.map(function(c) { return '<td>' + (c||'') + '</td>'; }).join('') + '</tr>';
         });
-        tableHtml += '<tr class="sep-row"><td colspan="' + data.headers.length + '"></td></tr>';
+        tableHtml += '<tr class="sep-row"><td colspan="' + numCols + '"></td></tr>';
       });
     } else {
-      tableHtml = data.rows.map(function(row) {
-        return '<tr>' + row.map(function(c) { return '<td>' + (c||'') + '</td>'; }).join('') + '</tr>';
-      }).join('');
+      data.rows.forEach(function(row) {
+        if (row && !Array.isArray(row) && row.__sep__) {
+          tableHtml += '<tr><td colspan="' + numCols + '" class="ot-sys-sep-row">' + row.__sep__ + '</td></tr>';
+          tableHtml += '<tr class="sep-row"><td colspan="' + numCols + '"></td></tr>';
+          return;
+        }
+        tableHtml += '<tr>' + row.map(function(c) { return '<td>' + (c||'') + '</td>'; }).join('') + '</tr>';
+      });
     }
 
     win.document.write(_printHtml(data.title, data.headers, tableHtml, shiftCss));
@@ -1090,20 +1157,30 @@ var Export = (function () {
       allHtml += '<h2 class="section-title-print">' + sec.title + '</h2>';
 
       var tableHtml = '';
+      var nc = sec.headers.length;
       if (sec.grouped && sec.shiftGroups && sec.shiftGroups.length) {
         sec.shiftGroups.forEach(function(g) {
           var sk = CONFIG.shiftKey(g.shift);
-          tableHtml +=
-            '<tr><td colspan="' + sec.headers.length + '" class="shift-' + sk + '">وردية ' + g.label + '</td></tr>';
+          tableHtml += '<tr><td colspan="' + nc + '" class="shift-' + sk + '">وردية ' + g.label + '</td></tr>';
           g.rows.forEach(function(row) {
+            if (row && !Array.isArray(row) && row.__sep__) {
+              tableHtml += '<tr><td colspan="' + nc + '" class="ot-sys-sep-row">' + row.__sep__ + '</td></tr>';
+              tableHtml += '<tr class="sep-row"><td colspan="' + nc + '"></td></tr>';
+              return;
+            }
             tableHtml += '<tr>' + row.map(function(c) { return '<td>' + (c||'') + '</td>'; }).join('') + '</tr>';
           });
-          tableHtml += '<tr class="sep-row"><td colspan="' + sec.headers.length + '"></td></tr>';
+          tableHtml += '<tr class="sep-row"><td colspan="' + nc + '"></td></tr>';
         });
       } else {
-        tableHtml = sec.rows.map(function(row) {
-          return '<tr>' + row.map(function(c) { return '<td>' + (c||'') + '</td>'; }).join('') + '</tr>';
-        }).join('');
+        sec.rows.forEach(function(row) {
+          if (row && !Array.isArray(row) && row.__sep__) {
+            tableHtml += '<tr><td colspan="' + nc + '" class="ot-sys-sep-row">' + row.__sep__ + '</td></tr>';
+            tableHtml += '<tr class="sep-row"><td colspan="' + nc + '"></td></tr>';
+            return;
+          }
+          tableHtml += '<tr>' + row.map(function(c) { return '<td>' + (c||'') + '</td>'; }).join('') + '</tr>';
+        });
       }
 
       allHtml +=
@@ -1124,6 +1201,7 @@ var Export = (function () {
       'tr:nth-child(even){background:#F9FAFB}' +
       '.sep-row td{height:10px;border:none;background:#fff}' +
       '.section-sep{height:24px}' +
+      '.ot-sys-sep-row{background:#FFF3CD;color:#7C4A00;font-weight:700;font-size:10px;padding:5px;border:1px solid #F6C343}' +
       shiftCss +
       '@media print{button{display:none}.section-sep{page-break-before:always;height:0}}' +
       '</style></head><body>' +
@@ -1146,6 +1224,7 @@ var Export = (function () {
       'th{background:#0066B3;color:#fff;padding:6px;text-align:center;font-size:11px;border:1px solid #0055a0}' +
       'td{border:1px solid #ccc;padding:4px;text-align:center;font-size:10px}' +
       'tr:nth-child(even){background:#F9FAFB}.sep-row td{height:12px;border:none;background:#fff}' +
+      '.ot-sys-sep-row{background:#FFF3CD;color:#7C4A00;font-weight:700;font-size:10px;padding:5px;border:1px solid #F6C343}' +
       shiftCss +
       '@media print{button{display:none}}</style></head><body>' +
       '<h2>' + title + '</h2>' +
