@@ -8,13 +8,39 @@ var Export = (function () {
   // شريط التصدير المدمج (للموظفين / الإجازات / الأوفرتايم)
   // ============================================================
   function inlineBar(type, shift) {
-    var s = shift || '';
+    var s   = shift || '';
+    var uid = 'eib_' + type + (s ? '_' + s.charCodeAt(0) : '');
     return '<div class="export-inline-bar">' +
       '<span class="eib-label">📤 تصدير:</span>' +
-      '<button class="btn-exp-sm btn-exp-xl" onclick="Export.quickExport(\'' + type + '\',\'' + s + '\',\'excel\')">📊 Excel</button>' +
-      '<button class="btn-exp-sm btn-exp-pdf" onclick="Export.quickExport(\'' + type + '\',\'' + s + '\',\'pdf\')">📄 PDF</button>' +
-      '<button class="btn-exp-sm btn-exp-pr"  onclick="Export.quickExport(\'' + type + '\',\'' + s + '\',\'print\')">🖨️ طباعة</button>' +
+      '<div class="eib-dates">' +
+        '<input type="date" id="' + uid + '_from" class="eib-date-input" title="من تاريخ">' +
+        '<span class="eib-date-arrow">←</span>' +
+        '<input type="date" id="' + uid + '_to"   class="eib-date-input" title="إلى تاريخ">' +
+        '<button class="eib-period-btn" onclick="Export.setInlineDate(\'' + uid + '\',\'month\')">شهر</button>' +
+        '<button class="eib-period-btn" onclick="Export.setInlineDate(\'' + uid + '\',\'year\')">سنة</button>' +
+        '<button class="eib-period-btn" onclick="Export.setInlineDate(\'' + uid + '\',\'all\')">الكل</button>' +
+      '</div>' +
+      '<button class="btn-exp-sm btn-exp-xl"  onclick="Export.quickExport(\'' + type + '\',\'' + s + '\',\'excel\',\'' + uid + '\')">📊 Excel</button>' +
+      '<button class="btn-exp-sm btn-exp-pdf" onclick="Export.quickExport(\'' + type + '\',\'' + s + '\',\'pdf\',\''   + uid + '\')">📄 PDF</button>' +
+      '<button class="btn-exp-sm btn-exp-pr"  onclick="Export.quickExport(\'' + type + '\',\'' + s + '\',\'print\',\'' + uid + '\')">🖨️ طباعة</button>' +
     '</div>';
+  }
+
+  function setInlineDate(uid, period) {
+    var today = new Date();
+    var from = '', to = _dateStr(today);
+    if (period === 'month') {
+      from = _dateStr(new Date(today.getFullYear(), today.getMonth(), 1));
+    } else if (period === 'year') {
+      var d = new Date(today); d.setFullYear(d.getFullYear() - 1);
+      from = _dateStr(d);
+    } else {
+      from = ''; to = '';
+    }
+    var fEl = document.getElementById(uid + '_from');
+    var tEl = document.getElementById(uid + '_to');
+    if (fEl) fEl.value = from;
+    if (tEl) tEl.value = to;
   }
 
   // ============================================================
@@ -24,10 +50,49 @@ var Export = (function () {
     var el = document.getElementById(containerId);
     if (!el) return;
     var role    = Auth.getEffectiveRole();
-    var isAdmin = role === 'مدير' || role === 'اداري';
+    var isCoord = role === 'اداري';
+    var isAdmin = role === 'مدير' || isCoord;
     var isSup   = role === 'مشرف';
 
-    // حقل الوردية حسب الدور
+    // ===== الإداري (التنسيق الإداري): لوحة مخصصة للأوفرتايم 5 أوراق =====
+    if (isCoord) {
+      el.innerHTML =
+        '<div class="export-panel card">' +
+          '<h3 class="section-title">تصدير بيانات العمل الإضافي</h3>' +
+          '<p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:12px">يُصدَّر ملف Excel بـ 5 أوراق: جدول شامل لجميع الورديات + ورقة مستقلة لكل وردية</p>' +
+
+          '<div class="form-grid">' +
+            '<div class="form-field"><label>من تاريخ</label>' +
+              '<input type="date" id="exp-from" class="form-input" onchange="Export.updateFileName()">' +
+            '</div>' +
+            '<div class="form-field"><label>إلى تاريخ</label>' +
+              '<input type="date" id="exp-to" class="form-input" onchange="Export.updateFileName()">' +
+            '</div>' +
+          '</div>' +
+
+          '<div class="export-period-btns">' +
+            '<span class="period-label">الفترة:</span>' +
+            '<button class="btn-period" onclick="Export.setDateRange(\'month\')">هذا الشهر</button>' +
+            '<button class="btn-period" onclick="Export.setDateRange(\'half\')">6 أشهر</button>' +
+            '<button class="btn-period" onclick="Export.setDateRange(\'year\')">سنة كاملة</button>' +
+            '<button class="btn-period" onclick="Export.clearDates()">كل التواريخ</button>' +
+          '</div>' +
+
+          '<div class="export-filename-row">' +
+            '<span class="filename-label">اسم الملف:</span>' +
+            '<span id="exp-filename-preview" class="filename-preview">أوفرتايم_إداري_' + CONFIG.todayStr() + '.xls</span>' +
+          '</div>' +
+
+          '<div class="export-buttons">' +
+            '<button class="btn-export btn-excel" onclick="Export.exportAdminOvertime()">📊 تصدير 5 أوراق Excel</button>' +
+            '<button class="btn-export btn-print" onclick="Export.exportAdminOvertimePrint()">🖨️ طباعة / PDF</button>' +
+          '</div>' +
+          '<div id="exp-status" class="export-status"></div>' +
+        '</div>';
+      return;
+    }
+
+    // ===== باقي الأدوار =====
     var shiftField = '';
     if (isAdmin) {
       var shiftOpts = '<option value="">كل الورديات</option>' +
@@ -54,11 +119,9 @@ var Export = (function () {
           '</div>' +
         '</div>';
     } else {
-      // موظف — لا يصل للوحة التصدير عادةً، لكن احتياطاً
       shiftField = '<input type="hidden" id="exp-shift" value="">';
     }
 
-    // أنواع البيانات حسب الدور
     var typeOptions = '';
     if (isAdmin) {
       typeOptions =
@@ -74,7 +137,6 @@ var Export = (function () {
       typeOptions = '<option value="overtime">طلبات العمل الإضافي الخاصة بي</option>';
     }
 
-    // التصدير الشامل — للمدير والإداري فقط
     var compRow = isAdmin
       ? '<div class="export-comprehensive-row">' +
           '<label class="checkbox-label">' +
@@ -222,12 +284,20 @@ var Export = (function () {
   // ============================================================
   // تصدير سريع (من الصفحة مباشرة)
   // ============================================================
-  function quickExport(type, shift, format) {
+  function quickExport(type, shift, format, uid) {
+    var from = '', to = '';
+    if (uid) {
+      var fEl = document.getElementById(uid + '_from');
+      var tEl = document.getElementById(uid + '_to');
+      from = fEl ? fEl.value : '';
+      to   = tEl ? tEl.value : '';
+    }
     _quickGetData(type, shift, function(data) {
+      data.from = from; data.to = to;
       if (format === 'excel') _doExcel(data);
       else if (format === 'pdf') _doPDF(data);
       else _doPrint(data);
-    });
+    }, from, to);
   }
 
   // ============================================================
@@ -829,6 +899,110 @@ var Export = (function () {
   }
 
   // ============================================================
+  // تصدير الأوفرتايم الإداري — 5 أوراق
+  // ورقة 1: شامل (كل الورديات، كل وردية بلونها + صف فراغ فاصل)
+  // أوراق 2-5: ورقة مستقلة لكل وردية
+  // ============================================================
+  function _doAdminOvertimeExport(format) {
+    var from     = _val('exp-from') || '';
+    var to       = _val('exp-to')   || '';
+    var dateSfx  = from ? (from + (to ? '_' + to : '')) : CONFIG.todayStr();
+    var fileName = 'أوفرتايم_إداري_' + dateSfx;
+
+    var statusEl = document.getElementById('exp-status');
+    if (statusEl) { statusEl.textContent = 'جارٍ تجميع البيانات...'; statusEl.className = 'export-status loading'; }
+
+    API.getOvertimeReqs({ from: from, to: to }).then(function(r) {
+      if (statusEl) { statusEl.textContent = ''; statusEl.className = 'export-status'; }
+      var list        = r.ok ? r.data : [];
+      var allShifts   = ['أ','ب','ج','د'];
+      var shiftGroups = _buildShiftGroups(list, _otFullRow);
+
+      if (format === 'print') {
+        _doPrintAdminOvertime(list, shiftGroups, fileName, from, to);
+        return;
+      }
+
+      // ورقة 1 — شامل
+      var sheet1 = {
+        name: 'الأوفرتايم الشامل',
+        tabColor: '0066B3',
+        sections: [{
+          key: 'ot',
+          title: 'طلبات العمل الإضافي — جميع الورديات' + (from ? ' (' + from + ' → ' + (to||'اليوم') + ')' : ''),
+          headers: OT_FULL_HEADERS,
+          rows: list.map(_otFullRow),
+          shiftGroups: shiftGroups
+        }]
+      };
+
+      var sheets = [sheet1];
+
+      // أوراق 2-5 — كل وردية مستقلة
+      allShifts.forEach(function(s) {
+        var sk        = CONFIG.shiftKey(s);
+        var sc        = CONFIG.SHIFTS[sk] || CONFIG.SHIFTS.a;
+        var shiftList = list.filter(function(x) { return x.shift === s; });
+        sheets.push({
+          name: 'وردية ' + sc.label,
+          tabColor: sc.color.replace('#',''),
+          sections: [{
+            key: 'ot',
+            title: 'العمل الإضافي — وردية ' + sc.label,
+            headers: OT_FULL_HEADERS,
+            rows: shiftList.map(_otFullRow),
+            shiftGroups: null
+          }]
+        });
+      });
+
+      _smlDownload(sheets, fileName);
+    });
+  }
+
+  function exportAdminOvertime()      { _doAdminOvertimeExport('excel'); }
+  function exportAdminOvertimePrint() { _doAdminOvertimeExport('print'); }
+
+  function _doPrintAdminOvertime(list, shiftGroups, fileName, from, to) {
+    var shifts   = CONFIG.SHIFTS;
+    var shiftCss = Object.keys(shifts).map(function(k) {
+      return '.shift-' + k + '{background:' + shifts[k].color + ';color:#fff;font-weight:700;text-align:center;padding:8px}';
+    }).join('\n');
+
+    // جدول شامل مع تلوين الورديات
+    var tableHtml = '';
+    shiftGroups.forEach(function(g) {
+      var sk = CONFIG.shiftKey(g.shift);
+      tableHtml += '<tr><td colspan="' + OT_FULL_HEADERS.length + '" class="shift-' + sk + '">وردية ' + g.label + '</td></tr>';
+      g.rows.forEach(function(row) {
+        tableHtml += '<tr>' + row.map(function(c) { return '<td>' + (c||'') + '</td>'; }).join('') + '</tr>';
+      });
+      tableHtml += '<tr class="sep-row"><td colspan="' + OT_FULL_HEADERS.length + '"></td></tr>';
+    });
+
+    var period = from ? ('الفترة: ' + from + (to ? ' → ' + to : '')) : 'جميع الفترات';
+    var html = '<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>' + fileName + '</title><style>' +
+      'body{font-family:Arial,sans-serif;font-size:10px;margin:12px}' +
+      'h2{color:#0066B3;margin-bottom:4px}p.meta{color:#666;font-size:9px;margin-bottom:10px}' +
+      'table{border-collapse:collapse;width:100%}' +
+      'th{background:#0066B3;color:#fff;padding:5px;text-align:center;font-size:10px;border:1px solid #0055a0}' +
+      'td{border:1px solid #ccc;padding:3px;text-align:center;font-size:9px}' +
+      'tr:nth-child(even){background:#F9FAFB}.sep-row td{height:10px;border:none;background:#fff}' +
+      shiftCss +
+      '@media print{button{display:none}}</style></head><body>' +
+      '<h2>طلبات العمل الإضافي — جميع الورديات</h2>' +
+      '<p class="meta">تاريخ التصدير: ' + CONFIG.todayStr() + ' | ' + period + '</p>' +
+      '<button onclick="window.print()" style="margin-bottom:10px;padding:5px 18px;background:#0066B3;color:#fff;border:none;border-radius:4px;cursor:pointer">🖨️ طباعة</button>' +
+      '<table><thead><tr>' + OT_FULL_HEADERS.map(function(h) { return '<th>' + h + '</th>'; }).join('') + '</tr></thead>' +
+      '<tbody>' + tableHtml + '</tbody></table>' +
+      '</body></html>';
+
+    var win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close(); win.focus();
+  }
+
+  // ============================================================
   // تصدير PDF
   // ============================================================
   function _doPDF(data) {
@@ -1019,15 +1193,18 @@ var Export = (function () {
     var user = Auth.getUser();
     if (!user) return;
     var empName  = user.name || 'موظف';
-    var fileName = empName + '_' + CONFIG.todayStr();
+    var from     = _val('exp-from') || '';
+    var to       = _val('exp-to')   || '';
+    var dateSfx  = from ? '_' + from + (to ? '_' + to : '') : '';
+    var fileName = empName + dateSfx + '_' + CONFIG.todayStr();
 
     var T_LV  = { annual:'سنوية',scheduled:'مجدولة',sick:'مرضية',birth:'مولود',death:'وفاة',marriage:'زواج',exam:'اختبار',work_course:'دورة',long_service:'خدمة' };
     var T_ST  = { pending_review:'قيد المراجعة', approved:'معتمد', rejected:'مرفوض' };
 
     Promise.all([
       API.getLeaves(),
-      API.getLeaveReqs({ from:'', to:'' }),
-      API.getOvertimeReqs({ from:'', to:'' })
+      API.getLeaveReqs({ from: from, to: to }),
+      API.getOvertimeReqs({ from: from, to: to })
     ]).then(function(r) {
       var lvList = (r[0].ok && r[0].data.length) ? [r[0].data[0]] : [];
       var lrList = r[1].ok ? r[1].data : [];
@@ -1083,6 +1260,9 @@ var Export = (function () {
     exportDirect,
     getComprehensiveData,
     exportEmployee,
+    exportAdminOvertime,
+    exportAdminOvertimePrint,
+    setInlineDate,
     OT_FULL_HEADERS: OT_FULL_HEADERS,
     otFullRow: _otFullRow
   };
