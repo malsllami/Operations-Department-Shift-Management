@@ -200,16 +200,17 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 
 /* ---- الشريط الجانبي ---- */
 #sidebar {
-  width: var(--sidebar-w); height: 100vh; height: 100dvh;
+  width: var(--sidebar-w);
+  height: 100vh; height: 100dvh;
   background: var(--bg-sidebar);
   display: flex; flex-direction: column;
   position: fixed; top: 0; right: 0; z-index: 100;
-  overflow: hidden;
   transition: transform var(--transition);
 }
 
 .sidebar-logo {
   padding: 16px 14px;
+  flex-shrink: 0;
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 .sidebar-logo-inner {
@@ -221,8 +222,19 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 }
 
 #sidebar-nav {
-  flex: 1; min-height: 0; padding: 12px 8px; overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  padding: 12px 8px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.25) transparent;
 }
+#sidebar-nav::-webkit-scrollbar        { width: 4px; }
+#sidebar-nav::-webkit-scrollbar-track  { background: transparent; }
+#sidebar-nav::-webkit-scrollbar-thumb  { background: rgba(255,255,255,0.25); border-radius: 4px; }
+#sidebar-nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.45); }
 
 .nav-item {
   display: flex; align-items: center; gap: 12px;
@@ -245,10 +257,11 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 }
 
 .sidebar-bottom {
-  padding: 12px 8px; border-top: 1px solid rgba(255,255,255,0.08);
+  flex-shrink: 0;
+  padding: 12px 8px;
+  border-top: 1px solid rgba(255,255,255,0.08);
   display: flex; flex-direction: column; gap: 6px;
-  flex-shrink: 0;   /* يمنع التقلص — يظل ظاهرًا دائمًا */
-  position: sticky; bottom: 0; background: var(--bg-sidebar);
+  background: var(--bg-sidebar);
 }
 .sidebar-bottom button {
   width: 100%; padding: 10px 14px;
