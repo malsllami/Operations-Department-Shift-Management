@@ -200,10 +200,11 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 
 /* ---- الشريط الجانبي ---- */
 #sidebar {
-  width: var(--sidebar-w); min-height: 100vh;
+  width: var(--sidebar-w); height: 100vh; height: 100dvh;
   background: var(--bg-sidebar);
   display: flex; flex-direction: column;
   position: fixed; top: 0; right: 0; z-index: 100;
+  overflow: hidden;
   transition: transform var(--transition);
 }
 
@@ -1549,6 +1550,7 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
   #sidebar {
     transform: translateX(110%);
     width: 270px;
+    height: 100vh; height: 100dvh;
     box-shadow: none;
     transition: transform 0.3s cubic-bezier(.4,0,.2,1), box-shadow 0.3s;
   }
