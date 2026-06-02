@@ -692,7 +692,7 @@ var App = (function () {
             html += '<div class="rgm-emp-row" style="border-right: 4px solid ' + emp.sc.color + '; background: ' + emp.sc.bg + '20">' +
               '<div class="rgm-emp-info">' +
                 '<span class="rgm-emp-name">' + emp.name + '</span>' +
-                '<span class="rgm-emp-shift" style="background:' + emp.sc.color + ';color:#fff">وردية ' + emp.sc.label + '</span>' +
+                '<span class="rgm-emp-shift" style="background:' + emp.sc.color + ';color:#fff">' + emp.sc.label + '</span>' +
               '</div>' +
               '<div class="rgm-emp-badges">' +
                 (emp.onLeave
