@@ -55,8 +55,10 @@ var API = (function () {
     return _call({ action:'getSettings' });
   }
 
-  function updateSettings(settings) {
-    return _call({ action:'updateSettings', settings: JSON.stringify(settings) });
+  function updateSettings(settings, descs) {
+    var p = { action:'updateSettings', settings: JSON.stringify(settings) };
+    if (descs) p.descs = JSON.stringify(descs);
+    return _call(p);
   }
 
   // ---- الموظفون ----
