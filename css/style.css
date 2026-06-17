@@ -428,6 +428,13 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 .api-gauge-labels { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .api-count { color: var(--text-muted); font-size: 0.9rem; }
 .api-gauge-zones { display: flex; justify-content: space-between; font-size: 0.78rem; }
+.api-present-stat {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #EFF6FF; border: 1px solid #BFDBFE;
+  color: #1D4ED8; border-radius: 8px; padding: 5px 12px;
+  font-size: 0.88rem; font-weight: 600; margin-bottom: 12px;
+}
+.api-present-icon { font-size: 1rem; }
 
 .api-week-cards { display: flex; gap: 8px; margin-top: 16px; align-items: flex-end; }
 .api-day-card { flex: 1; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; }
