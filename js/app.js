@@ -369,6 +369,7 @@ var App = (function () {
       { id:'profile',       icon:'👤', label:'ملفي الشخصي',          show: true },
       { id:'employee-card', icon:'🪪', label:'بطاقة الموظف الشاملة', show: true },
       { id:'regions-map',   icon:'🗺️', label:'المناطق والمراكز',     show: true },
+      { id:'substations',   icon:'⚡', label:'خريطة المحطات',        show: true },
       { id:'settings',      icon:'⚙️', label:'الإعدادات',            show: role==='مدير' }
     ];
 
@@ -533,7 +534,7 @@ var App = (function () {
       overtime:'العمل الإضافي', 'overtime-form':'طلب عمل إضافي',
       transfers:'التنقلات بين الورديات', notifications:'الإشعارات',
       export:'تصدير البيانات', settings:'الإعدادات', profile:'ملفي الشخصي',
-      'regions-map':'المناطق والمراكز', 'profile-pw':'تغيير كلمة المرور'
+      'regions-map':'المناطق والمراكز', 'substations':'خريطة المحطات', 'profile-pw':'تغيير كلمة المرور'
     };
 
     main.innerHTML = '<div class="view-header"><h1 class="view-title">' + (titles[viewName]||viewName) + '</h1></div>' +
@@ -551,6 +552,7 @@ var App = (function () {
       case 'overtime':       Overtime.renderList('view-content'); break;
       case 'overtime-form':  Overtime.renderForm('view-content'); break;
       case 'regions-map':    _renderRegionsMap('view-content'); break;
+      case 'substations':    Maps.render('view-content'); break;
       case 'transfers':      _renderTransfers('view-content'); break;
       case 'notifications':  Notifications.render('view-content'); break;
       case 'export':         Export.renderExportPanel('view-content'); break;
