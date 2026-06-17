@@ -594,7 +594,10 @@ var Dashboard = (function () {
       var color = pct >= 96 ? '#EF4444' : pct >= 76 ? '#F97316' : pct >= 61 ? '#EAB308' : '#22C55E';
       var limit = d.limit || 20000;
 
-      var html = '<h3 class="dash-card-title">📊 بطاقة الاستهلاك — طلبات API اليومية (الحد الأقصى ' + limit.toLocaleString() + ')</h3>';
+      var presentBadge = (d.present != null && d.present > 0)
+        ? '<div class="api-present-stat"><span class="api-present-icon">👷</span><span>' + d.present + ' موظف في الخدمة الآن</span></div>'
+        : '';
+      var html = '<h3 class="dash-card-title">📊 بطاقة الاستهلاك — طلبات API اليومية (الحد الأقصى ' + limit.toLocaleString() + ')</h3>' + presentBadge;
       html += '<div class="api-gauge-container">' +
         '<div class="api-gauge-bar"><div class="api-gauge-fill" style="width:' + pct + '%;background:' + color + '"></div></div>' +
         '<div class="api-gauge-labels">' +
