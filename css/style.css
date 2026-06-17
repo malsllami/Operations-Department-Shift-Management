@@ -2731,3 +2731,69 @@ input, select, textarea {
     padding: 8px 10px !important;
   }
 }
+
+/* ============================================================
+   خريطة المحطات — Bridge Page
+   ============================================================ */
+
+.maps-bridge-page { display:flex; flex-direction:column; gap:16px; }
+
+/* ---- تحذير الإعداد ---- */
+.maps-bridge-warn {
+  background:#FEF3C7; border:1.5px solid #FDE68A;
+  color:#92400E; border-radius:12px; padding:12px 16px;
+  font-size:0.88rem;
+}
+.maps-bridge-warn code {
+  background:#FDE68A; padding:1px 6px; border-radius:4px; font-size:0.85em;
+}
+
+/* ---- قسم البحث الرئيسي ---- */
+.maps-bridge-search-section {
+  background:var(--bg-card); border-radius:14px;
+  border:1.5px solid var(--border); padding:20px;
+}
+.maps-bridge-title {
+  font-size:1rem; font-weight:700; color:var(--text);
+  margin-bottom:12px;
+}
+.maps-bridge-search-wrap { margin-bottom:14px; }
+.maps-bridge-input {
+  width:100%; padding:11px 16px;
+  background:var(--bg); border:1.5px solid var(--border);
+  border-radius:10px; font-size:1rem; color:var(--text);
+  font-family:inherit; transition:border-color 0.2s;
+}
+.maps-bridge-input:focus { outline:none; border-color:#0066B3; }
+
+/* ---- أزرار الإجراءات ---- */
+.maps-bridge-btns { display:flex; gap:8px; flex-wrap:wrap; }
+.maps-bridge-btn {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:10px 18px; border:none; border-radius:9px;
+  font-family:inherit; font-size:0.92rem; font-weight:700;
+  cursor:pointer; transition:transform 0.15s, box-shadow 0.15s;
+}
+.maps-bridge-btn:hover { transform:translateY(-2px); box-shadow:0 6px 16px rgba(0,0,0,0.18); }
+.mbb-search { background:#E8A54B; color:#fff; }
+.mbb-dist   { background:#22C55E; color:#fff; }
+.mbb-sub    { background:#3B82F6; color:#fff; }
+.mbb-fault  { background:#EF4444; color:#fff; }
+
+/* ---- بطاقة معلومات الجوال ---- */
+.maps-bridge-info-card {
+  background:var(--bg-card); border-radius:12px;
+  border:1.5px solid var(--border); padding:14px 16px;
+  font-size:0.88rem;
+}
+.mb-info-row {
+  display:flex; align-items:center; gap:10px; color:var(--text-muted);
+}
+.mb-info-icon { font-size:1.1rem; flex-shrink:0; }
+.mb-info-warn { color:#B45309; }
+
+/* ---- جوال ---- */
+@media (max-width: 600px) {
+  .maps-bridge-btns { gap:6px; }
+  .maps-bridge-btn  { padding:9px 13px; font-size:0.82rem; }
+}
