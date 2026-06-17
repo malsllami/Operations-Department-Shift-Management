@@ -5,8 +5,14 @@
 
 var CONFIG = {
 
-  // رابط Google Apps Script Web App
+  // رابط Google Apps Script Web App — نظام الورديات
   API_URL: 'https://script.google.com/macros/s/AKfycbwIxS7S7erKzAwdAyseTD0iEUWPyGBg60s3Bz0Z_YAOw-Orl7yyXn6vT281H4Fb5asWGg/exec',
+
+  // رابط Google Apps Script — خريطة المحطات (ملف منفصل)
+  MAPS_API_URL: 'https://script.google.com/macros/s/AKfycbxGopljlI-_c9OYYGIL6AVvTjj4F7HxA_r-_7dQ0DiHw0H9y18r8Jl6lMWgyIPmX8Q/exec',
+
+  // رابط موقع خريطة المحطات (GitHub Pages) — ضع رابطك هنا
+  MAPS_SITE_URL: 'https://malsllami.github.io/Maps-of-Substations/',
 
   // ---- ألوان الشعار (السعودية للطاقة) ----
   BRAND: {
