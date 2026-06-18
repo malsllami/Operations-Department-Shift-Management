@@ -51,6 +51,15 @@ var Calendar = (function () {
         '.csp-ico { display:block !important; text-align:center; font-size:0.8rem; line-height:1.5; }' +
       '}' +
 
+      // ---- أزرار فلتر الورديات ----
+      // كل زر: اسم الوردية + أيقونة الحالة في نفس السطر
+      '.shift-btn { display:inline-flex !important; align-items:center; gap:5px; height:36px; padding:0 13px; border-radius:50px; cursor:pointer; font-family:inherit; flex-shrink:0; white-space:nowrap; transition:background 0.15s, color 0.15s; }' +
+      // "وردية " يختفي في الجوال — يبقى الحرف + الأيقونة فقط
+      '.sfb-pre { font-size:0.82rem; font-weight:600; transition:color 0.15s; }' +
+      '.sfb-ltr { font-size:0.92rem; font-weight:800; transition:color 0.15s; }' +
+      '.sfb-ico { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; border:1.5px solid; font-size:0.82rem; line-height:1; flex-shrink:0; transition:background 0.15s, border-color 0.15s; }' +
+      '@media(max-width:600px) { .sfb-pre { display:none !important; } .shift-btn { padding:0 10px; gap:4px; } }' +
+
       // ---- زر اليوم ----
       '.cal-today-btn { padding:3px 12px; border:1.5px solid var(--primary); border-radius:50px; font-size:0.75rem; font-weight:700; cursor:pointer; background:transparent; color:var(--primary); line-height:1.6; }' +
       '.cal-today-btn:active { background:var(--primary); color:#fff; }';
@@ -148,20 +157,29 @@ var Calendar = (function () {
         _legendPill(sc_o.badge, sc_o.icon, sc_o.label) +
       '</div>';
 
-    // أزرار الفلتر — دوائر مدمجة (حرف الوردية + لون الوردية فقط)
-    // بدون حالة اليوم داخل الزر حتى لا تتكدس في الجوال
+    // أزرار الفلتر — اسم الوردية + أيقونة الحالة في نفس السطر (ديناميكي)
+    // على الجوال: يختفي "وردية " ويبقى الحرف + الأيقونة فقط
+    var todayStr = CONFIG.todayStr();
     var shiftBtns =
       '<button class="shift-btn active" data-shift="all"' +
-      ' style="height:36px;padding:0 16px;border:none;border-radius:50px;font-size:0.85rem;font-weight:700;cursor:pointer;background:var(--primary);color:#fff;white-space:nowrap;flex-shrink:0">' +
+      ' style="border:2px solid var(--primary);background:var(--primary);color:#fff;font-size:0.85rem;font-weight:700">' +
       'الكل</button>';
     ['a','b','c','d'].forEach(function(sk) {
-      var shift = CONFIG.SHIFTS[sk];
+      var shift  = CONFIG.SHIFTS[sk];
+      var todaySt = CONFIG.getShiftStatus(shift.label, todayStr);
+      var sc      = CONFIG.STATUS[todaySt.en] || CONFIG.STATUS.off;
+      var r = parseInt(sc.badge.slice(1,3),16);
+      var g = parseInt(sc.badge.slice(3,5),16);
+      var bv= parseInt(sc.badge.slice(5,7),16);
       shiftBtns +=
         '<button class="shift-btn" data-shift="' + sk + '"' +
-        ' style="width:36px;height:36px;border:2px solid ' + shift.color + ';border-radius:50%;' +
-          'font-size:1rem;font-weight:800;cursor:pointer;background:transparent;color:' + shift.color + ';' +
-          'display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0">' +
-        shift.label +
+        ' data-sc="' + shift.color + '" data-ic="' + sc.badge + '"' +
+        ' style="border:2px solid ' + shift.color + ';background:transparent">' +
+          '<span class="sfb-pre" style="color:' + shift.color + '">وردية </span>' +
+          '<span class="sfb-ltr" style="color:' + shift.color + '">' + shift.label + '</span>' +
+          '<span class="sfb-ico" style="color:' + sc.badge + ';background:rgba(' + r + ',' + g + ',' + bv + ',0.15);border-color:rgba(' + r + ',' + g + ',' + bv + ',0.45)">' +
+            sc.icon +
+          '</span>' +
         '</button>';
     });
 
@@ -216,34 +234,56 @@ var Calendar = (function () {
     el.querySelectorAll('.shift-btn').forEach(function(btn) {
       btn.onclick = function() {
         _selectedShift = this.dataset.shift;
+
         // إعادة كل الأزرار للحالة الغير نشطة
         el.querySelectorAll('.shift-btn').forEach(function(b) {
           var bSk = b.dataset.shift;
           b.classList.remove('active');
           if (bSk === 'all') {
             b.style.background = 'transparent';
-            b.style.color      = 'var(--primary)';
             b.style.border     = '2px solid var(--primary)';
+            b.style.color      = 'var(--primary)';
           } else {
-            var bColor = CONFIG.SHIFTS[bSk] ? CONFIG.SHIFTS[bSk].color : '#999';
+            var bColor = b.dataset.sc || '#999';
             b.style.background = 'transparent';
-            b.style.color      = bColor;
             b.style.border     = '2px solid ' + bColor;
+            var pre = b.querySelector('.sfb-pre');
+            var ltr = b.querySelector('.sfb-ltr');
+            if (pre) pre.style.color = bColor;
+            if (ltr) ltr.style.color = bColor;
+            // إعادة أيقونة الحالة للحالة الطبيعية
+            var ico = b.querySelector('.sfb-ico');
+            if (ico && b.dataset.ic) {
+              var r=parseInt(b.dataset.ic.slice(1,3),16), g=parseInt(b.dataset.ic.slice(3,5),16), bv=parseInt(b.dataset.ic.slice(5,7),16);
+              ico.style.background    = 'rgba(' + r + ',' + g + ',' + bv + ',0.15)';
+              ico.style.borderColor   = 'rgba(' + r + ',' + g + ',' + bv + ',0.45)';
+              ico.style.color         = b.dataset.ic;
+            }
           }
         });
+
         // تفعيل الزر المختار
         this.classList.add('active');
         if (this.dataset.shift === 'all') {
           this.style.background = 'var(--primary)';
+          this.style.border     = '2px solid var(--primary)';
           this.style.color      = '#fff';
-          this.style.border     = 'none';
         } else {
-          var activeSk = this.dataset.shift;
-          var activeColor = CONFIG.SHIFTS[activeSk] ? CONFIG.SHIFTS[activeSk].color : '#999';
-          this.style.background = activeColor;
-          this.style.color      = '#fff';
-          this.style.border     = '2px solid ' + activeColor;
+          var aColor = this.dataset.sc || '#999';
+          this.style.background = aColor;
+          this.style.border     = '2px solid ' + aColor;
+          var aPre = this.querySelector('.sfb-pre');
+          var aLtr = this.querySelector('.sfb-ltr');
+          if (aPre) aPre.style.color = '#fff';
+          if (aLtr) aLtr.style.color = '#fff';
+          // الأيقونة تصبح بخلفية بيضاء شفافة لتبرز على لون الوردية
+          var aIco = this.querySelector('.sfb-ico');
+          if (aIco) {
+            aIco.style.background  = 'rgba(255,255,255,0.88)';
+            aIco.style.borderColor = 'rgba(255,255,255,0.5)';
+          }
         }
+
         if (_scheduleData) _renderDays(_scheduleData);
       };
     });
