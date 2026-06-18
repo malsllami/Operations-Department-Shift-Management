@@ -44,11 +44,11 @@ var Calendar = (function () {
       '.csp-lbl { flex:1; font-size:0.72rem; font-weight:700; white-space:nowrap; overflow:hidden; display:none; }' +
       '@media(min-width:900px) { .csp-lbl { display:block; } }' +
 
-      // الجوال: شارة عمودية (حرف الوردية فوق + أيقونة الحالة تحت)
+      // الجوال: شارة أفقية مضغوطة (حرف + أيقونة في نفس السطر)
       '@media(max-width:640px) {' +
-        '.cal-sp { flex-direction:column; align-items:stretch; gap:0; padding:1px; margin:1px 0; }' +
-        '.csp-ltr { border-radius:3px 3px 0 0 !important; text-align:center; font-size:0.68rem; padding:1px 2px; min-width:0; }' +
-        '.csp-ico { display:block !important; text-align:center; font-size:0.8rem; line-height:1.5; }' +
+        '.cal-sp { flex-direction:row !important; padding:1px 3px; gap:2px; border-radius:4px; }' +
+        '.csp-ltr { font-size:0.62rem; padding:1px 3px; border-radius:3px !important; min-width:14px; }' +
+        '.csp-ico { font-size:0.72rem; line-height:1.3; }' +
       '}' +
 
       // ---- أزرار فلتر الورديات ----
@@ -157,29 +157,19 @@ var Calendar = (function () {
         _legendPill(sc_o.badge, sc_o.icon, sc_o.label) +
       '</div>';
 
-    // أزرار الفلتر — اسم الوردية + أيقونة الحالة في نفس السطر (ديناميكي)
-    // على الجوال: يختفي "وردية " ويبقى الحرف + الأيقونة فقط
-    var todayStr = CONFIG.todayStr();
+    // أزرار الفلتر — اسم الوردية فقط (لابتوب: "وردية أ"، جوال: "أ")
     var shiftBtns =
       '<button class="shift-btn active" data-shift="all"' +
       ' style="border:2px solid var(--primary);background:var(--primary);color:#fff;font-size:0.85rem;font-weight:700">' +
       'الكل</button>';
     ['a','b','c','d'].forEach(function(sk) {
-      var shift  = CONFIG.SHIFTS[sk];
-      var todaySt = CONFIG.getShiftStatus(shift.label, todayStr);
-      var sc      = CONFIG.STATUS[todaySt.en] || CONFIG.STATUS.off;
-      var r = parseInt(sc.badge.slice(1,3),16);
-      var g = parseInt(sc.badge.slice(3,5),16);
-      var bv= parseInt(sc.badge.slice(5,7),16);
+      var shift = CONFIG.SHIFTS[sk];
       shiftBtns +=
         '<button class="shift-btn" data-shift="' + sk + '"' +
-        ' data-sc="' + shift.color + '" data-ic="' + sc.badge + '"' +
+        ' data-sc="' + shift.color + '"' +
         ' style="border:2px solid ' + shift.color + ';background:transparent">' +
           '<span class="sfb-pre" style="color:' + shift.color + '">وردية </span>' +
           '<span class="sfb-ltr" style="color:' + shift.color + '">' + shift.label + '</span>' +
-          '<span class="sfb-ico" style="color:' + sc.badge + ';background:rgba(' + r + ',' + g + ',' + bv + ',0.15);border-color:rgba(' + r + ',' + g + ',' + bv + ',0.45)">' +
-            sc.icon +
-          '</span>' +
         '</button>';
     });
 
