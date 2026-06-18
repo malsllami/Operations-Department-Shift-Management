@@ -179,7 +179,22 @@ var Dashboard = (function () {
       });
       html += '</div></div>';
 
-      // ---- 6. المراكز والمناطق ----
+      // ---- 6. خريطة المحطات ----
+      html += '<div class="dash-card emp-maps-card" onclick="App.navigate(\'substations\')" style="cursor:pointer">' +
+        '<div class="rsc-header">' +
+          '<span class="rsc-icon-wrap" style="background:linear-gradient(135deg,#E8A54B,#D4923A)">⚡</span>' +
+          '<span class="rsc-title">خريطة المحطات</span>' +
+        '</div>' +
+        '<p class="emp-maps-desc">بحث عن محطة، إضافة محطة توزيع أو تحويل، ومتابعة الأعطال</p>' +
+        '<div class="emp-maps-btns">' +
+          '<span class="emp-maps-tag mmt-search">🔍 بحث</span>' +
+          '<span class="emp-maps-tag mmt-dist">+ توزيع</span>' +
+          '<span class="emp-maps-tag mmt-sub">+ تحويل</span>' +
+          '<span class="emp-maps-tag mmt-fault">⚠ اعطال</span>' +
+        '</div>' +
+      '</div>';
+
+      // ---- 7. المراكز والمناطق ----
       html += _buildRegionsCard(rgList, results[2], results[3]);
 
       html += '</div>'; // dashboard-grid
