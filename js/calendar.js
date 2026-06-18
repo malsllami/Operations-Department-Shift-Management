@@ -16,7 +16,7 @@ var Calendar = (function () {
     _load(containerId);
   }
 
-  // ---- Shell (navigation + filters + weekday headers) ----
+  // ---- Shell ----
 
   function _renderShell(containerId) {
     var el = document.getElementById(containerId);
@@ -27,33 +27,43 @@ var Calendar = (function () {
     }).join('');
 
     var shiftBtns =
-      '<button class="shift-btn active" data-shift="all" style="padding:6px 14px;border:none;border-radius:50px;font-size:0.85rem;font-weight:700;cursor:pointer;background:var(--primary);color:#fff">الكل</button>' +
-      '<button class="shift-btn" data-shift="a" style="padding:6px 14px;border:1.5px solid #DBEAFE;border-radius:50px;font-size:0.85rem;font-weight:700;cursor:pointer;background:#EFF6FF;color:var(--primary)">وردية أ</button>' +
-      '<button class="shift-btn" data-shift="b" style="padding:6px 14px;border:1.5px solid #CCFBF1;border-radius:50px;font-size:0.85rem;font-weight:700;cursor:pointer;background:#F0FDF4;color:#00838F">وردية ب</button>' +
-      '<button class="shift-btn" data-shift="c" style="padding:6px 14px;border:1.5px solid #DCFCE7;border-radius:50px;font-size:0.85rem;font-weight:700;cursor:pointer;background:#F0FDF4;color:#2E7D32">وردية ج</button>' +
-      '<button class="shift-btn" data-shift="d" style="padding:6px 14px;border:1.5px solid #F3E8FF;border-radius:50px;font-size:0.85rem;font-weight:700;cursor:pointer;background:#FAF5FF;color:#6A1B9A">وردية د</button>';
+      '<button class="shift-btn active" data-shift="all" style="padding:6px 14px;border:none;border-radius:50px;font-size:0.85rem;font-weight:700;cursor:pointer;background:var(--primary);color:#fff;transition:all 0.2s">الكل</button>' +
+      '<button class="shift-btn" data-shift="a" style="padding:6px 14px;border:1.5px solid #1565C0;border-radius:50px;font-size:0.85rem;font-weight:700;cursor:pointer;background:var(--bg-card);color:#1565C0;transition:all 0.2s">☀ وردية أ</button>' +
+      '<button class="shift-btn" data-shift="b" style="padding:6px 14px;border:1.5px solid #00838F;border-radius:50px;font-size:0.85rem;font-weight:700;cursor:pointer;background:var(--bg-card);color:#00838F;transition:all 0.2s">🌙 وردية ب</button>' +
+      '<button class="shift-btn" data-shift="c" style="padding:6px 14px;border:1.5px solid #2E7D32;border-radius:50px;font-size:0.85rem;font-weight:700;cursor:pointer;background:var(--bg-card);color:#2E7D32;transition:all 0.2s">☀ وردية ج</button>' +
+      '<button class="shift-btn" data-shift="d" style="padding:6px 14px;border:1.5px solid #6A1B9A;border-radius:50px;font-size:0.85rem;font-weight:700;cursor:pointer;background:var(--bg-card);color:#6A1B9A;transition:all 0.2s">🌙 وردية د</button>';
 
     el.innerHTML =
+      // شريط التنقل مع زر "اليوم"
       '<div class="cal-nav-bar">' +
         '<button class="cal-nav-btn" id="cal-prev">&#8249;</button>' +
-        '<span class="cal-month-title" id="cal-month-year"></span>' +
+        '<div style="display:flex;flex-direction:column;align-items:center;gap:6px">' +
+          '<span class="cal-month-title" id="cal-month-year"></span>' +
+          '<button class="cal-today-btn" id="cal-today">اليوم</button>' +
+        '</div>' +
         '<button class="cal-nav-btn" id="cal-next">&#8250;</button>' +
       '</div>' +
 
+      // فلاتر الورديات
       '<div id="shift-filter" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">' +
         shiftBtns +
       '</div>' +
 
-      '<div class="cal-month-grid">' + dayHeaders + '</div>' +
-
-      '<div class="cal-month-grid" id="calendar-grid">' +
-        '<div style="grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:10px;padding:32px;color:var(--text-muted)">' +
-          '<div class="spinner"></div><span>جارٍ التحميل...</span>' +
+      // رأس أيام الأسبوع + شبكة الأيام (قابلة للتكبير بالإصبعين)
+      '<div id="cal-zoom-outer" style="overflow:hidden;border-radius:12px">' +
+        '<div id="cal-zoom-wrap" style="transform-origin:top right;will-change:transform">' +
+          '<div class="cal-month-grid">' + dayHeaders + '</div>' +
+          '<div class="cal-month-grid" id="calendar-grid">' +
+            '<div style="grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:10px;padding:32px;color:var(--text-muted)">' +
+              '<div class="spinner"></div><span>جارٍ التحميل...</span>' +
+            '</div>' +
+          '</div>' +
         '</div>' +
       '</div>' +
 
-      '<div id="calendar-summary"></div>';
+      '<div id="calendar-summary" style="margin-top:16px"></div>';
 
+    // ---- أحداث التنقل ----
     document.getElementById('cal-prev').onclick = function() {
       _currentMonth--;
       if (_currentMonth < 1) { _currentMonth = 12; _currentYear--; }
@@ -64,13 +74,23 @@ var Calendar = (function () {
       if (_currentMonth > 12) { _currentMonth = 1; _currentYear++; }
       _load(containerId);
     };
+    document.getElementById('cal-today').onclick = function() {
+      var now = new Date();
+      _currentYear  = now.getFullYear();
+      _currentMonth = now.getMonth() + 1;
+      _load(containerId);
+    };
 
+    // ---- فلاتر الورديات ----
     el.querySelectorAll('.shift-btn').forEach(function(btn) {
       btn.onclick = function() {
         _selectedShift = this.dataset.shift;
         el.querySelectorAll('.shift-btn').forEach(function(b) {
-          b.style.background = '';
-          b.style.color      = '';
+          b.style.background = 'var(--bg-card)';
+          b.style.color      = b.dataset.shift === 'a' ? '#1565C0' :
+                               b.dataset.shift === 'b' ? '#00838F' :
+                               b.dataset.shift === 'c' ? '#2E7D32' :
+                               b.dataset.shift === 'd' ? '#6A1B9A' : 'var(--primary)';
           b.classList.remove('active');
         });
         this.classList.add('active');
@@ -78,6 +98,60 @@ var Calendar = (function () {
         this.style.color      = '#fff';
         if (_scheduleData) _renderDays(_scheduleData);
       };
+    });
+
+    // ---- تكبير/تصغير بالإصبعين (Pinch-to-zoom) ----
+    _addPinchZoom(containerId);
+  }
+
+  // ---- Pinch-to-zoom ----
+
+  function _addPinchZoom(containerId) {
+    var outer = document.getElementById('cal-zoom-outer');
+    var inner = document.getElementById('cal-zoom-wrap');
+    if (!inner || !('ontouchstart' in window)) return;
+
+    var _scale = 1, _lastScale = 1, _startDist = 0, _lastTap = 0;
+
+    function _dist(touches) {
+      return Math.hypot(touches[0].clientX - touches[1].clientX,
+                        touches[0].clientY - touches[1].clientY);
+    }
+
+    inner.addEventListener('touchstart', function(e) {
+      if (e.touches.length === 2) {
+        _startDist = _dist(e.touches);
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    inner.addEventListener('touchmove', function(e) {
+      if (e.touches.length === 2) {
+        _scale = Math.min(Math.max(_lastScale * (_dist(e.touches) / _startDist), 0.65), 2.8);
+        inner.style.transform = 'scale(' + _scale + ')';
+        // اتساع الخارجي ليسمح بالتمرير عند التكبير
+        inner.style.width  = _scale > 1 ? (_scale * 100) + '%' : '';
+        inner.style.height = _scale > 1 ? (_scale * 100) + '%' : '';
+        outer.style.overflowX = _scale > 1 ? 'auto' : 'hidden';
+        outer.style.overflowY = _scale > 1 ? 'auto' : 'hidden';
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    inner.addEventListener('touchend', function(e) {
+      if (e.touches.length === 0) _lastScale = _scale;
+
+      // ضربة مزدوجة للإعادة
+      var now = Date.now();
+      if (now - _lastTap < 300 && Math.abs(_scale - 1) > 0.05) {
+        _scale = _lastScale = 1;
+        inner.style.transform = '';
+        inner.style.width     = '';
+        inner.style.height    = '';
+        outer.style.overflowX = 'hidden';
+        outer.style.overflowY = 'hidden';
+      }
+      _lastTap = now;
     });
   }
 
@@ -91,7 +165,6 @@ var Calendar = (function () {
           '<div class="spinner"></div><span>جارٍ التحميل...</span>' +
         '</div>';
     }
-
     var titleEl = document.getElementById('cal-month-year');
     if (titleEl) titleEl.textContent = CONFIG.MONTHS_AR[_currentMonth - 1] + ' ' + _currentYear;
 
@@ -100,6 +173,7 @@ var Calendar = (function () {
         if (grid) {
           grid.innerHTML =
             '<div style="grid-column:1/-1;padding:40px;text-align:center;color:#EF4444">' +
+              '<div style="font-size:2rem;margin-bottom:8px">⚠️</div>' +
               'تعذر تحميل البيانات — تحقق من الاتصال' +
             '</div>';
         }
@@ -149,7 +223,7 @@ var Calendar = (function () {
     _renderSummary(res.summary, colors);
   }
 
-  // ---- Build shift pills ----
+  // ---- Build shift pills مع ألوان وأيقونات واضحة ----
 
   function _buildShiftRows(day, colors) {
     var entries = [
@@ -164,11 +238,20 @@ var Calendar = (function () {
       var sc    = CONFIG.STATUS[s.en] || CONFIG.STATUS.off;
       var shift = CONFIG.SHIFTS[s.key] || {};
       var color = colors[s.key] || shift.color || '#999';
+
+      // تصميم الشارة: خلفية حالة الدوام + حرف الوردية + أيقونة كبيرة + نص
       html +=
-        '<div class="cal-shift-pill" style="background:' + sc.bg + ';border-color:' + color + ';color:' + sc.text + '">' +
-          '<span class="csp-letter" style="background:' + color + '">' + (shift.label || s.key) + '</span>' +
-          '<span class="csp-icon">' + sc.icon + '</span>' +
-          '<span class="csp-txt">' + sc.label + '</span>' +
+        '<div class="cal-shift-pill" style="' +
+          'background:' + sc.bg + ';' +
+          'border-color:' + color + ';' +
+          'color:' + sc.text + ';' +
+          'border-right:3px solid ' + color +
+        '">' +
+          '<span class="csp-letter" style="background:' + color + ';min-width:18px;text-align:center">' +
+            (shift.label || s.key) +
+          '</span>' +
+          '<span class="csp-icon" style="font-size:1rem;flex-shrink:0">' + sc.icon + '</span>' +
+          '<span class="csp-txt" style="font-weight:700">' + sc.label + '</span>' +
         '</div>';
     });
     return html;
@@ -192,9 +275,9 @@ var Calendar = (function () {
         '<div class="cal-sum-card" style="border-top:3px solid ' + color + '">' +
           '<div class="csc-title" style="color:' + color + '">وردية ' + (shift.label || k) + '</div>' +
           '<div class="csc-rows">' +
-            '<div class="csc-row"><span class="csc-icon">' + CONFIG.STATUS.morning.icon + '</span><span class="csc-label">صباح</span><b class="csc-val">' + (data.morning || 0) + '</b></div>' +
-            '<div class="csc-row"><span class="csc-icon">' + CONFIG.STATUS.evening.icon + '</span><span class="csc-label">مساء</span><b class="csc-val">' + (data.evening || 0) + '</b></div>' +
-            '<div class="csc-row"><span class="csc-icon">' + CONFIG.STATUS.off.icon    + '</span><span class="csc-label">راحة</span><b class="csc-val">' + (data.off    || 0) + '</b></div>' +
+            '<div class="csc-row"><span class="csc-icon">' + CONFIG.STATUS.morning.icon + '</span><span class="csc-label" style="color:' + CONFIG.STATUS.morning.text + ';font-weight:600">صباح</span><b class="csc-val">' + (data.morning || 0) + '</b></div>' +
+            '<div class="csc-row"><span class="csc-icon">' + CONFIG.STATUS.evening.icon + '</span><span class="csc-label" style="color:' + CONFIG.STATUS.evening.text + ';font-weight:600">مساء</span><b class="csc-val">' + (data.evening || 0) + '</b></div>' +
+            '<div class="csc-row"><span class="csc-icon">' + CONFIG.STATUS.off.icon    + '</span><span class="csc-label" style="color:' + CONFIG.STATUS.off.text    + ';font-weight:600">راحة</span><b class="csc-val">' + (data.off    || 0) + '</b></div>' +
           '</div>' +
           '<div class="csc-total"><span>المجموع</span><span>' + total + ' يوم</span></div>' +
         '</div>';
@@ -244,7 +327,6 @@ var Calendar = (function () {
     months.forEach(function(m) {
       html += '<div style="font-size:0.78rem;font-weight:700;color:var(--text-muted);margin:6px 0 4px">' +
         CONFIG.MONTHS_AR[m.month - 1] + ' ' + m.year + '</div>';
-
       html += '<div class="mini-cal-table">';
       html += '<div class="mini-cal-head">';
       CONFIG.DAYS_AR.forEach(function(d) { html += '<div class="mini-head-cell">' + d.charAt(0) + '</div>'; });
@@ -259,7 +341,6 @@ var Calendar = (function () {
         rowHtml += '<div class="mini-day-cell mini-day-empty"></div>';
         dayOfRow++;
       }
-
       for (var d = 1; d <= daysInMonth; d++) {
         var dateStr = m.year + '-' + _pad(m.month) + '-' + _pad(d);
         var st      = inRange[dateStr];
@@ -269,7 +350,7 @@ var Calendar = (function () {
         if (st) {
           var sc = CONFIG.STATUS[st.en] || CONFIG.STATUS.off;
           rowHtml +=
-            '<div class="mini-day-cell" style="background:' + sc.bg + ';color:' + sc.text + ';border-color:' + sc.text + '">' +
+            '<div class="mini-day-cell" style="background:' + sc.bg + ';color:' + sc.text + ';border-color:' + sc.text + ';border-right:2px solid ' + sc.text + '">' +
               '<span class="mdc-num">' + d + '</span>' +
               '<span class="mdc-hijri">' + hijri.day + ' ' + CONFIG.HIJRI_MONTHS[hijri.month - 1] + '</span>' +
               '<span class="mdc-icon">' + sc.icon + '</span>' +
@@ -281,22 +362,16 @@ var Calendar = (function () {
               '<span class="mdc-num">' + d + '</span>' +
             '</div>';
         }
-
         dayOfRow++;
         if (dayOfRow === 7) {
-          rowHtml += '</div>';
-          html += rowHtml;
-          rowHtml = '<div class="mini-cal-row">';
-          dayOfRow = 0;
+          rowHtml += '</div>'; html += rowHtml;
+          rowHtml = '<div class="mini-cal-row">'; dayOfRow = 0;
         }
       }
-
       if (dayOfRow > 0) {
         while (dayOfRow < 7) { rowHtml += '<div class="mini-day-cell mini-day-empty"></div>'; dayOfRow++; }
-        rowHtml += '</div>';
-        html += rowHtml;
+        rowHtml += '</div>'; html += rowHtml;
       }
-
       html += '</div>';
     });
 
