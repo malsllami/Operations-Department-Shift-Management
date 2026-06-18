@@ -4,16 +4,37 @@
 
 var Calendar = (function () {
 
-  var _currentYear   = new Date().getFullYear();
-  var _currentMonth  = new Date().getMonth() + 1;
-  var _scheduleData  = null;
-  var _selectedShift = 'all';
-  var _containerId   = null;
+  var _currentYear      = new Date().getFullYear();
+  var _currentMonth     = new Date().getMonth() + 1;
+  var _scheduleData     = null;
+  var _selectedShift    = 'all';
+  var _containerId      = null;
+  var _scrollToToday    = false;
 
   function init(containerId) {
     _containerId = containerId;
     _renderShell(containerId);
     _load(containerId);
+  }
+
+  // ---- حساب عنوان الشهر (ميلادي + هجري) ----
+
+  function _updateTitle() {
+    var titleEl = document.getElementById('cal-month-year');
+    if (!titleEl) return;
+    var hijriFirst = Hijri.fromDate(new Date(_currentYear, _currentMonth - 1, 1));
+    var hijriLast  = Hijri.fromDate(new Date(_currentYear, _currentMonth,     0));
+    var hijriStr = hijriFirst.month === hijriLast.month
+      ? CONFIG.HIJRI_MONTHS[hijriFirst.month - 1] + ' ' + hijriFirst.year + ' هـ'
+      : CONFIG.HIJRI_MONTHS[hijriFirst.month - 1] + ' / ' + CONFIG.HIJRI_MONTHS[hijriLast.month - 1] + ' ' + hijriLast.year + ' هـ';
+
+    titleEl.innerHTML =
+      '<div style="font-size:1.1rem;font-weight:800;color:var(--text);line-height:1.2">' +
+        CONFIG.MONTHS_AR[_currentMonth - 1] + ' ' + _currentYear +
+      '</div>' +
+      '<div style="font-size:0.72rem;font-weight:600;color:var(--text-muted);text-align:center;margin-top:2px">' +
+        hijriStr +
+      '</div>';
   }
 
   // ---- Shell ----
@@ -27,18 +48,18 @@ var Calendar = (function () {
     }).join('');
 
     var shiftBtns =
-      '<button class="shift-btn active" data-shift="all" style="padding:6px 14px;border:none;border-radius:50px;font-size:0.85rem;font-weight:700;cursor:pointer;background:var(--primary);color:#fff;transition:all 0.2s">الكل</button>' +
-      '<button class="shift-btn" data-shift="a" style="padding:6px 14px;border:1.5px solid #1565C0;border-radius:50px;font-size:0.85rem;font-weight:700;cursor:pointer;background:var(--bg-card);color:#1565C0;transition:all 0.2s">☀ وردية أ</button>' +
-      '<button class="shift-btn" data-shift="b" style="padding:6px 14px;border:1.5px solid #00838F;border-radius:50px;font-size:0.85rem;font-weight:700;cursor:pointer;background:var(--bg-card);color:#00838F;transition:all 0.2s">🌙 وردية ب</button>' +
-      '<button class="shift-btn" data-shift="c" style="padding:6px 14px;border:1.5px solid #2E7D32;border-radius:50px;font-size:0.85rem;font-weight:700;cursor:pointer;background:var(--bg-card);color:#2E7D32;transition:all 0.2s">☀ وردية ج</button>' +
-      '<button class="shift-btn" data-shift="d" style="padding:6px 14px;border:1.5px solid #6A1B9A;border-radius:50px;font-size:0.85rem;font-weight:700;cursor:pointer;background:var(--bg-card);color:#6A1B9A;transition:all 0.2s">🌙 وردية د</button>';
+      '<button class="shift-btn active" data-shift="all" style="padding:6px 14px;border:none;border-radius:50px;font-size:0.85rem;font-weight:700;cursor:pointer;background:var(--primary);color:#fff">الكل</button>' +
+      '<button class="shift-btn" data-shift="a" style="padding:6px 14px;border:1.5px solid #1565C0;border-radius:50px;font-size:0.85rem;font-weight:700;cursor:pointer;background:transparent;color:#1565C0">☀ وردية أ</button>' +
+      '<button class="shift-btn" data-shift="b" style="padding:6px 14px;border:1.5px solid #00838F;border-radius:50px;font-size:0.85rem;font-weight:700;cursor:pointer;background:transparent;color:#00838F">🌙 وردية ب</button>' +
+      '<button class="shift-btn" data-shift="c" style="padding:6px 14px;border:1.5px solid #2E7D32;border-radius:50px;font-size:0.85rem;font-weight:700;cursor:pointer;background:transparent;color:#2E7D32">☀ وردية ج</button>' +
+      '<button class="shift-btn" data-shift="d" style="padding:6px 14px;border:1.5px solid #6A1B9A;border-radius:50px;font-size:0.85rem;font-weight:700;cursor:pointer;background:transparent;color:#6A1B9A">🌙 وردية د</button>';
 
     el.innerHTML =
-      // شريط التنقل مع زر "اليوم"
+      // شريط التنقل
       '<div class="cal-nav-bar">' +
         '<button class="cal-nav-btn" id="cal-prev">&#8249;</button>' +
         '<div style="display:flex;flex-direction:column;align-items:center;gap:6px">' +
-          '<span class="cal-month-title" id="cal-month-year"></span>' +
+          '<div id="cal-month-year" style="text-align:center"></div>' +
           '<button class="cal-today-btn" id="cal-today">اليوم</button>' +
         '</div>' +
         '<button class="cal-nav-btn" id="cal-next">&#8250;</button>' +
@@ -49,9 +70,9 @@ var Calendar = (function () {
         shiftBtns +
       '</div>' +
 
-      // رأس أيام الأسبوع + شبكة الأيام (قابلة للتكبير بالإصبعين)
-      '<div id="cal-zoom-outer" style="overflow:hidden;border-radius:12px">' +
-        '<div id="cal-zoom-wrap" style="transform-origin:top right;will-change:transform">' +
+      // شبكة التقويم (قابلة للتكبير بالإصبعين)
+      '<div id="cal-zoom-outer" style="overflow:hidden;border-radius:12px;position:relative">' +
+        '<div id="cal-zoom-wrap" style="transform-origin:top right;will-change:transform;transition:none">' +
           '<div class="cal-month-grid">' + dayHeaders + '</div>' +
           '<div class="cal-month-grid" id="calendar-grid">' +
             '<div style="grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:10px;padding:32px;color:var(--text-muted)">' +
@@ -62,6 +83,9 @@ var Calendar = (function () {
       '</div>' +
 
       '<div id="calendar-summary" style="margin-top:16px"></div>';
+
+    // إظهار عنوان الشهر الأولي
+    _updateTitle();
 
     // ---- أحداث التنقل ----
     document.getElementById('cal-prev').onclick = function() {
@@ -75,9 +99,10 @@ var Calendar = (function () {
       _load(containerId);
     };
     document.getElementById('cal-today').onclick = function() {
-      var now = new Date();
+      var now      = new Date();
       _currentYear  = now.getFullYear();
       _currentMonth = now.getMonth() + 1;
+      _scrollToToday = true;
       _load(containerId);
     };
 
@@ -86,7 +111,7 @@ var Calendar = (function () {
       btn.onclick = function() {
         _selectedShift = this.dataset.shift;
         el.querySelectorAll('.shift-btn').forEach(function(b) {
-          b.style.background = 'var(--bg-card)';
+          b.style.background = 'transparent';
           b.style.color      = b.dataset.shift === 'a' ? '#1565C0' :
                                b.dataset.shift === 'b' ? '#00838F' :
                                b.dataset.shift === 'c' ? '#2E7D32' :
@@ -100,58 +125,69 @@ var Calendar = (function () {
       };
     });
 
-    // ---- تكبير/تصغير بالإصبعين (Pinch-to-zoom) ----
-    _addPinchZoom(containerId);
+    // ---- تكبير/تصغير بالإصبعين ----
+    _addPinchZoom();
   }
 
-  // ---- Pinch-to-zoom ----
+  // ---- Pinch-to-zoom (مُصحَّح) ----
 
-  function _addPinchZoom(containerId) {
-    var outer = document.getElementById('cal-zoom-outer');
-    var inner = document.getElementById('cal-zoom-wrap');
+  function _addPinchZoom() {
+    var outer  = document.getElementById('cal-zoom-outer');
+    var inner  = document.getElementById('cal-zoom-wrap');
     if (!inner || !('ontouchstart' in window)) return;
 
-    var _scale = 1, _lastScale = 1, _startDist = 0, _lastTap = 0;
+    var _scale      = 1;
+    var _lastScale  = 1;
+    var _startDist  = 0;
+    var _wasPinch   = false;   // هل اللمس كان بإصبعين؟
+    var _lastTap    = 0;
 
-    function _dist(touches) {
-      return Math.hypot(touches[0].clientX - touches[1].clientX,
-                        touches[0].clientY - touches[1].clientY);
+    function _dist(t) {
+      return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
     }
 
     inner.addEventListener('touchstart', function(e) {
       if (e.touches.length === 2) {
         _startDist = _dist(e.touches);
+        _wasPinch  = true;
         e.preventDefault();
+      } else if (e.touches.length === 1) {
+        _wasPinch = false;
       }
     }, { passive: false });
 
     inner.addEventListener('touchmove', function(e) {
       if (e.touches.length === 2) {
         _scale = Math.min(Math.max(_lastScale * (_dist(e.touches) / _startDist), 0.65), 2.8);
-        inner.style.transform = 'scale(' + _scale + ')';
-        // اتساع الخارجي ليسمح بالتمرير عند التكبير
-        inner.style.width  = _scale > 1 ? (_scale * 100) + '%' : '';
-        inner.style.height = _scale > 1 ? (_scale * 100) + '%' : '';
-        outer.style.overflowX = _scale > 1 ? 'auto' : 'hidden';
-        outer.style.overflowY = _scale > 1 ? 'auto' : 'hidden';
+        inner.style.transform   = 'scale(' + _scale + ')';
+        inner.style.width       = _scale > 1 ? (_scale * 100) + '%' : '';
+        inner.style.height      = _scale > 1 ? (_scale * 100) + '%' : '';
+        outer.style.overflowX   = _scale > 1 ? 'auto' : 'hidden';
+        outer.style.overflowY   = _scale > 1 ? 'auto' : 'hidden';
         e.preventDefault();
       }
     }, { passive: false });
 
+    // رفع جميع الأصابع — احفظ المقياس الأخير
     inner.addEventListener('touchend', function(e) {
-      if (e.touches.length === 0) _lastScale = _scale;
+      if (e.touches.length === 0) {
+        _lastScale = _scale;
 
-      // ضربة مزدوجة للإعادة
-      var now = Date.now();
-      if (now - _lastTap < 300 && Math.abs(_scale - 1) > 0.05) {
-        _scale = _lastScale = 1;
-        inner.style.transform = '';
-        inner.style.width     = '';
-        inner.style.height    = '';
-        outer.style.overflowX = 'hidden';
-        outer.style.overflowY = 'hidden';
+        // ضربة مزدوجة بإصبع واحد فقط → إعادة ضبط
+        if (!_wasPinch) {
+          var now = Date.now();
+          if (now - _lastTap < 300 && Math.abs(_scale - 1) > 0.05) {
+            _scale = _lastScale = 1;
+            inner.style.transform = '';
+            inner.style.width     = '';
+            inner.style.height    = '';
+            outer.style.overflowX = 'hidden';
+            outer.style.overflowY = 'hidden';
+          }
+          _lastTap = now;
+        }
+        _wasPinch = false;
       }
-      _lastTap = now;
     });
   }
 
@@ -165,8 +201,8 @@ var Calendar = (function () {
           '<div class="spinner"></div><span>جارٍ التحميل...</span>' +
         '</div>';
     }
-    var titleEl = document.getElementById('cal-month-year');
-    if (titleEl) titleEl.textContent = CONFIG.MONTHS_AR[_currentMonth - 1] + ' ' + _currentYear;
+
+    _updateTitle();
 
     API.getSchedule(_currentYear, _currentMonth).then(function(res) {
       if (!res.ok) {
@@ -221,9 +257,23 @@ var Calendar = (function () {
 
     grid.innerHTML = html;
     _renderSummary(res.summary, colors);
+
+    // التمرير إلى اليوم الحالي إذا طُلب
+    if (_scrollToToday) {
+      _scrollToToday = false;
+      setTimeout(function() {
+        var cell = document.querySelector('.cal-today');
+        if (cell) {
+          cell.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          cell.style.outline = '3px solid var(--secondary)';
+          cell.style.outlineOffset = '2px';
+          setTimeout(function() { cell.style.outline = ''; cell.style.outlineOffset = ''; }, 1800);
+        }
+      }, 80);
+    }
   }
 
-  // ---- Build shift pills مع ألوان وأيقونات واضحة ----
+  // ---- Build shift pills — ألوان واضحة في الفاتح والداكن ----
 
   function _buildShiftRows(day, colors) {
     var entries = [
@@ -239,19 +289,18 @@ var Calendar = (function () {
       var shift = CONFIG.SHIFTS[s.key] || {};
       var color = colors[s.key] || shift.color || '#999';
 
-      // تصميم الشارة: خلفية حالة الدوام + حرف الوردية + أيقونة كبيرة + نص
+      // الخلفية شفافة، الأيقونة والنص بلون sc.badge (مشبع — يظهر في الفاتح والداكن)
       html +=
         '<div class="cal-shift-pill" style="' +
-          'background:' + sc.bg + ';' +
+          'background:transparent;' +
           'border-color:' + color + ';' +
-          'color:' + sc.text + ';' +
           'border-right:3px solid ' + color +
         '">' +
-          '<span class="csp-letter" style="background:' + color + ';min-width:18px;text-align:center">' +
+          '<span class="csp-letter" style="background:' + color + ';color:#fff;min-width:18px;text-align:center">' +
             (shift.label || s.key) +
           '</span>' +
-          '<span class="csp-icon" style="font-size:1rem;flex-shrink:0">' + sc.icon + '</span>' +
-          '<span class="csp-txt" style="font-weight:700">' + sc.label + '</span>' +
+          '<span class="csp-icon" style="font-size:0.95rem;color:' + sc.badge + '">' + sc.icon + '</span>' +
+          '<span class="csp-txt" style="font-weight:700;color:' + sc.badge + '">' + sc.label + '</span>' +
         '</div>';
     });
     return html;
@@ -275,11 +324,11 @@ var Calendar = (function () {
         '<div class="cal-sum-card" style="border-top:3px solid ' + color + '">' +
           '<div class="csc-title" style="color:' + color + '">وردية ' + (shift.label || k) + '</div>' +
           '<div class="csc-rows">' +
-            '<div class="csc-row"><span class="csc-icon">' + CONFIG.STATUS.morning.icon + '</span><span class="csc-label" style="color:' + CONFIG.STATUS.morning.text + ';font-weight:600">صباح</span><b class="csc-val">' + (data.morning || 0) + '</b></div>' +
-            '<div class="csc-row"><span class="csc-icon">' + CONFIG.STATUS.evening.icon + '</span><span class="csc-label" style="color:' + CONFIG.STATUS.evening.text + ';font-weight:600">مساء</span><b class="csc-val">' + (data.evening || 0) + '</b></div>' +
-            '<div class="csc-row"><span class="csc-icon">' + CONFIG.STATUS.off.icon    + '</span><span class="csc-label" style="color:' + CONFIG.STATUS.off.text    + ';font-weight:600">راحة</span><b class="csc-val">' + (data.off    || 0) + '</b></div>' +
+            '<div class="csc-row"><span class="csc-icon" style="color:' + CONFIG.STATUS.morning.badge + '">' + CONFIG.STATUS.morning.icon + '</span><span class="csc-label" style="color:' + CONFIG.STATUS.morning.badge + ';font-weight:700">صباح</span><b class="csc-val">' + (data.morning || 0) + '</b></div>' +
+            '<div class="csc-row"><span class="csc-icon" style="color:' + CONFIG.STATUS.evening.badge + '">' + CONFIG.STATUS.evening.icon + '</span><span class="csc-label" style="color:' + CONFIG.STATUS.evening.badge + ';font-weight:700">مساء</span><b class="csc-val">' + (data.evening || 0) + '</b></div>' +
+            '<div class="csc-row"><span class="csc-icon" style="color:' + CONFIG.STATUS.off.badge    + '">' + CONFIG.STATUS.off.icon    + '</span><span class="csc-label" style="color:' + CONFIG.STATUS.off.badge    + ';font-weight:700">راحة</span><b class="csc-val">' + (data.off    || 0) + '</b></div>' +
           '</div>' +
-          '<div class="csc-total"><span>المجموع</span><span>' + total + ' يوم</span></div>' +
+          '<div class="csc-total"><span>المجموع</span><span style="color:' + color + ';font-size:1rem">' + total + ' يوم</span></div>' +
         '</div>';
     });
 
@@ -318,7 +367,7 @@ var Calendar = (function () {
       mCur.setMonth(mCur.getMonth() + 1);
     }
 
-    var sk = CONFIG.shiftKey(shiftLetter);
+    var sk         = CONFIG.shiftKey(shiftLetter);
     var shiftColor = (CONFIG.SHIFTS[sk] || {}).color || 'var(--primary)';
 
     var html = '<div class="mini-cal-wrap">';
@@ -350,15 +399,15 @@ var Calendar = (function () {
         if (st) {
           var sc = CONFIG.STATUS[st.en] || CONFIG.STATUS.off;
           rowHtml +=
-            '<div class="mini-day-cell" style="background:' + sc.bg + ';color:' + sc.text + ';border-color:' + sc.text + ';border-right:2px solid ' + sc.text + '">' +
-              '<span class="mdc-num">' + d + '</span>' +
+            '<div class="mini-day-cell" style="background:transparent;border-color:' + sc.badge + ';border-right:2px solid ' + sc.badge + '">' +
+              '<span class="mdc-num" style="color:var(--text)">' + d + '</span>' +
               '<span class="mdc-hijri">' + hijri.day + ' ' + CONFIG.HIJRI_MONTHS[hijri.month - 1] + '</span>' +
-              '<span class="mdc-icon">' + sc.icon + '</span>' +
-              '<span class="mdc-lbl">' + sc.label + '</span>' +
+              '<span class="mdc-icon" style="color:' + sc.badge + '">' + sc.icon + '</span>' +
+              '<span class="mdc-lbl" style="color:' + sc.badge + ';font-weight:700">' + sc.label + '</span>' +
             '</div>';
         } else {
           rowHtml +=
-            '<div class="mini-day-cell" style="background:var(--bg-card,#fff);color:var(--text-muted,#aaa);border-color:var(--border,#e0e0e0);opacity:0.4">' +
+            '<div class="mini-day-cell" style="background:transparent;border-color:var(--border,#e0e0e0);opacity:0.35">' +
               '<span class="mdc-num">' + d + '</span>' +
             '</div>';
         }
