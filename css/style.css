@@ -1315,6 +1315,16 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 .empty-state { text-align: center; padding: 40px; color: var(--text-muted); font-size: 1rem; }
 .error-state  { text-align: center; padding: 40px; color: #EF4444; }
 
+/* حالة خطأ التقويم */
+.cal-error-state {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; padding: 60px 24px; text-align: center;
+}
+.cal-error-icon   { font-size: 3rem; }
+.cal-error-msg    { font-size: 1.1rem; font-weight: 700; color: var(--text-muted); }
+.cal-error-detail { font-size: 0.82rem; color: #EF4444; direction: ltr; max-width: 320px; word-break: break-word; }
+.cal-retry-btn    { margin-top: 8px; padding: 10px 28px; font-size: 0.95rem; }
+
 /* ============================================================
    بطاقات الملف الشخصي — تصميم جديد
    ============================================================ */
