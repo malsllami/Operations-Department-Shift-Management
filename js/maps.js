@@ -45,7 +45,7 @@ var Maps = (function () {
         '</div>' +
 
         // بطاقة الحالة — رقم الجوال
-        '<div class="maps-bridge-info-card" id="mb-info">' +
+        '<div id="mb-info">' +
           '<div class="loading-spinner"><div class="spinner small"></div></div>' +
         '</div>' +
 
@@ -57,6 +57,7 @@ var Maps = (function () {
         _phone = res.data.phone;
         _renderInfoCard(true);
       } else {
+        _phone = '';
         _renderInfoCard(false);
       }
     });
@@ -67,16 +68,34 @@ var Maps = (function () {
     if (!el) return;
     if (hasPhone) {
       el.innerHTML =
-        '<div class="mb-info-row">' +
-          '<span class="mb-info-icon">✅</span>' +
-          '<span>سيتم تسجيل دخولك تلقائياً في نظام المحطات بالجوال <strong dir="ltr">' + _phone + '</strong></span>' +
+        '<div class="mb-status-ok">' +
+          '<span class="mb-status-icon">✅</span>' +
+          '<div class="mb-status-text">' +
+            '<strong>أنت جاهز للاستخدام</strong>' +
+            '<span>سيتم تسجيل دخولك تلقائياً بالجوال <span dir="ltr">' + _phone + '</span></span>' +
+          '</div>' +
         '</div>';
     } else {
       el.innerHTML =
-        '<div class="mb-info-row mb-info-warn">' +
-          '<span class="mb-info-icon">⚠️</span>' +
-          '<span>لا يوجد رقم جوال في ملفك — أضف رقمك من <strong>ملفي الشخصي</strong> لتسجيل الدخول التلقائي</span>' +
+        '<div class="mb-status-block">' +
+          '<div class="mb-status-error">' +
+            '<span class="mb-status-icon">🚫</span>' +
+            '<div class="mb-status-text">' +
+              '<strong>مطلوب — رقم الجوال غير مسجل</strong>' +
+              '<span>يجب إضافة رقم جوالك في <strong>ملفي الشخصي</strong> قبل استخدام خريطة المحطات</span>' +
+            '</div>' +
+          '</div>' +
+          '<button class="mb-goto-profile btn-primary" onclick="App.navigate(\'profile\')">' +
+            '👤 اذهب إلى ملفي الشخصي وأضف الجوال' +
+          '</button>' +
         '</div>';
+
+      // تعطيل الأزرار الأربعة بصرياً
+      var btns = document.querySelectorAll('.maps-bridge-btn');
+      btns.forEach(function(b) {
+        b.disabled = true;
+        b.classList.add('mbb-disabled');
+      });
     }
   }
 
@@ -84,6 +103,12 @@ var Maps = (function () {
   // فتح موقع المحطات مع بيانات الجسر
   // ============================================================
   function open(action) {
+    // منع الانتقال إذا لم يوجد رقم جوال
+    if (!_phone) {
+      App.toast('يجب تسجيل رقم جوالك في ملفك الشخصي أولاً', 'error');
+      return;
+    }
+
     var base = CONFIG.MAPS_SITE_URL;
     if (!base || base === 'YOUR_MAPS_SITE_URL_HERE') {
       App.toast('ضع رابط موقع المحطات في MAPS_SITE_URL داخل js/config.js', 'error');
