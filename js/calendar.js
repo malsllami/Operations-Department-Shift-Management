@@ -30,12 +30,13 @@ var Calendar = (function () {
     s.id = 'cal-rsp-v3';
     s.textContent =
       // ---- رأس أسماء الأيام ----
-      '.cal-weekday { display:flex !important; align-items:center !important; justify-content:center !important; font-size:0.75rem !important; font-weight:700 !important; padding:6px 2px !important; color:var(--text-muted,#64748B) !important; overflow:hidden !important; white-space:nowrap !important; }' +
+      '.cal-weekday { display:flex !important; align-items:center !important; justify-content:center !important; font-size:0.75rem !important; font-weight:700 !important; padding:6px 2px !important; color:var(--text-muted,#64748B) !important; white-space:nowrap !important; }' +
       '.cwd-abbr { display:none !important; }' +
       '@media(max-width:640px) {' +
         '.cwd-full { display:none !important; }' +
         '.cwd-abbr { display:inline !important; }' +
       '}' +
+      '@media(max-width:380px) { .cal-weekday { font-size:0.62rem !important; padding:6px 1px !important; } }' +
 
       // ---- شارة الوردية — بنية مستقلة كاملاً عن style.css ----
       '.cal-sp { display:flex; flex-direction:row; align-items:center; gap:3px; border-radius:6px; overflow:hidden; margin:1px 0; border:1px solid rgba(128,128,128,0.15); }' +
@@ -44,11 +45,11 @@ var Calendar = (function () {
       '.csp-lbl { flex:1; font-size:0.72rem; font-weight:700; white-space:nowrap; overflow:hidden; display:none; }' +
       '@media(min-width:900px) { .csp-lbl { display:block; } }' +
 
-      // الجوال: شارة أفقية مضغوطة (حرف + أيقونة في نفس السطر)
+      // الجوال: شارة أفقية مضغوطة — border-right يُلغى بـ !important لتجاوز الـ inline style
       '@media(max-width:640px) {' +
-        '.cal-sp { flex-direction:row !important; padding:1px 3px; gap:2px; border-radius:4px; }' +
-        '.csp-ltr { font-size:0.62rem; padding:1px 3px; border-radius:3px !important; min-width:14px; }' +
-        '.csp-ico { font-size:0.72rem; line-height:1.3; }' +
+        '.cal-sp { flex-direction:row !important; padding:1px 3px !important; gap:2px !important; border-radius:4px !important; border-right:none !important; border-left:none !important; border-top:none !important; border-bottom:none !important; }' +
+        '.csp-ltr { font-size:0.62rem; padding:1px 4px; border-radius:3px !important; min-width:14px; }' +
+        '.csp-ico { font-size:0.76rem; line-height:1.3; }' +
       '}' +
 
       // ---- أزرار فلتر الورديات ----
