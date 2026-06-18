@@ -2791,17 +2791,41 @@ input, select, textarea {
 .mbb-sub    { background:#3B82F6; color:#fff; }
 .mbb-fault  { background:#EF4444; color:#fff; }
 
-/* ---- بطاقة معلومات الجوال ---- */
-.maps-bridge-info-card {
-  background:var(--bg-card); border-radius:12px;
-  border:1.5px solid var(--border); padding:14px 16px;
+/* ---- بطاقة الحالة (جوال) ---- */
+#mb-info { }
+
+.mb-status-ok {
+  display:flex; align-items:center; gap:12px;
+  background:#F0FDF4; border:1.5px solid #86EFAC;
+  border-radius:12px; padding:14px 16px;
+}
+.mb-status-error {
+  display:flex; align-items:center; gap:12px;
+  background:#FEF2F2; border:1.5px solid #FCA5A5;
+  border-radius:12px; padding:14px 16px;
+}
+.mb-status-block { display:flex; flex-direction:column; gap:10px; }
+.mb-status-icon { font-size:1.5rem; flex-shrink:0; }
+.mb-status-text {
+  display:flex; flex-direction:column; gap:3px;
   font-size:0.88rem;
 }
-.mb-info-row {
-  display:flex; align-items:center; gap:10px; color:var(--text-muted);
+.mb-status-ok   .mb-status-text strong { color:#166534; }
+.mb-status-ok   .mb-status-text span   { color:#15803D; }
+.mb-status-error .mb-status-text strong { color:#991B1B; font-size:0.92rem; }
+.mb-status-error .mb-status-text span   { color:#B91C1C; }
+
+.mb-goto-profile {
+  width:100%; padding:11px; font-size:0.92rem;
+  border-radius:10px !important;
 }
-.mb-info-icon { font-size:1.1rem; flex-shrink:0; }
-.mb-info-warn { color:#B45309; }
+
+/* أزرار معطّلة */
+.mbb-disabled {
+  opacity:0.35; cursor:not-allowed !important;
+  filter:grayscale(60%);
+}
+.mbb-disabled:hover { transform:none !important; box-shadow:none !important; }
 
 /* ---- جوال ---- */
 @media (max-width: 600px) {
