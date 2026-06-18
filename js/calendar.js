@@ -82,6 +82,19 @@ var Calendar = (function () {
     return { ok: true, schedule: schedule, summary: summary, colors: colors };
   }
 
+  // شارة أسطورة الألوان (legend pill)
+  function _legendPill(badge, icon, label) {
+    var r = parseInt(badge.slice(1,3),16);
+    var g = parseInt(badge.slice(3,5),16);
+    var b = parseInt(badge.slice(5,7),16);
+    return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;' +
+      'border-radius:50px;background:rgba(' + r + ',' + g + ',' + b + ',0.15);' +
+      'border:1.5px solid rgba(' + r + ',' + g + ',' + b + ',0.40);' +
+      'font-size:0.8rem;font-weight:700;color:' + badge + '">' +
+      '<span style="font-size:0.9rem">' + icon + '</span>' + label +
+    '</span>';
+  }
+
   // خلفية شبه شفافة مضمونة الظهور في الوضع الفاتح والداكن
   function _pillBg(hexColor, alpha) {
     var r = parseInt(hexColor.slice(1,3), 16);
@@ -121,22 +134,34 @@ var Calendar = (function () {
       '</div>';
     }).join('');
 
-    // أزرار الفلتر مع حالة اليوم لكل وردية
-    var todayStr = CONFIG.todayStr();
-    var shiftBtns = '<button class="shift-btn active" data-shift="all"' +
-      ' style="padding:6px 14px;border:none;border-radius:50px;font-size:0.85rem;font-weight:700;cursor:pointer;background:var(--primary);color:#fff">' +
+    // أسطورة الألوان (legend) — ثلاث حالات الدوام مع ألوانها
+    var sc_m = CONFIG.STATUS.morning;
+    var sc_e = CONFIG.STATUS.evening;
+    var sc_o = CONFIG.STATUS.off;
+    var legend =
+      '<div id="cal-legend" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center;' +
+        'padding:8px 14px;background:var(--bg-card,#fff);border-radius:12px;margin-bottom:10px;' +
+        'box-shadow:0 2px 8px rgba(0,0,0,0.06)">' +
+        '<span style="font-size:0.72rem;font-weight:700;color:var(--text-muted,#64748B)">دليل الألوان:</span>' +
+        _legendPill(sc_m.badge, sc_m.icon, sc_m.label) +
+        _legendPill(sc_e.badge, sc_e.icon, sc_e.label) +
+        _legendPill(sc_o.badge, sc_o.icon, sc_o.label) +
+      '</div>';
+
+    // أزرار الفلتر — دوائر مدمجة (حرف الوردية + لون الوردية فقط)
+    // بدون حالة اليوم داخل الزر حتى لا تتكدس في الجوال
+    var shiftBtns =
+      '<button class="shift-btn active" data-shift="all"' +
+      ' style="height:36px;padding:0 16px;border:none;border-radius:50px;font-size:0.85rem;font-weight:700;cursor:pointer;background:var(--primary);color:#fff;white-space:nowrap;flex-shrink:0">' +
       'الكل</button>';
     ['a','b','c','d'].forEach(function(sk) {
-      var shift  = CONFIG.SHIFTS[sk];
-      var todaySt = CONFIG.getShiftStatus(shift.label, todayStr);
-      var sc      = CONFIG.STATUS[todaySt.en] || CONFIG.STATUS.off;
+      var shift = CONFIG.SHIFTS[sk];
       shiftBtns +=
         '<button class="shift-btn" data-shift="' + sk + '"' +
-        ' style="padding:5px 12px;border:1.5px solid ' + shift.color + ';border-radius:50px;font-size:0.82rem;font-weight:700;cursor:pointer;background:transparent;color:' + shift.color + ';line-height:1.3;display:flex;flex-direction:column;align-items:center;gap:1px">' +
-          '<span>وردية ' + shift.label + '</span>' +
-          '<span style="font-size:0.68rem;font-weight:700;color:' + sc.badge + ';line-height:1">' +
-            sc.icon + ' ' + sc.label +
-          '</span>' +
+        ' style="width:36px;height:36px;border:2px solid ' + shift.color + ';border-radius:50%;' +
+          'font-size:1rem;font-weight:800;cursor:pointer;background:transparent;color:' + shift.color + ';' +
+          'display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0">' +
+        shift.label +
         '</button>';
     });
 
@@ -150,7 +175,9 @@ var Calendar = (function () {
         '<button class="cal-nav-btn" id="cal-next">&#8250;</button>' +
       '</div>' +
 
-      '<div id="shift-filter" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-start">' +
+      legend +
+
+      '<div id="shift-filter" style="display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:nowrap">' +
         shiftBtns +
       '</div>' +
 
@@ -189,19 +216,34 @@ var Calendar = (function () {
     el.querySelectorAll('.shift-btn').forEach(function(btn) {
       btn.onclick = function() {
         _selectedShift = this.dataset.shift;
+        // إعادة كل الأزرار للحالة الغير نشطة
         el.querySelectorAll('.shift-btn').forEach(function(b) {
           var bSk = b.dataset.shift;
-          var bColor = bSk === 'a' ? '#1565C0' : bSk === 'b' ? '#00838F' : bSk === 'c' ? '#2E7D32' : bSk === 'd' ? '#6A1B9A' : 'var(--primary)';
-          b.style.background = 'transparent';
-          b.style.color      = bColor;
           b.classList.remove('active');
+          if (bSk === 'all') {
+            b.style.background = 'transparent';
+            b.style.color      = 'var(--primary)';
+            b.style.border     = '2px solid var(--primary)';
+          } else {
+            var bColor = CONFIG.SHIFTS[bSk] ? CONFIG.SHIFTS[bSk].color : '#999';
+            b.style.background = 'transparent';
+            b.style.color      = bColor;
+            b.style.border     = '2px solid ' + bColor;
+          }
         });
+        // تفعيل الزر المختار
         this.classList.add('active');
-        this.style.background = 'var(--primary)';
-        this.style.color      = '#fff';
-        // تحديث لون نص الحالة داخل الزر النشط
-        var lbl = this.querySelector('span:last-child');
-        if (lbl) lbl.style.color = 'rgba(255,255,255,0.85)';
+        if (this.dataset.shift === 'all') {
+          this.style.background = 'var(--primary)';
+          this.style.color      = '#fff';
+          this.style.border     = 'none';
+        } else {
+          var activeSk = this.dataset.shift;
+          var activeColor = CONFIG.SHIFTS[activeSk] ? CONFIG.SHIFTS[activeSk].color : '#999';
+          this.style.background = activeColor;
+          this.style.color      = '#fff';
+          this.style.border     = '2px solid ' + activeColor;
+        }
         if (_scheduleData) _renderDays(_scheduleData);
       };
     });
