@@ -328,9 +328,13 @@ var Dashboard = (function () {
       var todayShifts = dash.todayShifts || {};
       var shiftStats  = dash.shiftStats  || {};
 
-      var lvPending = lvReqs.filter(function(r){ return r.status==='قيد المراجعة'; }).length;
+      var isSup = role === 'مشرف';
+      var lvPending = lvReqs.filter(function(r){
+        return r.status === 'قيد المراجعة' && (!isSup || r.shift === user.shift);
+      }).length;
       var otPending = otReqs.filter(function(r){
-        return r.status==='تم الإنشاء'||r.status==='أُرسل للتنسيق الإداري';
+        return (r.status==='تم الإنشاء'||r.status==='أُرسل للتنسيق الإداري') &&
+               (!isSup || r.shift === user.shift);
       }).length;
 
       // تجميع عدد الموظفين حسب المنطقة لكل وردية (من rgList)
@@ -397,7 +401,8 @@ var Dashboard = (function () {
       html += '<div class="dash-card dash-card-wide">';
       html += '<h3 class="dash-card-title">📊 حالة الورديات اليوم <span style="font-size:0.75rem;font-weight:400;color:var(--text-muted)">— اضغط على الوردية لعرض موظفيها</span></h3>';
       html += '<div class="shift-cards-row">';
-      ['a','b','c','d'].forEach(function(sk) {
+      var shiftKeys = isSup ? [CONFIG.shiftKey(user.shift || 'أ')] : ['a','b','c','d'];
+      shiftKeys.forEach(function(sk) {
         var label  = CONFIG.SHIFTS[sk].label;
         var color  = colors[sk] || CONFIG.SHIFTS[sk].color;
         var st2    = todayShifts[sk] || {};
@@ -479,7 +484,7 @@ var Dashboard = (function () {
       // ============================================================
       // 4. بطاقة المراكز والمناطق الشاملة
       // ============================================================
-      html += _buildManagerRegionsCard(rgList, role, today, lvReqs, colors, todayShifts);
+      html += _buildManagerRegionsCard(rgList, role, today, lvReqs, colors, todayShifts, user.shift);
 
       html += '</div>';
       el.innerHTML = html;
@@ -501,7 +506,13 @@ var Dashboard = (function () {
     });
   }
 
-  function _buildManagerRegionsCard(rgList, role, today, lvReqs, colors, todayShifts) {
+  function _buildManagerRegionsCard(rgList, role, today, lvReqs, colors, todayShifts, myShift) {
+    // للمشرف: فلترة الموظفين حسب وردييته فقط
+    var isSup        = role === 'مشرف';
+    var filteredList = (isSup && myShift)
+      ? rgList.filter(function(r) { return r.shift === myShift; })
+      : rgList;
+
     // الموظفون في إجازة اليوم
     var onLeaveIds = {};
     lvReqs.forEach(function(r) {
@@ -511,7 +522,7 @@ var Dashboard = (function () {
     });
 
     // تجميع حسب المنطقة — يُستبعد من ليس له منطقة ومركز
-    var assignedList = rgList.filter(function(r) { return r.region || r.center; });
+    var assignedList = filteredList.filter(function(r) { return r.region || r.center; });
     var byRegion = {};
     assignedList.forEach(function(r) {
       var reg = r.region || 'غير محدد';
@@ -524,19 +535,35 @@ var Dashboard = (function () {
     assignedList.forEach(function(r) { if (r.center) centerSet[r.center] = true; });
     var centerCount = Object.keys(centerSet).length;
 
+    // عدد الموظفين في إجازة (من القائمة المفلترة فقط)
+    var onLeaveCount = assignedList.filter(function(r) {
+      return onLeaveIds[String(r.empId)];
+    }).length;
+    var presentCount = assignedList.length - onLeaveCount;
+
+    var cardTitle = isSup
+      ? 'المناطق والمراكز — وردية ' + myShift
+      : 'المناطق والمراكز';
+    var presentBox = isSup
+      ? '<div class="rsc-box rsc-box-done"><span class="rsc-box-num" style="color:#166534">' + presentCount + '</span><span class="rsc-box-label">متواجد</span></div>'
+      : '<div class="rsc-box rsc-box-done"><span class="rsc-box-num">' + assignedList.length + '</span><span class="rsc-box-label">موظف</span></div>';
+
     var html = '<div class="dash-card regions-card dash-card-wide">' +
-      '<div class="rsc-header"><span class="rsc-icon-wrap">🗺️</span><span class="rsc-title">المناطق والمراكز</span></div>' +
+      '<div class="rsc-header"><span class="rsc-icon-wrap">🗺️</span><span class="rsc-title">' + cardTitle + '</span></div>' +
       '<div class="rsc-grid rsc-grid-4">' +
         '<div class="rsc-box rsc-box-total"><span class="rsc-box-num">' + regionCount + '</span><span class="rsc-box-label">منطقة</span></div>' +
         '<div class="rsc-box rsc-box-pending"><span class="rsc-box-num">' + centerCount + '</span><span class="rsc-box-label">مركز</span></div>' +
-        '<div class="rsc-box rsc-box-done"><span class="rsc-box-num">' + assignedList.length + '</span><span class="rsc-box-label">موظف</span></div>' +
-        '<div class="rsc-box rsc-box-leave"><span class="rsc-box-num">' + Object.keys(onLeaveIds).length + '</span><span class="rsc-box-label">في إجازة</span></div>' +
+        presentBox +
+        '<div class="rsc-box rsc-box-leave"><span class="rsc-box-num">' + onLeaveCount + '</span><span class="rsc-box-label">في إجازة</span></div>' +
       '</div>' +
       '<button class="btn-outline rsc-link-btn" id="btn-show-regions" style="width:100%;margin-top:12px;text-align:center">عرض التفاصيل ▼</button>' +
       '<div id="regions-panel" style="display:none;margin-top:12px">';
 
     Object.keys(byRegion).forEach(function(reg) {
       var emps = byRegion[reg];
+      var regOnLeave  = emps.filter(function(e) { return onLeaveIds[String(e.empId)]; }).length;
+      var regPresent  = emps.length - regOnLeave;
+
       // تجميع حسب المركز
       var byCenters = {};
       emps.forEach(function(e) {
@@ -545,32 +572,49 @@ var Dashboard = (function () {
         byCenters[c].push(e);
       });
 
+      var regionMeta = isSup
+        ? regPresent + ' متواجد / ' + emps.length + ' إجمالي' + (regOnLeave ? ' — ' + regOnLeave + ' في إجازة' : '')
+        : emps.length + ' موظف';
+
       html += '<div class="region-section">' +
-        '<div class="region-title">📍 ' + reg + ' <span class="rs-count">(' + emps.length + ' موظف)</span></div>';
+        '<div class="region-title">📍 ' + reg + ' <span class="rs-count">(' + regionMeta + ')</span></div>';
 
       Object.keys(byCenters).forEach(function(center) {
-        var cEmps = byCenters[center];
+        var cEmps     = byCenters[center];
+        var cOnLeave  = cEmps.filter(function(e) { return onLeaveIds[String(e.empId)]; }).length;
+        var cPresent  = cEmps.length - cOnLeave;
+
+        var centerMeta = isSup
+          ? '<span style="color:#166534;font-weight:700">' + cPresent + ' متواجد</span>' +
+            ' / ' + cEmps.length + ' إجمالي' +
+            (cOnLeave ? ' — <span style="color:#991B1B;font-weight:700">' + cOnLeave + ' إجازة</span>' : '')
+          : '';
+
         html += '<div class="center-section">' +
-          '<div class="center-title">🏢 ' + center + '</div>' +
+          '<div class="center-title">🏢 ' + center +
+            (centerMeta ? ' <span class="rs-count" style="font-weight:400;font-size:0.82rem"> — ' + centerMeta + '</span>' : '') +
+          '</div>' +
           '<div class="regions-table-wrap"><table class="regions-table"><thead><tr>' +
-            '<th>الرقم الوظيفي</th><th>الاسم</th><th>الوردية</th><th>المنطقة</th><th>المركز</th><th>السيارة</th><th>الحالة</th>' +
+            '<th>الرقم الوظيفي</th><th>الاسم</th>' +
+            (isSup ? '' : '<th>الوردية</th>') +
+            '<th>المنطقة</th><th>المركز</th><th>السيارة</th><th>الحالة</th>' +
           '</tr></thead><tbody>';
 
         cEmps.forEach(function(r) {
           var sk   = CONFIG.shiftKey(r.shift||'');
           var sc   = CONFIG.SHIFTS[sk] || CONFIG.SHIFTS.a;
           var onL  = onLeaveIds[String(r.empId)];
-          // حالة الدوام اليوم
           var shiftSt  = (todayShifts||{})[sk] || {};
           var stcDuty  = CONFIG.STATUS[shiftSt.en] || CONFIG.STATUS.off;
           var dutyHtml = onL
             ? '<span class="duty-pill" style="background:#FEE2E2;color:#991B1B">🏖️ إجازة</span>'
             : '<span class="duty-pill" style="background:' + stcDuty.bg + ';color:' + stcDuty.text + '">' + stcDuty.icon + ' ' + (shiftSt.ar||'راحة') + '</span>';
 
-          html += '<tr' + (onL ? ' class="row-on-leave"' : '') + '>' +
+          var rowStyle = onL ? ' style="background:#FEF3C7"' : '';
+          html += '<tr class="' + (onL ? 'row-on-leave' : '') + '"' + rowStyle + '>' +
             '<td>' + (r.empId||'—')  + '</td>' +
             '<td>' + (r.name||'—')   + '</td>' +
-            '<td><span class="shift-badge-sm" style="background:' + sc.color + ';color:#fff">' + (r.shift||'—') + '</span></td>' +
+            (isSup ? '' : '<td><span class="shift-badge-sm" style="background:' + sc.color + ';color:#fff">' + (r.shift||'—') + '</span></td>') +
             '<td>' + (r.region||'—') + '</td>' +
             '<td>' + (r.center||'—') + '</td>' +
             '<td>' + (r.car||'—')    + '</td>' +
@@ -584,7 +628,7 @@ var Dashboard = (function () {
       html += '</div>'; // region-section
     });
 
-    if (rgList.length === 0) {
+    if (assignedList.length === 0) {
       html += '<div class="empty-state" style="padding:16px">لا توجد بيانات مناطق</div>';
     }
 
