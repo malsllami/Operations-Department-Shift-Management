@@ -149,7 +149,10 @@ var Leaves = (function () {
   window.leaveReview = function(no, status) {
     API.reviewLeave(no, status, '').then(function(res) {
       if (res.ok) { App.toast('تمت المراجعة', 'success'); App.navigate('leaves'); }
-      else App.toast('حدث خطأ: ' + res.error, 'error');
+      else {
+        var capErrs = { region_capacity: res.msg, center_capacity: res.msg };
+        App.toast(capErrs[res.error] || 'حدث خطأ: ' + res.error, 'error', 6000);
+      }
     });
   };
 
@@ -163,7 +166,10 @@ var Leaves = (function () {
           App.showWaModal([{name: empName, phone: empPhone, role: 'موظف'}],
             CONFIG.WA_MESSAGES.leave_approve, '📱 أبلغ الموظف بالاعتماد');
         }
-      } else App.toast('حدث خطأ: ' + res.error, 'error');
+      } else {
+        var capMsg2 = (res.error === 'region_capacity' || res.error === 'center_capacity') ? res.msg : null;
+        App.toast(capMsg2 || 'حدث خطأ: ' + res.error, 'error', 6000);
+      }
     });
   }
 
@@ -301,9 +307,9 @@ var Leaves = (function () {
     '</div>';
 
     html += '<div class="form-field"><label>تاريخ البداية <span class="req">*</span></label>' +
-      '<input type="date" id="lf-start" class="form-input" required onchange="Leaves._calcDays()" value="' + (isEdit ? (eReq.startDate||'') : '') + '"></div>';
+      '<input type="date" id="lf-start" class="form-input" required onchange="Leaves._calcDays();Leaves._checkCapacity()" value="' + (isEdit ? (eReq.startDate||'') : '') + '"></div>';
     html += '<div class="form-field"><label>تاريخ النهاية <span class="req">*</span></label>' +
-      '<input type="date" id="lf-end" class="form-input" required onchange="Leaves._calcDays()" value="' + (isEdit ? (eReq.endDate||'') : '') + '"></div>';
+      '<input type="date" id="lf-end" class="form-input" required onchange="Leaves._calcDays();Leaves._checkCapacity()" value="' + (isEdit ? (eReq.endDate||'') : '') + '"></div>';
     html += '<div class="form-field"><label>مدة الإجازة</label><div class="form-static" id="lf-days">—</div></div>';
 
     html += '</div>'; // form-grid
@@ -313,6 +319,7 @@ var Leaves = (function () {
 
     // تحذير الرصيد
     html += '<div id="lf-warn" class="form-warning" style="display:none">⚠️ الرصيد غير كافٍ — سيتم إرسال الطلب وسيراجعه المشرف</div>';
+    html += '<div id="lf-capacity-warn" class="form-error" style="display:none;white-space:pre-line"></div>';
 
     html += '<div class="form-field"><label>ملاحظات</label>' +
       '<textarea id="lf-notes" class="form-textarea" rows="3" placeholder="اختياري">' + (isEdit ? (eReq.empNotes||'') : '') + '</textarea></div>';
@@ -433,7 +440,12 @@ var Leaves = (function () {
             });
           }
         } else {
-          var errs = { cannot_edit_reviewed:'لا يمكن تعديل طلب تمت مراجعته' };
+          var errs = {
+          cannot_edit_reviewed: 'لا يمكن تعديل طلب تمت مراجعته',
+          region_capacity:      res.msg || 'الطاقة الاستيعابية للمنطقة ممتلئة في هذه التواريخ',
+          center_capacity:      res.msg || 'الحد الأدنى للمركز غير مستوفٍ في هذه التواريخ'
+        };
+          errEl.style.whiteSpace = 'pre-line';
           errEl.textContent = errs[res.error] || 'حدث خطأ: ' + res.error;
           errEl.style.display = 'block';
         }
@@ -491,6 +503,30 @@ var Leaves = (function () {
       if (wrap) wrap.style.display = 'none';
       if (warn) warn.style.display = 'none';
     }
+  }
+
+  var _capCheckTimer = null;
+  function _checkCapacity() {
+    var startEl = document.getElementById('lf-start');
+    var endEl   = document.getElementById('lf-end');
+    var warnEl  = document.getElementById('lf-capacity-warn');
+    if (!startEl || !endEl || !startEl.value || !endEl.value || !warnEl) return;
+    if (endEl.value < startEl.value) return;
+    // تأخير صغير لتجنب استدعاءات متكررة عند التغيير السريع
+    clearTimeout(_capCheckTimer);
+    _capCheckTimer = setTimeout(function() {
+      var empEl = document.getElementById('lf-emp');
+      var empId = empEl ? empEl.value : '';
+      API.checkRegionCapacity(startEl.value, endEl.value, empId).then(function(res) {
+        if (!warnEl) return;
+        if (!res.ok && (res.error === 'region_capacity' || res.error === 'center_capacity')) {
+          warnEl.textContent = '🚫 ' + (res.msg || 'الطاقة الاستيعابية ممتلئة');
+          warnEl.style.display = 'block';
+        } else {
+          warnEl.style.display = 'none';
+        }
+      });
+    }, 600);
   }
 
   function _calcDays() {
