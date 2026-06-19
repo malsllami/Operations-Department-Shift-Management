@@ -47,6 +47,10 @@ var API = (function () {
     return _call(p);
   }
 
+  function resetPassword(empId, shift) {
+    return _call({ action:'resetPassword', empId: empId, shift: shift });
+  }
+
   // ---- الجدول ----
   function getSchedule(year, month) {
     return _call({ action:'getSchedule', year: year, month: month });
@@ -262,7 +266,7 @@ var API = (function () {
   }
 
   return {
-    login, changePassword,
+    login, changePassword, resetPassword,
     getSchedule,
     getSettings, updateSettings,
     verifyRoleCode, setRoleCode,
