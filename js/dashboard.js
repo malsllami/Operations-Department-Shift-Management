@@ -318,12 +318,14 @@ var Dashboard = (function () {
       API.getDashboard(),
       API.getLeaveReqs(),
       API.getOvertimeReqs(),
-      API.getRegions()
+      API.getRegions(),
+      API.getEmployees()
     ]).then(function(results) {
       var dash    = results[0].ok ? results[0].data : {};
       var lvReqs  = results[1].ok ? results[1].data : [];
       var otReqs  = results[2].ok ? results[2].data : [];
       var rgList  = results[3].ok ? results[3].data : [];
+      var empList = results[4].ok ? results[4].data : [];
       var colors  = dash.colors || {};
       var todayShifts = dash.todayShifts || {};
       var shiftStats  = dash.shiftStats  || {};
@@ -346,7 +348,7 @@ var Dashboard = (function () {
         shiftRegions[sk2][r.region] = (shiftRegions[sk2][r.region] || 0) + 1;
       });
 
-      var html = '<div class="dashboard-grid">';
+      var html = '<div class="dashboard-grid' + (isSup ? ' sup-dashboard' : '') + '">';
 
       // ============================================================
       // 0. بطاقة الاستهلاك — أول عنصر للمدير فقط
@@ -486,6 +488,11 @@ var Dashboard = (function () {
       // ============================================================
       html += _buildManagerRegionsCard(rgList, role, today, lvReqs, colors, todayShifts, user.shift);
 
+      // ============================================================
+      // 5. بطاقة تواريخ البطاقات
+      // ============================================================
+      html += _buildCardExpiryCard(empList, role, user.shift);
+
       html += '</div>';
       el.innerHTML = html;
 
@@ -498,6 +505,19 @@ var Dashboard = (function () {
             var isOpen = panel.style.display !== 'none';
             panel.style.display = isOpen ? 'none' : 'block';
             regBtn.textContent  = isOpen ? '▼ عرض التفاصيل' : '▲ إخفاء التفاصيل';
+          }
+        };
+      }
+
+      // ربط بطاقة البطاقات
+      var ceBtn = document.getElementById('btn-show-ce');
+      if (ceBtn) {
+        ceBtn.onclick = function() {
+          var panel = document.getElementById('ce-panel');
+          if (panel) {
+            var isOpen = panel.style.display !== 'none';
+            panel.style.display = isOpen ? 'none' : 'block';
+            ceBtn.textContent   = isOpen ? 'عرض تفاصيل البطاقات ▼' : 'إخفاء تفاصيل البطاقات ▲';
           }
         };
       }
@@ -633,6 +653,125 @@ var Dashboard = (function () {
     }
 
     html += '</div></div>'; // regions-panel + regions-card
+    return html;
+  }
+
+  // ---- مساعدات بطاقة صلاحية الهويات ----
+  function _ceMinDays(e) {
+    var vals = [];
+    if (e.workDaysLeft !== '' && e.workDaysLeft !== null && e.workDaysLeft !== undefined) vals.push(Number(e.workDaysLeft));
+    if (e.srcDaysLeft  !== '' && e.srcDaysLeft  !== null && e.srcDaysLeft  !== undefined) vals.push(Number(e.srcDaysLeft));
+    return vals.length ? Math.min.apply(null, vals) : null;
+  }
+
+  function _ceDaysPill(days) {
+    if (days === '' || days === undefined || days === null) return '—';
+    var d = Number(days);
+    var bg, tx;
+    if (d < 10)  { bg = '#FEE2E2'; tx = '#991B1B'; }
+    else if (d < 35)  { bg = '#FEF9C3'; tx = '#854D0E'; }
+    else if (d <= 90) { bg = '#FFEDD5'; tx = '#9A3412'; }
+    else return '<span style="color:var(--text-muted);font-size:0.82rem">' + d + ' يوم</span>';
+    return '<span style="background:' + bg + ';color:' + tx + ';padding:2px 8px;border-radius:50px;font-size:0.82rem;font-weight:700">' + d + ' يوم</span>';
+  }
+
+  function _buildCardExpiryCard(empList, role, myShift) {
+    var isSup = role === 'مشرف';
+    // فلترة من لديهم تاريخ بطاقة واحدة على الأقل
+    var list = empList.filter(function(e) { return e.workExpDate || e.srcExpDate; });
+
+    // الإحصاء حسب الفئات
+    var red = 0, yellow = 0, orange = 0;
+    list.forEach(function(e) {
+      var d = _ceMinDays(e);
+      if (d === null) return;
+      if (d < 10)  red++;
+      else if (d < 35)  yellow++;
+      else if (d <= 90) orange++;
+    });
+
+    // ترتيب: الأقرب للانتهاء أولاً
+    list.sort(function(a, b) {
+      var da = _ceMinDays(a), db = _ceMinDays(b);
+      if (da === null) return 1; if (db === null) return -1;
+      return da - db;
+    });
+
+    var cardTitle = isSup ? 'صلاحية البطاقات — وردية ' + myShift : 'صلاحية البطاقات';
+
+    var html = '<div class="dash-card dash-card-wide ce-card">' +
+      '<div class="rsc-header"><span class="rsc-icon-wrap">🪪</span><span class="rsc-title">' + cardTitle + '</span></div>';
+
+    // ملخص ملون
+    html += '<div class="ce-summary">';
+    if (red)    html += '<div class="ce-badge ce-badge-red"><span class="ce-badge-num">' + red + '</span><span class="ce-badge-lbl">أقل من 10 أيام</span></div>';
+    if (yellow) html += '<div class="ce-badge ce-badge-yellow"><span class="ce-badge-num">' + yellow + '</span><span class="ce-badge-lbl">10 — 34 يوم</span></div>';
+    if (orange) html += '<div class="ce-badge ce-badge-orange"><span class="ce-badge-num">' + orange + '</span><span class="ce-badge-lbl">35 — 90 يوم</span></div>';
+    if (!red && !yellow && !orange) html += '<div class="ce-badge ce-badge-ok">✅ جميع البطاقات سارية (أكثر من 90 يوم)</div>';
+    html += '</div>';
+
+    if (list.length === 0) {
+      html += '<div class="empty-state" style="padding:16px">لا توجد بيانات بطاقات</div></div>';
+      return html;
+    }
+
+    // زر إظهار/إخفاء الجدول
+    html += '<button class="btn-outline rsc-link-btn" id="btn-show-ce" style="width:100%;margin-top:12px;text-align:center">عرض تفاصيل البطاقات ▼</button>' +
+      '<div id="ce-panel" style="display:none;margin-top:12px">';
+
+    if (!isSup) {
+      // المدير: مجموعة لكل وردية
+      ['أ','ب','ج','د'].forEach(function(shiftLabel) {
+        var sk  = CONFIG.shiftKey(shiftLabel);
+        var sc  = CONFIG.SHIFTS[sk] || CONFIG.SHIFTS.a;
+        var grp = list.filter(function(e) { return e.shift === shiftLabel; });
+        if (!grp.length) return;
+        html += '<div class="ce-group">' +
+          '<div class="ce-group-header" style="background:' + sc.color + '">' +
+            '<span>وردية ' + shiftLabel + '</span>' +
+            '<span class="ce-group-count">' + grp.length + ' موظف</span>' +
+          '</div>' +
+          _buildCeTable(grp, false) +
+          '</div>';
+      });
+    } else {
+      html += _buildCeTable(list, true);
+    }
+
+    html += '</div></div>'; // ce-panel + ce-card
+    return html;
+  }
+
+  function _buildCeTable(emps, hideSft) {
+    var html = '<div class="regions-table-wrap"><table class="regions-table"><thead><tr>' +
+      '<th>الرقم الوظيفي</th><th>الاسم</th>' +
+      (hideSft ? '' : '<th>الوردية</th>') +
+      '<th>بطاقة العمل</th><th>المتبقي</th>' +
+      '<th>بطاقة مصدر/مستلم</th><th>المتبقي</th>' +
+    '</tr></thead><tbody>';
+
+    emps.forEach(function(e) {
+      var d = _ceMinDays(e);
+      var rowBg = '';
+      if (d !== null) {
+        if (d < 10)  rowBg = ' style="background:#FEE2E2"';
+        else if (d < 35)  rowBg = ' style="background:#FEF9C3"';
+        else if (d <= 90) rowBg = ' style="background:#FFEDD5"';
+      }
+      var sk = CONFIG.shiftKey(e.shift||'');
+      var sc = CONFIG.SHIFTS[sk] || CONFIG.SHIFTS.a;
+      html += '<tr' + rowBg + '>' +
+        '<td>' + (e.empId||'—') + '</td>' +
+        '<td>' + (e.name||'—')  + '</td>' +
+        (hideSft ? '' : '<td><span class="shift-badge-sm" style="background:' + sc.color + ';color:#fff">' + (e.shift||'—') + '</span></td>') +
+        '<td>' + (e.workExpDate||'—') + '</td>' +
+        '<td>' + _ceDaysPill(e.workDaysLeft) + '</td>' +
+        '<td>' + (e.srcExpDate||'—')  + '</td>' +
+        '<td>' + _ceDaysPill(e.srcDaysLeft)  + '</td>' +
+      '</tr>';
+    });
+
+    html += '</tbody></table></div>';
     return html;
   }
 
