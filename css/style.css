@@ -162,6 +162,8 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 .btn-login:disabled { opacity: 0.7; transform: none; }
 
 .login-error { color: #EF4444; font-size: 0.88rem; margin-top: 8px; padding: 8px 12px; background: #FEF2F2; border-radius: 10px; }
+.btn-forgot-pw { display: block; width: 100%; margin-top: 10px; background: none; border: none; color: var(--text-muted); font-size: 0.85rem; cursor: pointer; text-align: center; padding: 6px; text-decoration: underline; }
+.btn-forgot-pw:hover { color: var(--primary); }
 .change-pass-notice { background: #FEF3C7; color: #92400E; padding: 10px 14px; border-radius: 10px; margin-bottom: 16px; font-size: 0.9rem; }
 /* شاشة تغيير كلمة المرور الإلزامي */
 .force-change-header { text-align: center; margin-bottom: 20px; }
