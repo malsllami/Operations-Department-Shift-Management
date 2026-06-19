@@ -315,17 +315,16 @@ var Dashboard = (function () {
     var today = CONFIG.todayStr();
 
     // ----
-    // المرحلة الأولى: طلبان فقط — getDashboard يرجع العدادات والألوان
-    // getRegions + getEmployees تُحمَّل بعد العرض الأولي
+    // المرحلة الأولى: طلب واحد فقط — getDashboard يرجع الإحصاءات + المناطق + الموظفين
+    // هذا يمنع تراكم الطلبات المتزامنة التي تعطّل GAS
     // ----
     Promise.all([
-      API.getDashboard(),
-      API.getRegions()
+      API.getDashboard()
     ]).then(function(results) {
       var dash    = results[0].ok ? results[0].data : {};
-      var rgList  = results[1].ok ? results[1].data : [];
+      var rgList  = dash.regions   || [];
+      var empList = dash.employees || [];
       var lvReqs  = [];   // تُحمَّل في المرحلة الثانية
-      var empList = [];
       var colors  = dash.colors || {};
       var todayShifts = dash.todayShifts || {};
       var shiftStats  = dash.shiftStats  || {};
@@ -495,14 +494,9 @@ var Dashboard = (function () {
       html += _buildManagerRegionsCard(rgList, role, today, lvReqs, colors, todayShifts, user.shift);
 
       // ============================================================
-      // 5. بطاقة تواريخ البطاقات (placeholder — تُحدَّث في المرحلة الثانية)
+      // 5. بطاقة تواريخ البطاقات (من empList المضمّن في getDashboard)
       // ============================================================
-      html += '<div class="dash-card dash-card-wide ce-card">' +
-        '<div class="rsc-header"><span class="rsc-icon-wrap">🪪</span>' +
-          '<span class="rsc-title">صلاحيات البطاقات والهويات</span></div>' +
-        '<div style="padding:20px;text-align:center;color:#94A3B8;font-size:0.85rem">' +
-          '<div class="spinner" style="margin:0 auto 8px"></div>جارٍ التحميل…</div>' +
-      '</div>';
+      html += _buildCardExpiryCard(empList, role, user.shift);
 
       html += '</div>';
       el.innerHTML = html;
@@ -537,25 +531,20 @@ var Dashboard = (function () {
       if (isSup) { _loadPresenceDefaults(); }
 
       // ----
-      // المرحلة الثانية: تحميل الإجازات والموظفين بعد رسم الصفحة
-      // يُحدّث بطاقة المناطق + توزيع الإجازات + تواريخ البطاقات
+      // المرحلة الثانية: طلب واحد فقط — تحميل الإجازات لتحديث بطاقة المناطق + توزيع الإجازات
+      // يُطلَق بعد عرض الصفحة حتى لا يتنافس مع طلبات أخرى
       // ----
       var _el = el;
       var _role = role, _user2 = user, _rgList = rgList, _today = today;
       var _isSup = isSup;
-      Promise.all([
-        API.getLeaveReqs(),
-        API.getEmployees()
-      ]).then(function(r2) {
-        var lv2  = r2[0].ok ? r2[0].data : [];
-        var emp2 = r2[1].ok ? r2[1].data : [];
-        if (!_el || !document.body.contains(_el)) return; // تحقق أن الصفحة لا تزال مفتوحة
+      API.getLeaveReqs().then(function(r2) {
+        var lv2 = r2.ok ? r2.data : [];
+        if (!_el || !document.body.contains(_el)) return;
 
-        // تحديث بطاقة المناطق
+        // تحديث بطاقة المناطق بإضافة معلومات الإجازات
         var rgCard = _el.querySelector('.regions-card');
         if (rgCard) {
           rgCard.outerHTML = _buildManagerRegionsCard(_rgList, _role, _today, lv2, colors, todayShifts, _user2.shift);
-          // إعادة ربط زر المناطق
           var regBtn2 = _el.querySelector('#btn-show-regions');
           if (regBtn2) regBtn2.onclick = function() {
             var p2 = _el.querySelector('#regions-panel');
@@ -568,18 +557,7 @@ var Dashboard = (function () {
           var distCard = _el.querySelector('.lv-dist-card');
           if (distCard) distCard.outerHTML = _buildLeaveDistCard(lv2, _user2.shift, _rgList, _today);
         }
-
-        // تحديث بطاقة تواريخ البطاقات
-        var ceCard = _el.querySelector('.ce-card');
-        if (ceCard) {
-          ceCard.outerHTML = _buildCardExpiryCard(emp2, _role, _user2.shift);
-          var ceBtn2 = _el.querySelector('#btn-show-ce');
-          if (ceBtn2) ceBtn2.onclick = function() {
-            var p3 = _el.querySelector('#ce-panel');
-            if (p3) { var o3 = p3.style.display !== 'none'; p3.style.display = o3 ? 'none' : 'block'; this.textContent = o3 ? 'عرض تفاصيل البطاقات ▼' : 'إخفاء تفاصيل البطاقات ▲'; }
-          };
-        }
-      }).catch(function() {}); // أخطاء المرحلة الثانية لا تؤثر على الصفحة
+      }).catch(function() {});
     });
   }
 
