@@ -134,8 +134,8 @@ var Leaves = (function () {
   }
 
   function _reviewButtons(no, type, empPhone, empName) {
-    var safePhone = (empPhone || '').replace(/'/g, '');
-    var safeName  = (empName  || '').replace(/'/g, "\\'");
+    var safePhone = String(empPhone || '').replace(/'/g, '');
+    var safeName  = String(empName  || '').replace(/'/g, "\\'");
     return '<div class="req-actions">' +
       '<button class="btn-sm btn-approve" onclick="Leaves._leaveApproveAndNotify(\'' + no + '\',\'' + safePhone + '\',\'' + safeName + '\')">✅ اعتماد</button>' +
       '<button class="btn-sm btn-reject"  onclick="leaveReviewReject(\'' + no + '\',\'' + safePhone + '\',\'' + safeName + '\')">❌ رفض</button>' +
