@@ -314,30 +314,26 @@ var Dashboard = (function () {
   function _renderManager(el, role, user) {
     var today = CONFIG.todayStr();
 
+    // ----
+    // المرحلة الأولى: طلبان فقط — getDashboard يرجع العدادات والألوان
+    // getRegions + getEmployees تُحمَّل بعد العرض الأولي
+    // ----
     Promise.all([
       API.getDashboard(),
-      API.getLeaveReqs(),
-      API.getOvertimeReqs(),
-      API.getRegions(),
-      API.getEmployees()
+      API.getRegions()
     ]).then(function(results) {
       var dash    = results[0].ok ? results[0].data : {};
-      var lvReqs  = results[1].ok ? results[1].data : [];
-      var otReqs  = results[2].ok ? results[2].data : [];
-      var rgList  = results[3].ok ? results[3].data : [];
-      var empList = results[4].ok ? results[4].data : [];
+      var rgList  = results[1].ok ? results[1].data : [];
+      var lvReqs  = [];   // تُحمَّل في المرحلة الثانية
+      var empList = [];
       var colors  = dash.colors || {};
       var todayShifts = dash.todayShifts || {};
       var shiftStats  = dash.shiftStats  || {};
 
       var isSup = role === 'مشرف';
-      var lvPending = lvReqs.filter(function(r){
-        return r.status === 'قيد المراجعة' && (!isSup || r.shift === user.shift);
-      }).length;
-      var otPending = otReqs.filter(function(r){
-        return (r.status==='تم الإنشاء'||r.status==='أُرسل للتنسيق الإداري') &&
-               (!isSup || r.shift === user.shift);
-      }).length;
+      // العدادات تأتي من getDashboard مباشرةً (بدون طلب منفصل)
+      var lvPending = dash.pendingLeave || 0;
+      var otPending = dash.pendingOT    || 0;
 
       // تجميع عدد الموظفين حسب المنطقة لكل وردية (من rgList)
       var shiftRegions = { a:{}, b:{}, c:{}, d:{} };
@@ -499,9 +495,14 @@ var Dashboard = (function () {
       html += _buildManagerRegionsCard(rgList, role, today, lvReqs, colors, todayShifts, user.shift);
 
       // ============================================================
-      // 5. بطاقة تواريخ البطاقات
+      // 5. بطاقة تواريخ البطاقات (placeholder — تُحدَّث في المرحلة الثانية)
       // ============================================================
-      html += _buildCardExpiryCard(empList, role, user.shift);
+      html += '<div class="dash-card dash-card-wide ce-card">' +
+        '<div class="rsc-header"><span class="rsc-icon-wrap">🪪</span>' +
+          '<span class="rsc-title">صلاحيات البطاقات والهويات</span></div>' +
+        '<div style="padding:20px;text-align:center;color:#94A3B8;font-size:0.85rem">' +
+          '<div class="spinner" style="margin:0 auto 8px"></div>جارٍ التحميل…</div>' +
+      '</div>';
 
       html += '</div>';
       el.innerHTML = html;
@@ -534,6 +535,51 @@ var Dashboard = (function () {
 
       if (role === 'مدير') { _loadApiUsage(); }
       if (isSup) { _loadPresenceDefaults(); }
+
+      // ----
+      // المرحلة الثانية: تحميل الإجازات والموظفين بعد رسم الصفحة
+      // يُحدّث بطاقة المناطق + توزيع الإجازات + تواريخ البطاقات
+      // ----
+      var _el = el;
+      var _role = role, _user2 = user, _rgList = rgList, _today = today;
+      var _isSup = isSup;
+      Promise.all([
+        API.getLeaveReqs(),
+        API.getEmployees()
+      ]).then(function(r2) {
+        var lv2  = r2[0].ok ? r2[0].data : [];
+        var emp2 = r2[1].ok ? r2[1].data : [];
+        if (!_el || !document.body.contains(_el)) return; // تحقق أن الصفحة لا تزال مفتوحة
+
+        // تحديث بطاقة المناطق
+        var rgCard = _el.querySelector('.regions-card');
+        if (rgCard) {
+          rgCard.outerHTML = _buildManagerRegionsCard(_rgList, _role, _today, lv2, colors, todayShifts, _user2.shift);
+          // إعادة ربط زر المناطق
+          var regBtn2 = _el.querySelector('#btn-show-regions');
+          if (regBtn2) regBtn2.onclick = function() {
+            var p2 = _el.querySelector('#regions-panel');
+            if (p2) { var o2 = p2.style.display !== 'none'; p2.style.display = o2 ? 'none' : 'block'; this.textContent = o2 ? '▼ عرض التفاصيل' : '▲ إخفاء التفاصيل'; }
+          };
+        }
+
+        // تحديث بطاقة توزيع الإجازات (المشرف فقط)
+        if (_isSup) {
+          var distCard = _el.querySelector('.lv-dist-card');
+          if (distCard) distCard.outerHTML = _buildLeaveDistCard(lv2, _user2.shift, _rgList, _today);
+        }
+
+        // تحديث بطاقة تواريخ البطاقات
+        var ceCard = _el.querySelector('.ce-card');
+        if (ceCard) {
+          ceCard.outerHTML = _buildCardExpiryCard(emp2, _role, _user2.shift);
+          var ceBtn2 = _el.querySelector('#btn-show-ce');
+          if (ceBtn2) ceBtn2.onclick = function() {
+            var p3 = _el.querySelector('#ce-panel');
+            if (p3) { var o3 = p3.style.display !== 'none'; p3.style.display = o3 ? 'none' : 'block'; this.textContent = o3 ? 'عرض تفاصيل البطاقات ▼' : 'إخفاء تفاصيل البطاقات ▲'; }
+          };
+        }
+      }).catch(function() {}); // أخطاء المرحلة الثانية لا تؤثر على الصفحة
     });
   }
 
@@ -544,6 +590,14 @@ var Dashboard = (function () {
   var _lvEmpRegion = {};
 
   function _buildLeaveDistCard(lvReqs, myShift, rgList, today) {
+    if (!lvReqs || !lvReqs.length) {
+      return '<div class="dash-card lv-dist-card">' +
+        '<div class="rsc-header"><span class="rsc-icon-wrap">📊</span>' +
+          '<span class="rsc-title">توزيع الإجازات — وردية ' + myShift + '</span></div>' +
+        '<div style="padding:20px;text-align:center;color:#94A3B8;font-size:0.85rem">' +
+          '<div class="spinner" style="margin:0 auto 8px"></div>جارٍ تحميل بيانات الإجازات…</div>' +
+      '</div>';
+    }
     var approved = lvReqs.filter(function(r) {
       return r.status === 'معتمد' && r.shift === myShift;
     });
