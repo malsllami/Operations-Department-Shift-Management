@@ -82,6 +82,7 @@ var App = (function () {
         '</div>' +
         '<div id="l-err" class="login-error" style="display:none"></div>' +
         '<button type="submit" class="btn-login" id="l-btn">دخول</button>' +
+        '<button type="button" class="btn-forgot-pw" onclick="App.showResetPassword()">نسيت كلمة المرور؟</button>' +
       '</form>';
 
     document.getElementById('login-form').onsubmit = function(e) {
@@ -112,6 +113,70 @@ var App = (function () {
             api_not_configured:  '⚙️ لم يتم ضبط رابط GAS بعد — افتح js/config.js وضع رابط Web App في API_URL'
           };
           errEl.textContent = errs[res.error] || 'حدث خطأ: ' + res.error;
+          errEl.style.display = 'block';
+        }
+      });
+    };
+  }
+
+  function _renderResetPasswordForm() {
+    var el = document.getElementById('login-form-container');
+    if (!el) return;
+
+    el.innerHTML =
+      '<div class="force-change-header">' +
+        '<div class="fch-icon">🔑</div>' +
+        '<h2>استعادة كلمة المرور</h2>' +
+        '<p>أدخل رقمك الوظيفي واختر وردييتك للتحقق من هويتك</p>' +
+      '</div>' +
+      '<form id="reset-pw-form" novalidate>' +
+        '<div class="login-field">' +
+          '<label>الرقم الوظيفي</label>' +
+          '<input type="text" id="rp-empid" class="login-input" placeholder="أدخل رقمك الوظيفي" autocomplete="username" required>' +
+        '</div>' +
+        '<div class="login-field">' +
+          '<label>الوردية</label>' +
+          '<select id="rp-shift" class="login-input" required>' +
+            '<option value="">— اختر وردييتك —</option>' +
+            '<option value="أ">وردية أ</option>' +
+            '<option value="ب">وردية ب</option>' +
+            '<option value="ج">وردية ج</option>' +
+            '<option value="د">وردية د</option>' +
+          '</select>' +
+        '</div>' +
+        '<div id="rp-err" class="login-error" style="display:none"></div>' +
+        '<button type="submit" class="btn-login" id="rp-btn">تحقق واستعادة</button>' +
+        '<button type="button" class="btn-forgot-pw" onclick="App.showLoginForm()">← رجوع لتسجيل الدخول</button>' +
+      '</form>';
+
+    document.getElementById('reset-pw-form').onsubmit = function(e) {
+      e.preventDefault();
+      var empId  = CONFIG.toLatinNums(document.getElementById('rp-empid').value.trim());
+      var shift  = document.getElementById('rp-shift').value;
+      var errEl  = document.getElementById('rp-err');
+      var btn    = document.getElementById('rp-btn');
+
+      errEl.style.display = 'none';
+      if (!empId || !shift) {
+        errEl.textContent = 'يرجى إدخال الرقم الوظيفي واختيار الوردية';
+        errEl.style.display = 'block'; return;
+      }
+
+      App.btnLoad(btn);
+      API.resetPassword(empId, shift).then(function(res) {
+        App.btnDone(btn, null, res.ok ? 'success' : 'error');
+        if (res.ok) {
+          // تسجيل الدخول بكلمة المرور الافتراضية ثم إجبار التغيير
+          Auth.login(empId, '123456').then(function(loginRes) {
+            if (loginRes.ok) {
+              _renderChangePassForm();
+            } else {
+              errEl.textContent = 'تمت الاستعادة — يرجى تسجيل الدخول بـ 123456';
+              errEl.style.display = 'block';
+            }
+          });
+        } else {
+          errEl.textContent = 'الرقم الوظيفي أو الوردية غير صحيحة';
           errEl.style.display = 'block';
         }
       });
@@ -1235,10 +1300,13 @@ var App = (function () {
     document.body.appendChild(m);
   }
 
+  function showResetPassword() { _renderResetPasswordForm(); }
+  function showLoginForm()     { _renderLoginForm(); }
+
   return {
     init, navigate, goBack, toast, togglePw, loadNotifBadge,
     btnLoad, btnDone, showSessionExpired, reLogin,
-    toggleTheme,
+    toggleTheme, showResetPassword, showLoginForm,
     waLink: _waLink, showWaModal: showWaModal,
     // إعدادات — جدول كامل
     switchSettTab, editSettingRow, cancelSettingEdit,
