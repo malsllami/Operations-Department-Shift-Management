@@ -484,6 +484,16 @@ var Dashboard = (function () {
       '</div>';
 
       // ============================================================
+      // 3b. إعدادات الحضور (المشرف فقط)
+      // ============================================================
+      if (isSup) html += _buildPresenceSettingsCard();
+
+      // ============================================================
+      // 3c. توزيع الإجازات (المشرف فقط)
+      // ============================================================
+      if (isSup) html += _buildLeaveDistCard(lvReqs, user.shift, rgList, today);
+
+      // ============================================================
       // 4. بطاقة المراكز والمناطق الشاملة
       // ============================================================
       html += _buildManagerRegionsCard(rgList, role, today, lvReqs, colors, todayShifts, user.shift);
@@ -523,7 +533,181 @@ var Dashboard = (function () {
       }
 
       if (role === 'مدير') { _loadApiUsage(); }
+      if (isSup) { _loadPresenceDefaults(); }
     });
+  }
+
+  // ============================================================
+  // بطاقة توزيع الإجازات — المشرف
+  // ============================================================
+  var _lvYearData  = null;
+  var _lvEmpRegion = {};
+
+  function _buildLeaveDistCard(lvReqs, myShift, rgList, today) {
+    var approved = lvReqs.filter(function(r) {
+      return r.status === 'معتمد' && r.shift === myShift;
+    });
+
+    _lvEmpRegion = {};
+    rgList.forEach(function(r) {
+      if (r.shift === myShift) _lvEmpRegion[String(r.empId)] = r.region || '—';
+    });
+
+    var totalShift = Object.keys(_lvEmpRegion).length || 10;
+    var highThr    = Math.max(2, Math.ceil(totalShift * 0.4));
+    var medThr     = Math.max(1, Math.ceil(totalShift * 0.2));
+
+    var curYear  = parseInt(today.substring(0, 4));
+    var curMonth = parseInt(today.substring(5, 7));
+
+    var MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',
+                  'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+
+    function _monthLeaves(year, month) {
+      var mm   = month < 10 ? '0' + month : '' + month;
+      var last = new Date(year, month, 0).getDate();
+      var ll   = last < 10 ? '0' + last : '' + last;
+      var s = year + '-' + mm + '-01';
+      var e = year + '-' + mm + '-' + ll;
+      return approved.filter(function(r) { return r.startDate <= e && r.endDate >= s; });
+    }
+
+    function _barColor(n) {
+      if (n === 0)      return '#E5E7EB';
+      if (n >= highThr) return '#EF4444';
+      if (n >= medThr)  return '#F59E0B';
+      return '#22C55E';
+    }
+
+    function _buildTooltip(leaves, name) {
+      var reg = {}; leaves.forEach(function(r) {
+        var k = _lvEmpRegion[String(r.empId)] || '—'; reg[k] = (reg[k]||0)+1;
+      });
+      var t = name + ': ' + leaves.length + ' إجازة';
+      Object.keys(reg).forEach(function(k) { t += '\n• ' + k + ': ' + reg[k]; });
+      return t;
+    }
+
+    // ---- بيانات السنة ----
+    _lvYearData = [];
+    for (var m = 1; m <= 12; m++) {
+      _lvYearData.push({ m: m, name: MONTHS[m-1], leaves: _monthLeaves(curYear, m) });
+    }
+    var maxY = _lvYearData.reduce(function(mx, d) { return Math.max(mx, d.leaves.length); }, 0) || 1;
+
+    var legend = '<div class="lv-legend">' +
+      '<span class="lv-leg-item"><span style="background:#22C55E"></span>طبيعي (&lt;' + medThr + ')</span>' +
+      '<span class="lv-leg-item"><span style="background:#F59E0B"></span>متوسط (' + medThr + '–' + (highThr-1) + ')</span>' +
+      '<span class="lv-leg-item"><span style="background:#EF4444"></span>مرتفع (≥' + highThr + ')</span>' +
+    '</div>';
+
+    var yearChart = '<div class="lv-chart">';
+    for (var i = 0; i < 12; i++) {
+      var d  = _lvYearData[i];
+      var hp = d.leaves.length ? Math.max(8, Math.round(d.leaves.length / maxY * 90)) : 3;
+      yearChart +=
+        '<div class="lv-bar-wrap' + (d.m === curMonth ? ' lv-current' : '') + '"' +
+        ' onclick="Dashboard._lvDetail(' + i + ')"' +
+        ' title="' + _buildTooltip(d.leaves, d.name) + '">' +
+          '<div class="lv-bar" style="height:' + hp + '%;background:' + _barColor(d.leaves.length) + '">' +
+            (d.leaves.length ? '<span class="lv-bar-num">' + d.leaves.length + '</span>' : '') +
+          '</div>' +
+          '<div class="lv-bar-lbl">' + d.name.substring(0,3) + '</div>' +
+        '</div>';
+    }
+    yearChart += '</div><div id="lvd-year-detail"></div>';
+
+    // ---- الشهر الحالي ----
+    var cm = _monthLeaves(curYear, curMonth);
+    var monthHtml = '<p class="lv-month-title">' + MONTHS[curMonth-1] + ' ' + curYear + ' — ' +
+      (cm.length ? cm.length + ' إجازة معتمدة' : 'لا توجد إجازات') + '</p>';
+    if (cm.length) {
+      var sorted = cm.slice().sort(function(a,b) { return a.startDate < b.startDate ? -1 : 1; });
+      monthHtml += '<table class="lv-tbl"><thead><tr><th>الاسم</th><th>المنطقة</th><th>من</th><th>إلى</th><th>أيام</th></tr></thead><tbody>';
+      sorted.forEach(function(r) {
+        monthHtml += '<tr><td>' + r.name + '</td>' +
+          '<td>' + (_lvEmpRegion[String(r.empId)] || '—') + '</td>' +
+          '<td>' + CONFIG.fmtDate(r.startDate) + '</td>' +
+          '<td>' + CONFIG.fmtDate(r.endDate) + '</td>' +
+          '<td style="text-align:center">' + r.days + '</td></tr>';
+      });
+      monthHtml += '</tbody></table>';
+    }
+
+    // ---- 6 أشهر قادمة ----
+    var fData = [];
+    for (var j = 0; j < 6; j++) {
+      var fm = curMonth + j, fy = curYear;
+      if (fm > 12) { fm -= 12; fy++; }
+      fData.push({ m: fm, y: fy, name: MONTHS[fm-1], leaves: _monthLeaves(fy, fm) });
+    }
+    var maxF = fData.reduce(function(mx, d2) { return Math.max(mx, d2.leaves.length); }, 0) || 1;
+    var futureChart = '<div class="lv-chart">';
+    for (var k = 0; k < 6; k++) {
+      var fd = fData[k];
+      var fh = fd.leaves.length ? Math.max(8, Math.round(fd.leaves.length / maxF * 90)) : 3;
+      futureChart +=
+        '<div class="lv-bar-wrap' + (fd.m === curMonth && fd.y === curYear ? ' lv-current' : '') + '"' +
+        ' title="' + _buildTooltip(fd.leaves, fd.name) + '">' +
+          '<div class="lv-bar" style="height:' + fh + '%;background:' + _barColor(fd.leaves.length) + '">' +
+            (fd.leaves.length ? '<span class="lv-bar-num">' + fd.leaves.length + '</span>' : '') +
+          '</div>' +
+          '<div class="lv-bar-lbl">' + fd.name.substring(0,3) +
+            (fd.y !== curYear ? '<br><span style="font-size:0.6rem">' + (fd.y-2000) + '</span>' : '') +
+          '</div>' +
+        '</div>';
+    }
+    futureChart += '</div>';
+
+    return '<div class="dash-card lv-dist-card">' +
+      '<div class="rsc-header"><span class="rsc-icon-wrap">📊</span>' +
+        '<span class="rsc-title">توزيع الإجازات — وردية ' + myShift + '</span></div>' +
+      '<div class="lv-tabs">' +
+        '<button class="lv-tab lv-tab-active" data-lv="year"  onclick="Dashboard._lvTab(\'year\')" >📅 ' + curYear + ' كاملاً</button>' +
+        '<button class="lv-tab"              data-lv="month" onclick="Dashboard._lvTab(\'month\')" >📆 ' + MONTHS[curMonth-1] + '</button>' +
+        '<button class="lv-tab"              data-lv="future" onclick="Dashboard._lvTab(\'future\')">⏭️ 6 أشهر قادمة</button>' +
+      '</div>' +
+      '<div id="lvd-year"   class="lv-panel">' + legend + yearChart + '</div>' +
+      '<div id="lvd-month"  class="lv-panel" style="display:none">' + monthHtml + '</div>' +
+      '<div id="lvd-future" class="lv-panel" style="display:none">' + legend + futureChart + '</div>' +
+    '</div>';
+  }
+
+  function _lvTab(tab) {
+    ['year','month','future'].forEach(function(t) {
+      var el = document.getElementById('lvd-' + t);
+      if (el) el.style.display = t === tab ? '' : 'none';
+    });
+    document.querySelectorAll('.lv-tab').forEach(function(btn) {
+      var isActive = btn.getAttribute('data-lv') === tab;
+      btn.classList.toggle('lv-tab-active', isActive);
+      btn.classList.toggle('active', isActive);
+    });
+  }
+
+  function _lvDetail(idx) {
+    var el = document.getElementById('lvd-year-detail');
+    if (!el || !_lvYearData) return;
+    var d = _lvYearData[idx];
+    if (!d) return;
+    if (el.dataset.open === String(idx)) { el.innerHTML = ''; el.dataset.open = ''; return; }
+    el.dataset.open = String(idx);
+
+    if (!d.leaves.length) {
+      el.innerHTML = '<p style="color:#64748B;font-size:0.84rem;padding:6px 4px">لا توجد إجازات في ' + d.name + '</p>';
+      return;
+    }
+    var sorted = d.leaves.slice().sort(function(a,b) { return a.startDate < b.startDate ? -1 : 1; });
+    var h = '<div class="lvd-detail-box"><div class="lvd-detail-title">' + d.name + ' — ' + d.leaves.length + ' إجازة</div>' +
+      '<table class="lv-tbl"><thead><tr><th>الاسم</th><th>المنطقة</th><th>من</th><th>إلى</th></tr></thead><tbody>';
+    sorted.forEach(function(r) {
+      h += '<tr><td>' + r.name + '</td>' +
+        '<td>' + (_lvEmpRegion[String(r.empId)] || '—') + '</td>' +
+        '<td>' + CONFIG.fmtDate(r.startDate) + '</td>' +
+        '<td>' + CONFIG.fmtDate(r.endDate) + '</td></tr>';
+    });
+    h += '</tbody></table></div>';
+    el.innerHTML = h;
   }
 
   function _buildManagerRegionsCard(rgList, role, today, lvReqs, colors, todayShifts, myShift) {
@@ -654,6 +838,25 @@ var Dashboard = (function () {
 
     html += '</div></div>'; // regions-panel + regions-card
     return html;
+  }
+
+  // ---- بطاقة إعدادات الحضور (المشرف) ----
+  function _buildPresenceSettingsCard() {
+    return '<div class="dash-card presence-settings-card">' +
+      '<div class="rsc-header"><span class="rsc-icon-wrap">⚙️</span><span class="rsc-title">إعدادات الحضور</span></div>' +
+      '<div class="ps-form">' +
+        '<div class="form-field">' +
+          '<label>الحد الأدنى لنسبة الحضور في المنطقة (%)</label>' +
+          '<input type="number" id="ps-pct" class="form-input" min="10" max="100" step="5" value="60" placeholder="60">' +
+        '</div>' +
+        '<div class="form-field">' +
+          '<label>الحد الأدنى للموظفين في كل مركز</label>' +
+          '<input type="number" id="ps-center" class="form-input" min="0" max="10" step="1" value="1" placeholder="1">' +
+        '</div>' +
+        '<div id="ps-msg" style="font-size:0.82rem;margin-bottom:8px;display:none"></div>' +
+        '<button class="btn-primary" style="width:100%" onclick="Dashboard._savePresenceSettings()">💾 حفظ الإعدادات</button>' +
+      '</div>' +
+    '</div>';
   }
 
   // ---- مساعدات بطاقة صلاحية الهويات ----
@@ -838,5 +1041,36 @@ var Dashboard = (function () {
     });
   }
 
-  return { render: render, quickComprehensive: quickComprehensive };
+  function _savePresenceSettings() {
+    var pct    = parseInt(document.getElementById('ps-pct')   && document.getElementById('ps-pct').value)   || 60;
+    var center = parseInt(document.getElementById('ps-center') && document.getElementById('ps-center').value) || 1;
+    var msgEl  = document.getElementById('ps-msg');
+    if (pct < 10 || pct > 100) {
+      if (msgEl) { msgEl.textContent = '⚠️ النسبة يجب أن تكون بين 10% و100%'; msgEl.style.color = 'red'; msgEl.style.display = 'block'; }
+      return;
+    }
+    API.updateSettings({ region_min_presence_pct: String(pct), region_min_per_center: String(center) }).then(function(res) {
+      if (msgEl) {
+        msgEl.textContent  = res.ok ? '✅ تم الحفظ' : '❌ خطأ: ' + res.error;
+        msgEl.style.color  = res.ok ? 'green' : 'red';
+        msgEl.style.display = 'block';
+        setTimeout(function() { if (msgEl) msgEl.style.display = 'none'; }, 3000);
+      }
+    });
+  }
+
+  // تحميل الإعدادات الحالية في البطاقة
+  function _loadPresenceDefaults() {
+    API.getSettings && API.getSettings().then(function(res) {
+      if (!res || !res.ok) return;
+      var pctEl    = document.getElementById('ps-pct');
+      var centerEl = document.getElementById('ps-center');
+      if (pctEl    && res.data.region_min_presence_pct) pctEl.value    = res.data.region_min_presence_pct;
+      if (centerEl && res.data.region_min_per_center)   centerEl.value = res.data.region_min_per_center;
+    }).catch(function(){});
+  }
+
+  return { render: render, quickComprehensive: quickComprehensive,
+           _savePresenceSettings: _savePresenceSettings,
+           _lvTab: _lvTab, _lvDetail: _lvDetail };
 })();
