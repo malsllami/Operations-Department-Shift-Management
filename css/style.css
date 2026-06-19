@@ -377,6 +377,12 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 20px;
 }
+.dashboard-grid.sup-dashboard {
+  grid-template-columns: 1fr 1fr;
+}
+.dashboard-grid.sup-dashboard .dash-card-wide {
+  grid-column: 1 / -1;
+}
 
 .dash-card { padding: 20px; }
 .dash-card-wide { grid-column: 1 / -1; }
@@ -1648,8 +1654,9 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
   .phone-merged-input { padding: 10px 8px 10px 12px !important; }
 
   /* ==== الشبكات ==== */
-  .dashboard-grid      { grid-template-columns: 1fr; gap: 10px; }
-  .shift-cards-row     { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .dashboard-grid                 { grid-template-columns: 1fr; gap: 10px; }
+  .dashboard-grid.sup-dashboard   { grid-template-columns: 1fr; }
+  .shift-cards-row                { grid-template-columns: repeat(2, 1fr); gap: 8px; }
   .form-grid           { grid-template-columns: 1fr !important; gap: 10px; }
   .profile-sections    { grid-template-columns: 1fr; }
   .leave-grid          { grid-template-columns: repeat(3, 1fr); }
@@ -2394,6 +2401,29 @@ input[type="tel"], input[type="number"] { direction: ltr; text-align: left; }
 
 /* الـ dash-card والبطاقات العامة */
 .dash-card                { border-radius: 20px !important; }
+
+/* ==== بطاقة صلاحية الهويات ==== */
+.ce-summary {
+  display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 4px;
+}
+.ce-badge {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px; border-radius: 50px; font-weight: 700;
+}
+.ce-badge-red    { background: #FEE2E2; color: #991B1B; }
+.ce-badge-yellow { background: #FEF9C3; color: #854D0E; }
+.ce-badge-orange { background: #FFEDD5; color: #9A3412; }
+.ce-badge-ok     { background: #DCFCE7; color: #166534; font-size: 0.9rem; }
+.ce-badge-num    { font-size: 1.5rem; line-height: 1; }
+.ce-badge-lbl    { font-size: 0.8rem; font-weight: 600; }
+
+.ce-group        { margin-bottom: 14px; }
+.ce-group-header {
+  display: flex; justify-content: space-between; align-items: center;
+  color: #fff; font-weight: 700; padding: 8px 14px;
+  border-radius: 10px; margin-bottom: 6px; font-size: 0.9rem;
+}
+.ce-group-count  { font-size: 0.8rem; opacity: 0.9; }
 
 /* التقويم */
 .cal-day-cell             { border-radius: 10px !important; }
